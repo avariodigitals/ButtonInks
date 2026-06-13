@@ -11,31 +11,24 @@ export default async function CategoriesPage() {
 
   const rootCategories = categoriesData.filter(c => c.parent === 0 && c.count > 0);
 
-  const filterGroups = [
-    {
-      title: "Categories",
-      options: rootCategories.map(c => c.name)
-    },
-    {
-      title: "Print Method",
-      options: ["Screen Printing", "Direct-to-Garment", "Embroidery", "Heat Transfer"]
-    }
-  ];
-
   return (
     <main className="w-full flex flex-col items-center bg-white">
       {/* Hero / Header Section */}
-      <section className="w-full p-6 bg-emerald-50 flex flex-col justify-start items-center gap-2.5">
-        <div className="w-full max-w-[1280px] flex flex-col justify-center items-center gap-7 py-10">
-          <nav className="px-3 py-2 rounded-md inline-flex justify-start items-center gap-1">
-            <Link href="/" className="text-center text-emerald-500 text-sm font-medium font-['Inter'] leading-5 hover:underline">Home</Link>
-            <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="text-center text-zinc-500 text-sm font-medium font-['Inter'] leading-5">Product Categories</span>
+      <section className="w-full px-6 py-12 md:py-20 bg-emerald-50 flex flex-col justify-start items-center">
+        <div className="w-full max-w-[1280px] flex flex-col justify-center items-center gap-6 text-center">
+          <nav className="flex items-center gap-1 text-sm font-medium font-['Inter']">
+            <Link href="/" className="text-emerald-600 hover:underline">Home</Link>
+            <ChevronRight className="w-4 h-4 text-emerald-300" />
+            <span className="text-zinc-500">Product Categories</span>
           </nav>
 
-          <h1 className="self-stretch text-center text-green-500 text-6xl font-bold font-['Outfit'] leading-tight md:leading-[65.66px]">Product Categories</h1>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-['Outfit'] text-green-700 leading-tight">
+            Our Categories
+          </h1>
 
-          <p className="w-full max-w-[480px] text-center text-zinc-500/90 text-base font-normal font-['Inter'] leading-6">Professionally printed custom products. Premium quality, bulk pricing, fast delivery.</p>
+          <p className="max-w-xl text-zinc-500 text-base md:text-lg font-normal font-['Inter'] leading-relaxed">
+            Professionally printed custom products. From apparel to business essentials, we deliver premium quality with unbeatable pricing.
+          </p>
         </div>
       </section>
 
@@ -44,105 +37,135 @@ export default async function CategoriesPage() {
         <CategoryCarousel categories={rootCategories} />
 
         {/* Filters and Grid Section */}
-        <section className="w-full max-w-[1280px] px-4 md:px-20 py-10 flex flex-col md:flex-row gap-8 items-start">
+        <section className="w-full max-w-[1280px] px-6 md:px-20 py-10 flex flex-col lg:flex-row gap-10 items-start">
 
-          {/* Sidebar Filters */}
-          <aside className="w-full md:w-64 shrink-0 flex flex-col gap-4">
-            <div className="p-5 bg-white rounded-2xl outline outline-[1.31px] outline-offset-[-1.31px] outline-green-900/5 flex flex-col gap-4 border border-gray-100 shadow-sm">
-              <div className="flex justify-between items-center pb-2">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-green-900" />
-                  <span className="text-neutral-900 text-base font-bold font-['Inter'] leading-6">Filters</span>
+          {/* Sidebar Filters (Hidden on small mobile, or shown as a simplified version) */}
+          <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-6">
+            <div className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-6 sticky top-24">
+              <div className="flex items-center gap-2 border-b border-gray-50 pb-4">
+                <Filter className="w-5 h-5 text-green-700" />
+                <span className="text-neutral-900 text-lg font-bold font-['Inter']">Filters</span>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex flex-col gap-4">
+                <span className="text-neutral-900 text-xs font-bold uppercase tracking-widest font-['Inter']">Categories</span>
+                <div className="flex flex-wrap lg:flex-col gap-2">
+                  {rootCategories.slice(0, 8).map((cat) => (
+                    <Link
+                      key={cat.id}
+                      href={`/products/${cat.slug}`}
+                      className="px-3 py-1.5 bg-gray-50 hover:bg-green-50 rounded-lg text-sm text-gray-600 hover:text-green-700 transition-colors border border-transparent hover:border-green-100"
+                    >
+                      {cat.name} ({cat.count})
+                    </Link>
+                  ))}
                 </div>
               </div>
 
-              {filterGroups.map((group, idx) => (
-                <div key={idx} className="flex flex-col gap-3 py-4 border-t-[1.31px] border-green-900/5">
-                  <div className="flex justify-between items-center cursor-pointer">
-                    <span className="text-neutral-900 text-xs font-bold font-['Inter'] leading-5">{group.title}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {group.options.map((opt, i) => (
-                      <label key={i} className="flex items-center gap-2 cursor-pointer group">
-                        <input type="checkbox" className="w-4 h-4 rounded border-zinc-300 text-green-700 focus:ring-green-500" />
-                        <span className="text-neutral-700 text-xs font-normal font-['Inter'] leading-5 group-hover:text-green-700 transition-colors">{opt}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              <div className="pt-4 border-t border-gray-50">
+                 <span className="text-neutral-900 text-xs font-bold uppercase tracking-widest font-['Inter']">Price Range</span>
+                 <div className="flex flex-col gap-2 mt-4 text-sm text-gray-600">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-green-700 focus:ring-green-500" />
+                      <span className="group-hover:text-green-700">Under $10</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-green-700 focus:ring-green-500" />
+                      <span className="group-hover:text-green-700">$10 – $50</span>
+                    </label>
+                 </div>
+              </div>
             </div>
           </aside>
 
           {/* Product Grid Content */}
-          <div className="flex-1 flex flex-col gap-6">
+          <div className="flex-1 flex flex-col gap-8 w-full">
 
-            <div className="self-stretch flex justify-between items-center">
-              <div className="text-sm font-normal font-['Inter'] leading-5">
-                <span className="text-gray-600">Showing </span>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="text-base font-normal font-['Inter']">
+                <span className="text-gray-500">Showing </span>
                 <span className="text-neutral-900 font-bold">{products.length}</span>
-                <span className="text-gray-600"> products</span>
+                <span className="text-gray-500"> unique products</span>
               </div>
-              <div className="w-40 px-3 py-1.5 bg-white rounded-lg outline outline-[1.31px] outline-offset-[-1.31px] outline-green-900/10 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors">
-                <span className="text-gray-600 text-xs font-normal font-['Inter']">Sort: Most Popular</span>
-                <ChevronDown className="w-3.5 h-3.5 text-gray-700" />
+
+              <div className="relative group min-w-[180px]">
+                <div className="flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-green-700 transition-colors">
+                  <span className="text-gray-600 text-sm font-medium font-['Inter']">Sort: Most Popular</span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
               </div>
             </div>
 
             {/* Grid of Products */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {products.map((p) => (
-                <div key={p.id} className="bg-white rounded-2xl shadow-sm outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group hover:shadow-lg transition-all border border-gray-100">
-                  <div className="relative h-56 p-2.5 flex items-center justify-center">
+                <div key={p.id} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden border border-gray-100 group">
+                  <div className="relative h-64 md:h-56 p-4 flex items-center justify-center bg-gray-50/50">
                     {p.on_sale && (
-                      <div className="absolute top-[14px] left-[18px] px-2 py-[3px] bg-red-600 rounded-[20px] flex justify-center items-center z-10">
-                        <span className="text-white text-[10px] font-bold font-['Inter'] leading-4">SALE</span>
+                      <div className="absolute top-4 left-4 px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full z-10 shadow-sm">
+                        SALE
                       </div>
                     )}
                     <img
-                      className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      className="max-h-full object-contain group-hover:scale-110 transition-transform duration-500"
                       src={p.images[0]?.src || "https://placehold.co/319x220"}
                       alt={p.name}
                     />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors pointer-events-none" />
                   </div>
 
                   {/* Details */}
-                  <div className="p-4 bg-white border-t border-gray-100 flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-slate-900 text-base font-semibold font-['Outfit'] leading-5 line-clamp-1">{p.name}</h3>
-                      <div className="text-zinc-500 hover:text-red-500 cursor-pointer transition-colors">
+                  <div className="p-6 flex flex-col gap-4">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="text-slate-900 text-lg font-bold font-['Outfit'] leading-tight line-clamp-2 group-hover:text-green-700 transition-colors">
+                        {p.name}
+                      </h3>
+                      <button className="p-2 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all shrink-0">
                         <Heart className="w-5 h-5" />
-                      </div>
+                      </button>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <div className="flex items-center gap-0.5">
                         {[1,2,3,4,5].map(star => (
-                           <Star key={star} className={`w-3 h-3 ${star <= Number(p.average_rating) ? 'text-orange-600 fill-current' : 'text-zinc-300'}`} />
+                           <Star key={star} className={`w-3.5 h-3.5 ${star <= Number(p.average_rating) ? 'text-amber-400 fill-current' : 'text-gray-200'}`} />
                         ))}
                       </div>
-                      <span className="text-slate-500 text-xs font-normal font-['Inter'] leading-4">{p.average_rating} ({p.rating_count})</span>
+                      <span className="text-zinc-500 text-xs font-semibold font-['Inter']">{p.average_rating} ({p.rating_count} reviews)</span>
                     </div>
 
-                    <div className="flex justify-between items-center">
-                      <div className="flex flex-wrap items-baseline gap-1">
-                        <span
-                          className="text-slate-900 text-base font-semibold font-['Outfit'] leading-6 [&_del]:text-gray-400 [&_del]:text-xs [&_del]:font-normal [&_ins]:no-underline"
-                          dangerouslySetInnerHTML={{ __html: p.price_html || `$${p.price}` }}
-                        />
-                      </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <div
+                        className="text-slate-900 text-xl font-bold font-['Outfit'] [&_del]:text-gray-400 [&_del]:text-sm [&_del]:font-normal [&_ins]:no-underline"
+                        dangerouslySetInnerHTML={{ __html: p.price_html || `$${p.price}` }}
+                      />
                       <Link
                         href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
-                        className="px-3 py-2 bg-green-700 rounded-lg flex justify-center items-center hover:bg-green-800 transition-colors"
+                        className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white text-sm font-bold font-['Inter'] rounded-xl shadow-md shadow-green-700/20 transition-all active:scale-95 flex items-center justify-center"
                       >
-                        <span className="text-white text-xs font-semibold font-['Inter'] leading-4">Shop</span>
+                        Shop Now
                       </Link>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+            {products.length === 0 && (
+              <div className="w-full py-20 text-center flex flex-col items-center gap-4">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center">
+                   <Filter className="w-10 h-10 text-gray-300" />
+                </div>
+                <p className="text-gray-500 font-medium font-['Inter'] text-lg">No products found in this category.</p>
+                <Link href="/categories" className="text-green-700 font-bold hover:underline">Clear all filters</Link>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
             {products.length === 0 && (
               <div className="w-full py-20 text-center text-gray-500">
                 No products found. Please check your WooCommerce store.
