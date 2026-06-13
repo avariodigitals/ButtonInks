@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
 const categories = [
@@ -17,6 +18,11 @@ const categories = [
 ];
 
 export default function CategoryNav() {
+  const pathname = usePathname();
+
+  // Hide category nav on design page
+  if (pathname?.startsWith('/design')) return null;
+
   return (
     <div className="hidden lg:flex w-full h-16 px-20 border-b border-slate-400/20 items-center bg-white shrink-0 overflow-x-auto">
       <div className="flex-1 flex justify-between items-center min-w-max">

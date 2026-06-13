@@ -1,10 +1,17 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import FooterCTA from './FooterCTA';
 import { Phone, Mail, MapPin } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
+
+  // Hide footer on design editor page
+  if (pathname?.startsWith('/design')) return null;
 
   return (
     <footer className="w-full flex flex-col mt-auto bg-neutral-950">

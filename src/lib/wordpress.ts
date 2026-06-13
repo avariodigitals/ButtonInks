@@ -95,6 +95,9 @@ async function getAuthToken(): Promise<string | null> {
       const data = await res.json();
       cachedToken = data.token;
       return cachedToken;
+    } else {
+      const errorText = await res.text();
+      console.error("JWT Token Auth Failed:", res.status, errorText);
     }
   } catch (error) {
     console.error("Failed to fetch JWT auth token:", error);
@@ -179,4 +182,40 @@ export async function getProductById(id: number): Promise<WPProduct | null> {
 
 export async function getProductCategories(): Promise<WPCategory[]> {
   return wpFetch<WPCategory[]>("/wc/v3/products/categories", { per_page: "100" }, true);
+}
+
+// ── Media Uploads (WP REST API) ──────────────────────────────────────────────
+
+export async function uploadMedia(file: File): Promise<{ source_url: string; id: number } | null> {
+  const token = await getAuthToken();
+  if (!token) throw new Error("Security token missing. Please ensure WordPress credentials are correct.");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch(`${WP_BASE_URL}/wp/v2/media`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (res.ok) {
+      return res.json();
+    }
+    const err = await res.text();
+    console.error("Upload failed:", err);
+  } catch (error) {
+    console.error("Media upload error:", error);
+  }
+  return null;
+}
+
+export async function getRecentMedia(perPage = 12): Promise<{ source_url: string; id: number }[]> {
+  const token = await getAuthToken();
+  if (!token) return [];
+
+  return wpFetch<any[]>("/wp/v2/media", { per_page: String(perPage) }, false);
 }
