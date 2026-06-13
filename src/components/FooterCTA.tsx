@@ -42,7 +42,7 @@ const FooterCTA = () => {
       {/* Decorative circles */}
       <div className="w-96 h-96 right-[-100px] top-[-100px] absolute bg-white/5 rounded-full pointer-events-none" />
       <div className="w-72 h-72 left-[-100px] bottom-[-50px] absolute bg-black/5 rounded-full pointer-events-none" />
-    </div>
+    </section>
   );
 };
 
