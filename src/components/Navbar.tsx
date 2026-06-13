@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight } from "lucide-react";
+import { useCart } from "@/context/CartContext";
 
 const categories = [
   { label: "All Categories", href: "/categories" },
@@ -20,6 +21,7 @@ const categories = [
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { itemCount } = useCart();
 
   // Lock body scroll when menu is open
   React.useEffect(() => {
@@ -79,14 +81,16 @@ export default function Navbar() {
           </button>
 
           {/* Cart with badge */}
-          <div className="relative p-2 rounded-md cursor-pointer hover:bg-gray-50 group">
+          <Link href="/cart" className="relative p-2 rounded-md cursor-pointer hover:bg-gray-50 group">
             <ShoppingCart className="w-5 h-5 text-gray-700 group-hover:text-green-700 transition-colors" />
-            <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-700 rounded-full flex items-center justify-center">
-              <span className="text-white text-[10px] font-bold leading-4 font-['Inter']">
-                9+
-              </span>
-            </div>
-          </div>
+            {itemCount > 0 && (
+              <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-700 rounded-full flex items-center justify-center">
+                <span className="text-white text-[10px] font-bold leading-4 font-['Inter']">
+                  {itemCount > 9 ? '9+' : itemCount}
+                </span>
+              </div>
+            )}
+          </Link>
 
           {/* Wishlist (Desktop) */}
           <button className="hidden md:flex w-10 h-10 items-center justify-center hover:text-green-700 text-neutral-700 transition-colors">

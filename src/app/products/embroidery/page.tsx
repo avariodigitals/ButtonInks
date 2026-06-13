@@ -9,7 +9,7 @@ export default async function EmbroideryPage() {
   const currentCat = categories.find(c => c.slug === 'embroidery');
 
   const products = currentCat
-    ? await getProducts(1, 20, currentCat.id)
+    ? await getProducts(1, 20, { category: String(currentCat.id) })
     : await getProducts(1, 20);
 
   const categoryName = currentCat?.name || "Embroidery";

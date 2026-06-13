@@ -3,6 +3,9 @@ import { Outfit, Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { CartProvider } from "@/context/CartContext";
+import { NotificationProvider } from "@/context/NotificationContext";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -56,16 +59,23 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} ${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-white touch-pan-y" suppressHydrationWarning>
-        {/* ── Global header (Announcement + Navbar + CategoryNav) ── */}
-        <Header />
+        <NotificationProvider>
+          <CartProvider>
+            {/* ── Global header (Announcement + Navbar + CategoryNav) ── */}
+            <Header />
 
-        {/* ── Page content ── */}
-        <div className="flex-1">
-          {children}
-        </div>
+            {/* ── Page content ── */}
+            <div className="flex-1">
+              {children}
+            </div>
 
-        {/* ── Global footer ── */}
-        <Footer />
+            {/* ── Global footer ── */}
+            <Footer />
+
+            {/* ── Scroll to Top ── */}
+            <ScrollToTop />
+          </CartProvider>
+        </NotificationProvider>
       </body>
     </html>
   );

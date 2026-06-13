@@ -82,7 +82,7 @@ export default function ProductCard({
         <div className="flex justify-between items-center">
           <div className="flex flex-wrap items-baseline gap-1">
             <span
-              className="text-slate-900 text-base font-semibold leading-6 [&_del]:text-gray-400 [&_del]:text-xs [&_del]:font-normal [&_ins]:no-underline"
+              className="text-slate-900 text-base font-semibold leading-6 [&_del]:text-gray-400 [&_del]:text-xs [&_del]:font-normal [&_del]:mr-2 [&_ins]:no-underline"
               style={{ fontFamily: "var(--font-outfit)" }}
               dangerouslySetInnerHTML={{ __html: price }}
             />

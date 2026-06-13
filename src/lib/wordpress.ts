@@ -171,15 +171,15 @@ export async function getPostBySlug(slug: string): Promise<WPPost | null> {
 export async function getProducts(
   page = 1,
   perPage = 20,
-  category?: number
+  params?: Record<string, string>
 ): Promise<WPProduct[]> {
-  const params: Record<string, string> = {
+  const queryParams: Record<string, string> = {
     page: String(page),
     per_page: String(perPage),
+    ...params,
   };
-  if (category) params.category = String(category);
 
-  return wpFetch<WPProduct[]>("/wc/v3/products", params, true);
+  return wpFetch<WPProduct[]>("/wc/v3/products", queryParams, true);
 }
 
 export async function getProductBySlug(slug: string): Promise<WPProduct | null> {
@@ -193,6 +193,60 @@ export async function getProductById(id: number): Promise<WPProduct | null> {
 
 export async function getProductCategories(): Promise<WPCategory[]> {
   return wpFetch<WPCategory[]>("/wc/v3/products/categories", { per_page: "100" }, true);
+}
+
+export async function getProductAttributes(): Promise<any[]> {
+  return wpFetch<any[]>("/wc/v3/products/attributes", undefined, true);
+}
+
+export async function getAttributeTerms(attributeId: number): Promise<any[]> {
+  return wpFetch<any[]>(`/wc/v3/products/attributes/${attributeId}/terms`, { per_page: "100" }, true);
+}
+
+// ── Orders (WooCommerce REST API v3) ──────────────────────────────────────────
+
+export interface WPCustomer {
+  first_name: string;
+  last_name: string;
+  address_1: string;
+  city: string;
+  postcode: string;
+  country: string;
+  email: string;
+  phone: string;
+}
+
+export interface WPOrder {
+  payment_method: string;
+  payment_method_title: string;
+  set_paid: boolean;
+  billing: WPCustomer;
+  shipping: WPCustomer;
+  line_items: {
+    product_id: number;
+    quantity: number;
+  }[];
+}
+
+export async function createOrder(orderData: WPOrder): Promise<any> {
+  const url = `${WP_BASE_URL}/wc/v3/orders`;
+  const auth = Buffer.from(`${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64');
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Basic ${auth}`,
+    },
+    body: JSON.stringify(orderData),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(`Failed to create order: ${errorBody}`);
+  }
+
+  return res.json();
 }
 
 // ── Media Uploads (WP REST API) ──────────────────────────────────────────────

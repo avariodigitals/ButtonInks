@@ -1,148 +1,186 @@
 import React from 'react';
 import Link from 'next/link';
-import { ChevronRight, Filter, ChevronDown, Heart, Star } from 'lucide-react';
-import { getProductCategories, getProducts } from '@/lib/wordpress';
-import CategoryCarousel from '@/components/CategoryCarousel';
+import { ChevronRight, Filter, ChevronDown, Heart, Star, SlidersHorizontal } from 'lucide-react';
+import { getProductCategories, getProducts, getProductAttributes, getAttributeTerms } from '@/lib/wordpress';
+import FilterSidebar from '@/components/FilterSidebar';
 
-export default async function CategoriesPage() {
-  // Fetch data on the server - this uses your .env.local keys safely
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function CategoriesPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const categorySlug = typeof params.category === 'string' ? params.category : undefined;
+
+  // Fetch data on the server
   const categoriesData = await getProductCategories();
-  const products = await getProducts(1, 12);
-
   const rootCategories = categoriesData.filter(c => c.parent === 0 && c.count > 0);
 
+  // Find current category ID if filtering
+  let currentCategoryId: number | undefined = undefined;
+  if (categorySlug) {
+    const currentCat = categoriesData.find(c => c.slug === categorySlug);
+    if (currentCat) currentCategoryId = currentCat.id;
+  }
+
+  // Fetch products based on category
+  const products = await getProducts(1, 24, currentCategoryId ? { category: String(currentCategoryId) } : {});
+
+  // Fetch some attributes for the sidebar to make it dynamic
+  // Note: We might want to limit this or cache it
+  const attributes = await getProductAttributes().catch(() => []);
+
+  // Featured categories for the top row
+  const featuredRow = rootCategories.slice(0, 5);
+  const rowColors = ['bg-zinc-100', 'bg-orange-50', 'bg-emerald-50', 'bg-slate-50', 'bg-rose-50'];
+
   return (
-    <main className="w-full flex flex-col items-center bg-white">
-      {/* Hero / Header Section */}
-      <section className="w-full px-6 py-12 md:py-20 bg-emerald-50 flex flex-col justify-start items-center">
-        <div className="w-full max-w-[1280px] flex flex-col justify-center items-center gap-6 text-center">
-          <nav className="flex items-center gap-1 text-sm font-medium font-['Inter']">
-            <Link href="/" className="text-emerald-600 hover:underline">Home</Link>
-            <ChevronRight className="w-4 h-4 text-emerald-300" />
-            <span className="text-zinc-500">Product Categories</span>
-          </nav>
+    <main className="w-full flex flex-col items-center bg-white overflow-hidden">
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-['Outfit'] text-green-700 leading-tight">
-            Our Categories
+      {/* ── Breadcrumbs ── */}
+      <section className="self-stretch px-4 md:px-20 py-4 bg-white border-b border-gray-200">
+        <div className="max-w-[1280px] mx-auto flex items-center gap-2">
+          <Link href="/" className="text-emerald-500 text-sm font-medium font-['Inter'] leading-5 hover:underline">Home</Link>
+          <ChevronRight className="w-4 h-4 text-emerald-500" />
+          <span className="text-zinc-500 text-sm font-medium font-['Inter'] leading-5">Product Categories</span>
+          {categorySlug && (
+            <>
+              <ChevronRight className="w-4 h-4 text-emerald-500" />
+              <span className="text-zinc-900 text-sm font-bold font-['Inter'] leading-5 capitalize">{categorySlug.replace(/-/g, ' ')}</span>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* ── Hero / Header Section ── */}
+      <section className="self-stretch px-4 md:px-20 py-12 md:py-16 bg-emerald-50 border-b border-gray-200">
+        <div className="max-w-[1280px] mx-auto flex flex-col justify-center items-center gap-6 text-center">
+          <h1 className="text-green-500 text-4xl md:text-6xl font-bold font-['Outfit'] leading-tight">
+            {categorySlug ? categorySlug.replace(/-/g, ' ') : 'Product Categories'}
           </h1>
-
-          <p className="max-w-xl text-zinc-500 text-base md:text-lg font-normal font-['Inter'] leading-relaxed">
-            Professionally printed custom products. From apparel to business essentials, we deliver premium quality with unbeatable pricing.
+          <p className="max-w-[480px] text-zinc-500/90 text-base font-normal font-['Inter'] leading-6">
+            Professionally printed custom products. Premium quality, bulk pricing, and fast delivery guaranteed.
           </p>
         </div>
       </section>
 
-      <div className="w-full flex flex-col items-center">
-        {/* Pass the server-fetched categories to the Client Carousel */}
-        <CategoryCarousel categories={rootCategories} />
-
-        {/* Filters and Grid Section */}
-        <section className="w-full max-w-[1280px] px-6 md:px-20 py-10 flex flex-col lg:flex-row gap-10 items-start">
-
-          {/* Sidebar Filters (Hidden on small mobile, or shown as a simplified version) */}
-          <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-6">
-            <div className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-6 sticky top-24">
-              <div className="flex items-center gap-2 border-b border-gray-50 pb-4">
-                <Filter className="w-5 h-5 text-green-700" />
-                <span className="text-neutral-900 text-lg font-bold font-['Inter']">Filters</span>
-              </div>
-
-              {/* Category Filter */}
-              <div className="flex flex-col gap-4">
-                <span className="text-neutral-900 text-xs font-bold uppercase tracking-widest font-['Inter']">Categories</span>
-                <div className="flex flex-wrap lg:flex-col gap-2">
-                  {rootCategories.slice(0, 8).map((cat) => (
-                    <Link
-                      key={cat.id}
-                      href={`/products/${cat.slug}`}
-                      className="px-3 py-1.5 bg-gray-50 hover:bg-green-50 rounded-lg text-sm text-gray-600 hover:text-green-700 transition-colors border border-transparent hover:border-green-100"
-                    >
-                      {cat.name} ({cat.count})
-                    </Link>
-                  ))}
+      {/* ── Featured Categories Row (Scrollable on Mobile) ── */}
+      {!categorySlug && (
+        <section className="self-stretch px-4 md:px-20 py-10 overflow-x-auto no-scrollbar">
+          <div className="max-w-[1280px] mx-auto flex items-start gap-6 min-w-max md:min-w-0">
+            {featuredRow.map((cat, i) => (
+              <Link
+                key={cat.id}
+                href={`/categories?category=${cat.slug}`}
+                className={`w-72 px-5 py-9 ${rowColors[i % rowColors.length]} rounded-xl flex flex-col justify-center items-center gap-8 overflow-hidden hover:shadow-lg transition-all group`}
+              >
+                <div className="w-52 h-52 relative flex items-center justify-center">
+                  <img
+                    className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                    src={cat.image?.src || "https://placehold.co/212x212"}
+                    alt={cat.name}
+                  />
                 </div>
-              </div>
+                <div className="self-stretch flex flex-col justify-center items-center gap-2">
+                  <div className="self-stretch text-center text-zinc-900 text-2xl font-medium font-['Outfit'] leading-7 truncate">
+                    {cat.name}
+                  </div>
+                  <div className="py-1 border-b border-black inline-flex justify-center items-center gap-2.5">
+                    <div className="text-center text-zinc-900 text-base font-normal font-['Outfit'] leading-6">View all</div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
-              <div className="pt-4 border-t border-gray-50">
-                 <span className="text-neutral-900 text-xs font-bold uppercase tracking-widest font-['Inter']">Price Range</span>
-                 <div className="flex flex-col gap-2 mt-4 text-sm text-gray-600">
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-green-700 focus:ring-green-500" />
-                      <span className="group-hover:text-green-700">Under $10</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-green-700 focus:ring-green-500" />
-                      <span className="group-hover:text-green-700">$10 – $50</span>
-                    </label>
-                 </div>
-              </div>
-            </div>
-          </aside>
+      {/* ── Main Content Area ── */}
+      <section className="self-stretch px-4 md:px-20 py-10">
+        <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-10 items-start">
+
+          <FilterSidebar
+            categories={rootCategories}
+            activeCategory={categorySlug}
+            attributes={attributes}
+          />
 
           {/* Product Grid Content */}
           <div className="flex-1 flex flex-col gap-8 w-full">
 
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="text-base font-normal font-['Inter']">
-                <span className="text-gray-500">Showing </span>
+            <div className="flex justify-between items-center">
+              <div className="text-sm font-normal font-['Inter'] leading-5">
+                <span className="text-gray-600">Showing </span>
                 <span className="text-neutral-900 font-bold">{products.length}</span>
-                <span className="text-gray-500"> unique products</span>
+                <span className="text-gray-600"> results</span>
               </div>
 
-              <div className="relative group min-w-[180px]">
-                <div className="flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-green-700 transition-colors">
-                  <span className="text-gray-600 text-sm font-medium font-['Inter']">Sort: Most Popular</span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </div>
+              <div className="w-44 px-3 py-2 bg-white rounded-lg outline outline-[1.31px] outline-offset-[-1.31px] outline-green-900/10 flex justify-between items-center cursor-pointer hover:border-green-700 transition-colors">
+                <span className="text-gray-600 text-xs font-medium font-['Inter']">Sort: Most Popular</span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
               </div>
             </div>
 
             {/* Grid of Products */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {products.map((p) => (
-                <div key={p.id} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden border border-gray-100 group">
-                  <div className="relative h-64 md:h-56 p-4 flex items-center justify-center bg-gray-50/50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-10">
+              {products.map((p, i) => (
+                <div key={p.id} className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.04)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group hover:shadow-2xl transition-all duration-500">
+                  <div className="relative aspect-[4/3] p-4 flex items-center justify-center bg-white overflow-hidden">
+                    {/* Badge Overlay */}
                     {p.on_sale && (
-                      <div className="absolute top-4 left-4 px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full z-10 shadow-sm">
+                      <div className="absolute top-4 left-4 px-3 py-1 bg-red-600 text-white text-[10px] font-black rounded-full z-10 shadow-lg">
                         SALE
                       </div>
                     )}
+                    {i === 0 && (
+                       <div className="absolute top-4 left-4 px-3 py-1 bg-green-700 text-white text-[10px] font-black rounded-full z-10 shadow-lg">
+                        BEST SELLER
+                      </div>
+                    )}
+
                     <img
-                      className="max-h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                      src={p.images[0]?.src || "https://placehold.co/319x220"}
+                      className="max-h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
+                      src={p.images[0]?.src || "https://placehold.co/400x300?text=ButtonInks"}
                       alt={p.name}
                     />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors pointer-events-none" />
+
+                    <Link
+                      href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
+                      className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500"
+                    />
                   </div>
 
                   {/* Details */}
-                  <div className="p-6 flex flex-col gap-4">
-                    <div className="flex justify-between items-start gap-2">
-                      <h3 className="text-slate-900 text-lg font-bold font-['Outfit'] leading-tight line-clamp-2 group-hover:text-green-700 transition-colors">
-                        {p.name}
-                      </h3>
-                      <button className="p-2 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all shrink-0">
-                        <Heart className="w-5 h-5" />
-                      </button>
+                  <div className="p-6 bg-white border-t border-zinc-100 flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                       <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{p.categories[0]?.name || 'Printing'}</span>
+                       <Link href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}>
+                          <h3 className="text-slate-900 text-lg font-bold font-['Outfit'] leading-tight group-hover:text-green-700 transition-colors line-clamp-1">
+                            {p.name}
+                          </h3>
+                       </Link>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-0.5">
                         {[1,2,3,4,5].map(star => (
-                           <Star key={star} className={`w-3.5 h-3.5 ${star <= Number(p.average_rating) ? 'text-amber-400 fill-current' : 'text-gray-200'}`} />
+                           <Star key={star} className={`w-3.5 h-3.5 ${star <= Math.round(Number(p.average_rating || 4.5)) ? 'text-amber-400 fill-current' : 'text-gray-200'}`} />
                         ))}
                       </div>
-                      <span className="text-zinc-500 text-xs font-semibold font-['Inter']">{p.average_rating} ({p.rating_count} reviews)</span>
+                      <span className="text-zinc-500 text-xs font-bold font-['Inter']">{p.average_rating || "4.5"}</span>
                     </div>
 
-                    <div className="flex justify-between items-center mt-2">
-                      <div
-                        className="text-slate-900 text-xl font-bold font-['Outfit'] [&_del]:text-gray-400 [&_del]:text-sm [&_del]:font-normal [&_ins]:no-underline"
-                        dangerouslySetInnerHTML={{ __html: p.price_html || `$${p.price}` }}
-                      />
+                    <div className="flex justify-between items-end mt-2">
+                      <div className="flex flex-col gap-1">
+                        <div
+                          className="text-slate-900 text-xl font-black font-['Outfit'] [&_del]:text-gray-400 [&_del]:text-sm [&_del]:font-normal [&_del]:mr-2 [&_ins]:no-underline"
+                          dangerouslySetInnerHTML={{ __html: p.price_html || `from $${p.price}` }}
+                        />
+                        <span className="text-gray-400 text-[10px] font-medium font-['Inter']">Free Shipping over $75</span>
+                      </div>
                       <Link
                         href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
-                        className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white text-sm font-bold font-['Inter'] rounded-xl shadow-md shadow-green-700/20 transition-all active:scale-95 flex items-center justify-center"
+                        className="px-6 py-3 bg-green-700 hover:bg-green-800 text-white text-xs font-bold font-['Inter'] rounded-xl shadow-xl shadow-green-700/20 transition-all active:scale-95 flex items-center justify-center uppercase tracking-widest"
                       >
                         Shop Now
                       </Link>
@@ -151,18 +189,35 @@ export default async function CategoriesPage() {
                 </div>
               ))}
             </div>
+
             {products.length === 0 && (
-              <div className="w-full py-20 text-center flex flex-col items-center gap-4">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center">
-                   <Filter className="w-10 h-10 text-gray-300" />
+              <div className="w-full py-32 text-center flex flex-col items-center gap-6">
+                <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center animate-pulse">
+                   <Filter className="w-10 h-10 text-emerald-200" />
                 </div>
-                <p className="text-gray-500 font-medium font-['Inter'] text-lg">No products found in this category.</p>
-                <Link href="/categories" className="text-green-700 font-bold hover:underline">Clear all filters</Link>
+                <div className="flex flex-col gap-2">
+                   <p className="text-gray-900 font-bold font-['Outfit'] text-2xl">No products found</p>
+                   <p className="text-gray-500 font-medium font-['Inter'] max-w-sm">We couldn't find any products matching your selection. Try clearing your filters.</p>
+                </div>
+                <Link href="/categories" className="px-8 py-4 bg-green-700 text-white rounded-2xl font-bold hover:bg-green-800 transition-all shadow-xl shadow-green-900/10">Clear All Filters</Link>
+              </div>
+            )}
+
+            {/* ── Pagination (Simple placeholder) ── */}
+            {products.length > 0 && (
+              <div className="w-full flex justify-center items-center gap-2 pt-10">
+                 <button className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-sm font-bold text-green-700 bg-green-50">1</button>
+                 <button className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-sm font-bold text-gray-500 hover:border-green-700 hover:text-green-700 transition-all">2</button>
+                 <button className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-sm font-bold text-gray-500 hover:border-green-700 hover:text-green-700 transition-all">3</button>
+                 <div className="px-2 text-gray-400">...</div>
+                 <button className="px-4 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-sm font-bold text-gray-500 hover:border-green-700 hover:text-green-700 transition-all gap-2">
+                    Next <ChevronRight className="w-4 h-4" />
+                 </button>
               </div>
             )}
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

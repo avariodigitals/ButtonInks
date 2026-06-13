@@ -29,6 +29,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { uploadMedia, getRecentMedia } from '@/lib/wordpress';
+import { useNotification } from '@/context/NotificationContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ const colorPalette = [
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function DesignEditorPage() {
+  const { showNotification } = useNotification();
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [side, setSide] = useState<'front' | 'back'>('front');
   const [zoom, setZoom] = useState(100);
@@ -132,7 +134,11 @@ export default function DesignEditorPage() {
         throw new Error(result.error);
       }
     } catch (err: any) {
-      alert(`Upload failed: ${err.message}`);
+      showNotification({
+        title: 'Upload Failed',
+        message: err.message || 'Something went wrong while uploading your file. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
