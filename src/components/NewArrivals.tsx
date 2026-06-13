@@ -13,23 +13,23 @@ export default function NewArrivals({ products }: NewArrivalsProps) {
       <div className="w-full max-w-[1280px] flex flex-col gap-10">
 
         {/* ── Section header ── */}
-        <div className="w-full flex justify-between items-center">
-          <div className="flex flex-col gap-4">
-            <div className="px-4 py-2 bg-green-100/40 rounded-[20px] inline-flex justify-center items-center gap-2.5">
-              <span className="text-green-700 text-xs font-bold uppercase leading-5 tracking-wide font-['Inter']">
+        <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="flex flex-col gap-3 md:gap-4 max-w-xl">
+            <div className="px-4 py-1.5 bg-green-100/40 rounded-[20px] inline-flex self-start justify-center items-center">
+              <span className="text-green-700 text-[10px] md:text-xs font-bold uppercase tracking-wider font-['Inter']">
                 New Arrivals
               </span>
             </div>
-            <h2 className="text-slate-900 text-4xl font-semibold leading-10 font-['Outfit']">
+            <h2 className="text-slate-900 text-2xl md:text-4xl font-semibold leading-tight md:leading-10 font-['Outfit']">
               Discover Our Latest Printing Products
             </h2>
           </div>
 
-          <Link href="/categories" className="flex items-center gap-1.5 hover:gap-2.5 transition-all group">
+          <Link href="/categories" className="flex items-center gap-1.5 hover:gap-2.5 transition-all group shrink-0">
             <span className="text-emerald-500 text-sm font-semibold leading-5 group-hover:text-emerald-600 font-['Inter']">
-              View all products
+              View all <span className="hidden sm:inline">products</span>
             </span>
-            <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-emerald-600 transition-colors" strokeWidth={2} />
+            <ArrowRight className="w-4 h-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" strokeWidth={2.5} />
           </Link>
         </div>
 

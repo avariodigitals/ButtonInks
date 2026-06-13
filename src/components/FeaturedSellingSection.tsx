@@ -13,15 +13,17 @@ const FeaturedSellingSection = ({ products }: FeaturedSellingSectionProps) => {
       <div className="w-full max-w-[1280px] flex flex-col justify-start items-start gap-10">
 
         {/* Header */}
-        <div className="w-full flex justify-between items-center">
-          <div className="flex flex-col gap-4">
-            <div className="px-4 py-2 bg-green-100/40 rounded-[20px] inline-flex justify-center items-center gap-2.5">
-              <span className="text-green-700 text-xs font-bold font-['Inter'] uppercase leading-5 tracking-wide">Featured</span>
+        <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="flex flex-col gap-3 md:gap-4 max-w-xl">
+            <div className="px-4 py-1.5 bg-green-100/40 rounded-[20px] inline-flex self-start justify-center items-center">
+              <span className="text-green-700 text-[10px] md:text-xs font-bold font-['Inter'] uppercase tracking-wider leading-5">Featured</span>
             </div>
-            <h2 className="text-slate-900 text-4xl font-semibold font-['Outfit'] leading-10">Top-Selling Products</h2>
+            <h2 className="text-slate-900 text-2xl md:text-4xl font-semibold font-['Outfit'] leading-tight md:leading-10">Top-Selling Products</h2>
           </div>
-          <Link href="/categories" className="flex justify-start items-center gap-1.5 group">
-            <span className="text-emerald-500 text-sm font-semibold font-['Inter'] leading-5 group-hover:text-emerald-600 transition-colors">View all products </span>
+          <Link href="/categories" className="flex justify-start items-center gap-1.5 group shrink-0">
+            <span className="text-emerald-500 text-sm font-semibold font-['Inter'] leading-5 group-hover:text-emerald-600 transition-colors">
+              View all <span className="hidden sm:inline">products</span>
+            </span>
             <div className="w-3.5 h-3.5 relative overflow-hidden">
               <div className="w-2 h-0 left-[2.92px] top-[7px] absolute outline outline-1 outline-offset-[-0.58px] outline-emerald-500 group-hover:outline-emerald-600 transition-colors" />
               <div className="w-1 h-2 left-[7px] top-[2.92px] absolute outline outline-1 outline-offset-[-0.58px] outline-emerald-500 group-hover:outline-emerald-600 transition-colors" />
