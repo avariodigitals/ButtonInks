@@ -48,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${outfit.variable} ${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-white" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-white touch-pan-y" suppressHydrationWarning>
         {/* ── Global header (Announcement + Navbar + CategoryNav) ── */}
         <Header />
 

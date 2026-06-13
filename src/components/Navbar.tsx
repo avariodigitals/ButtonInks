@@ -21,6 +21,18 @@ const categories = [
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Lock body scroll when menu is open
+  React.useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMenuOpen]);
+
   return (
     <>
       <div className="w-full h-16 px-4 md:px-20 border-b border-slate-400/20 flex justify-between items-center bg-white shrink-0 relative z-50">

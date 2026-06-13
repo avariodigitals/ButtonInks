@@ -35,13 +35,13 @@ export default function BrandsSection() {
       </div>
 
       {/* ── Mobile View (Marquee) ── */}
-      <div className="md:hidden w-full relative overflow-hidden h-20">
+      <div className="md:hidden w-full relative overflow-hidden h-28">
         <div className="flex w-fit animate-marquee">
           {/* First set */}
           {brands.map((brand, idx) => (
             <div
               key={`m1-${idx}`}
-              className="w-40 h-20 shrink-0 px-6 flex items-center justify-center"
+              className="w-56 h-28 shrink-0 px-8 flex items-center justify-center"
             >
               <img
                 src={brand.src}
@@ -54,7 +54,7 @@ export default function BrandsSection() {
           {brands.map((brand, idx) => (
             <div
               key={`m2-${idx}`}
-              className="w-40 h-20 shrink-0 px-6 flex items-center justify-center"
+              className="w-56 h-28 shrink-0 px-8 flex items-center justify-center"
             >
               <img
                 src={brand.src}
