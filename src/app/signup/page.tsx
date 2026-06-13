@@ -42,12 +42,12 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-emerald-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-[480px] bg-white rounded-3xl shadow-xl shadow-green-900/5 p-10 flex flex-col gap-8">
+    <main className="min-h-screen bg-emerald-50 flex items-center justify-center p-4 md:p-6">
+      <div className="w-full max-w-[480px] bg-white rounded-2xl md:rounded-3xl shadow-xl shadow-green-900/5 p-6 md:p-10 flex flex-col gap-6 md:gap-8">
 
         <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-3xl font-bold font-['Outfit'] text-slate-900">Create Account</h1>
-          <p className="text-slate-500 font-['Inter']">Join ButtonInks for personalized designs and faster checkout.</p>
+          <h1 className="text-2xl md:text-3xl font-bold font-['Outfit'] text-slate-900">Create Account</h1>
+          <p className="text-slate-500 text-sm md:text-base font-['Inter']">Join ButtonInks for personalized designs and faster checkout.</p>
         </div>
 
         {error && (

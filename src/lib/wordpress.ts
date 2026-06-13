@@ -81,7 +81,10 @@ async function getAuthToken(): Promise<string | null> {
   const username = process.env.WORDPRESS_AUTH_USERNAME;
   const password = process.env.WORDPRESS_AUTH_PASSWORD;
 
-  if (!username || !password) return null;
+  if (!username || !password) {
+    console.error("Auth Error: Username or Password missing in .env.local");
+    return null;
+  }
 
   try {
     const res = await fetch(`${WP_BASE_URL}/jwt-auth/v1/token`, {
@@ -91,18 +94,20 @@ async function getAuthToken(): Promise<string | null> {
       cache: 'no-store'
     });
 
-    if (res.ok) {
-      const data = await res.json();
+    const data = await res.json();
+
+    if (res.ok && data.token) {
       cachedToken = data.token;
       return cachedToken;
     } else {
-      const errorText = await res.text();
-      console.error("JWT Token Auth Failed:", res.status, errorText);
+      // Log the specific reason from WordPress (e.g. [jwt_auth] Invalid username)
+      console.error("WordPress Login Failed:", data.message || "Unknown error");
+      throw new Error(data.message || "Invalid WordPress credentials");
     }
-  } catch (error) {
-    console.error("Failed to fetch JWT auth token:", error);
+  } catch (error: any) {
+    console.error("Failed to fetch JWT auth token:", error.message);
+    throw error;
   }
-  return null;
 }
 
 async function wpFetch<T>(path: string, params?: Record<string, string>, useWooCommerceAuth = false): Promise<T> {
@@ -115,27 +120,33 @@ async function wpFetch<T>(path: string, params?: Record<string, string>, useWooC
     Accept: "application/json",
   };
 
-  // Use WooCommerce Consumer Key/Secret if path is for WC and keys are present
-  if (useWooCommerceAuth && process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) {
-    const auth = Buffer.from(`${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64');
-    headers.Authorization = `Basic ${auth}`;
-  } else {
-    // Fallback to JWT for general WP endpoints or if WC keys are missing
-    const token = await getAuthToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
+  try {
+    if (useWooCommerceAuth && process.env.WOOCOMMERCE_CONSUMER_KEY && process.env.WOOCOMMERCE_CONSUMER_SECRET) {
+      const auth = Buffer.from(`${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64');
+      headers.Authorization = `Basic ${auth}`;
+    } else {
+      const token = await getAuthToken();
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
     }
+  } catch (authError: any) {
+    throw new Error(`Authentication Failed: ${authError.message}`);
   }
 
   const res = await fetch(url.toString(), {
-    next: { revalidate: 3600 }, // Cache for 1 hour
+    next: { revalidate: 3600 },
     headers,
   });
 
   if (!res.ok) {
     const errorBody = await res.text();
-    console.error(`WP API Error: ${res.status} ${url}`, errorBody);
-    throw new Error(`WordPress API error: ${res.status}`);
+    let message = `WordPress API error: ${res.status}`;
+    try {
+      const parsed = JSON.parse(errorBody);
+      message = parsed.message || message;
+    } catch (e) {}
+    throw new Error(message);
   }
   return res.json() as Promise<T>;
 }
@@ -187,13 +198,13 @@ export async function getProductCategories(): Promise<WPCategory[]> {
 // ── Media Uploads (WP REST API) ──────────────────────────────────────────────
 
 export async function uploadMedia(file: File): Promise<{ source_url: string; id: number } | null> {
-  const token = await getAuthToken();
-  if (!token) throw new Error("Security token missing. Please ensure WordPress credentials are correct.");
-
-  const formData = new FormData();
-  formData.append("file", file);
-
   try {
+    const token = await getAuthToken();
+    if (!token) throw new Error("Could not retrieve security token.");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
     const res = await fetch(`${WP_BASE_URL}/wp/v2/media`, {
       method: "POST",
       headers: {
@@ -205,12 +216,13 @@ export async function uploadMedia(file: File): Promise<{ source_url: string; id:
     if (res.ok) {
       return res.json();
     }
-    const err = await res.text();
-    console.error("Upload failed:", err);
-  } catch (error) {
-    console.error("Media upload error:", error);
+
+    const errorData = await res.json();
+    throw new Error(errorData.message || "File upload rejected by WordPress");
+  } catch (error: any) {
+    console.error("Media upload error:", error.message);
+    throw error;
   }
-  return null;
 }
 
 export async function getRecentMedia(perPage = 12): Promise<{ source_url: string; id: number }[]> {

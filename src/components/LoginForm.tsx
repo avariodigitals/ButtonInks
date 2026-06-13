@@ -48,11 +48,11 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-[480px] bg-white rounded-3xl shadow-xl shadow-green-900/5 p-10 flex flex-col gap-8">
+    <div className="w-full max-w-[480px] bg-white rounded-2xl md:rounded-3xl shadow-xl shadow-green-900/5 p-6 md:p-10 flex flex-col gap-6 md:gap-8">
 
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-3xl font-bold font-['Outfit'] text-slate-900">Welcome Back</h1>
-        <p className="text-slate-500 font-['Inter']">Sign in to access your designs, orders, and wishlist.</p>
+        <h1 className="text-2xl md:text-3xl font-bold font-['Outfit'] text-slate-900">Welcome Back</h1>
+        <p className="text-slate-500 text-sm md:text-base font-['Inter']">Sign in to access your designs, orders, and wishlist.</p>
       </div>
 
       {isSignupSuccess && (
