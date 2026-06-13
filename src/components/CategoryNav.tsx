@@ -18,7 +18,7 @@ const categories = [
 
 export default function CategoryNav() {
   return (
-    <div className="w-full h-16 px-20 border-b border-slate-400/20 flex items-center bg-white shrink-0 overflow-x-auto">
+    <div className="hidden lg:flex w-full h-16 px-20 border-b border-slate-400/20 items-center bg-white shrink-0 overflow-x-auto">
       <div className="flex-1 flex justify-between items-center min-w-max">
         {categories.map((cat) => (
           <Link

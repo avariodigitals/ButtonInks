@@ -19,24 +19,24 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-black/60" />
 
         {/* ── Content ── */}
-        <div className="relative z-10 px-10 py-20 flex flex-col gap-7 max-w-2xl">
+        <div className="relative z-10 px-6 md:px-10 py-16 md:py-20 flex flex-col gap-6 md:gap-7 max-w-2xl">
 
           {/* Headline */}
           <h1
-            className="text-6xl font-bold leading-[65.66px]"
+            className="text-4xl md:text-6xl font-bold leading-tight md:leading-[65.66px]"
             style={{ fontFamily: "var(--font-outfit)" }}
           >
             <span className="text-white">Custom Printing</span>
-            <br />
-            <span className="text-green-500">That Works</span>
+            <br className="hidden md:block" />
+            <span className="text-green-500"> That Works</span>
             <span className="text-white"> as Hard</span>
-            <br />
+            <br className="hidden md:block" />
             <span className="text-white">as Your Brand</span>
           </h1>
 
           {/* Sub-headline */}
           <p
-            className="w-[480px] text-white/80 text-lg font-normal leading-8"
+            className="w-full md:w-[480px] text-white/80 text-base md:text-lg font-normal leading-relaxed md:leading-8"
             style={{ fontFamily: "var(--font-inter)" }}
           >
             T-shirts, business cards, stickers, banners, and 500+ more products.
@@ -44,29 +44,19 @@ export default function HeroSection() {
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex items-center gap-3 h-14">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Link
               href="/design"
-              className="px-8 py-3.5 bg-green-700 rounded-[10px] flex items-center gap-2 hover:bg-green-600 active:scale-95 transition-all"
+              className="px-8 py-3.5 bg-green-700 rounded-[10px] flex items-center justify-center gap-2 hover:bg-green-600 active:scale-95 transition-all text-white text-base font-semibold"
             >
-              <span
-                className="text-white text-base font-semibold leading-6"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                Start Designing Free
-              </span>
+              Start Designing Free
             </Link>
 
             <Link
-              href="/products"
-              className="px-7 py-3.5 bg-white/10 rounded-[10px] outline outline-[1.31px] outline-offset-[-1.31px] outline-white/20 flex items-center gap-2 hover:bg-white/20 active:scale-95 transition-all backdrop-blur-sm"
+              href="/categories"
+              className="px-7 py-3.5 bg-white/10 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/20 flex items-center justify-center gap-2 hover:bg-white/20 active:scale-95 transition-all backdrop-blur-sm text-white text-base font-medium"
             >
-              <span
-                className="text-white text-base font-medium leading-6"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                Browse Products
-              </span>
+              Browse Products
             </Link>
           </div>
         </div>

@@ -49,16 +49,15 @@ const steps = [
 // ── Section ───────────────────────────────────────────────────────────────────
 export default function SimpleProcess() {
   return (
-    <section className="w-full p-20 bg-neutral-50 flex flex-col justify-start items-start gap-10">
-      <div className="w-full flex flex-col justify-start items-center gap-10">
+    <section className="w-full px-6 py-16 md:px-20 md:py-20 bg-neutral-50 flex flex-col justify-start items-center gap-10">
+      <div className="w-full max-w-[1280px] flex flex-col justify-start items-center gap-10">
 
         {/* ── Heading block ── */}
         <div className="w-full flex flex-col items-center gap-4">
           {/* Badge */}
           <div className="px-4 py-[5px] bg-emerald-500/10 rounded-[20px] inline-flex justify-center items-center gap-2.5">
             <span
-              className="text-center text-green-700 text-xs font-bold uppercase leading-5 tracking-wide"
-              style={{ fontFamily: "var(--font-inter)" }}
+              className="text-center text-green-700 text-xs font-bold uppercase leading-5 tracking-wide font-['Inter']"
             >
               Simple Process
             </span>
@@ -66,77 +65,70 @@ export default function SimpleProcess() {
 
           {/* Title */}
           <h2
-            className="text-center text-slate-900 text-4xl font-semibold leading-10"
-            style={{ fontFamily: "var(--font-outfit)" }}
+            className="text-center text-slate-900 text-3xl md:text-4xl font-semibold leading-tight md:leading-10 font-['Outfit']"
           >
             Ordering Is Ridiculously Easy
           </h2>
 
           {/* Subtitle */}
           <p
-            className="text-center text-slate-500 text-base font-normal leading-6 max-w-[480px]"
-            style={{ fontFamily: "var(--font-inter)" }}
+            className="text-center text-slate-500 text-base font-normal leading-6 max-w-[480px] font-['Inter']"
           >
             From concept to delivery in four simple steps. No design experience needed.
           </p>
         </div>
 
         {/* ── Steps row ── */}
-        <div className="w-full relative flex justify-center items-start">
+        <div className="w-full relative flex flex-col md:flex-row justify-center items-start gap-10 md:gap-6">
 
-          {/* Connecting gradient line — sits behind the icons */}
+          {/* Connecting gradient line — hidden on mobile */}
           <div
-            className="absolute top-[39.24px] left-[194px] right-[194px] h-0.5 opacity-20"
+            className="hidden md:block absolute top-[39.24px] left-[10%] right-[10%] h-0.5 opacity-20"
             style={{
               background: "linear-gradient(to right, #94a3b8, #15803d)",
             }}
           />
 
-          <div className="w-full flex justify-center items-start gap-6">
-            {steps.map((step) => {
-              const Icon = step.icon;
-              return (
-                <div
-                  key={step.number}
-                  className="flex-1 flex flex-col items-start gap-4"
-                >
-                  {/* Icon circle + number badge */}
-                  <div className="w-full flex justify-center">
-                    <div className={`relative w-20 h-20 ${step.circleBg} rounded-full outline outline-[1.31px] outline-offset-[-1.31px] ${step.circleRing} flex items-center justify-center`}>
-                      {/* Lucide icon */}
-                      <Icon className={`w-8 h-8 ${step.iconColor}`} strokeWidth={2} />
+          {steps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <div
+                key={step.number}
+                className="flex-1 flex flex-col items-center gap-4 relative z-10"
+              >
+                {/* Icon circle + number badge */}
+                <div className="w-full flex justify-center">
+                  <div className={`relative w-20 h-20 ${step.circleBg} rounded-full outline outline-[1.31px] outline-offset-[-1.31px] ${step.circleRing} flex items-center justify-center`}>
+                    {/* Lucide icon */}
+                    <Icon className={`w-8 h-8 ${step.iconColor}`} strokeWidth={2} />
 
-                      {/* Numbered badge */}
-                      <div className={`absolute -top-[2.69px] -right-[5.31px] w-6 h-6 ${step.badgeBg} rounded-xl flex items-center justify-center`}>
-                        <span
-                          className="text-center text-white text-[10px] font-extrabold leading-4"
-                          style={{ fontFamily: "var(--font-outfit)" }}
-                        >
-                          {step.number}
-                        </span>
-                      </div>
+                    {/* Numbered badge */}
+                    <div className={`absolute -top-[2.69px] -right-[5.31px] w-6 h-6 ${step.badgeBg} rounded-xl flex items-center justify-center`}>
+                      <span
+                        className="text-center text-white text-[10px] font-extrabold leading-4 font-['Outfit']"
+                      >
+                        {step.number}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Step title */}
-                  <p
-                    className={`w-full text-center text-slate-900 text-base leading-5 ${step.bold ? "font-bold" : "font-medium"}`}
-                    style={{ fontFamily: "var(--font-outfit)" }}
-                  >
-                    {step.title}
-                  </p>
-
-                  {/* Step description */}
-                  <p
-                    className="w-full text-center text-slate-500 text-sm font-normal leading-6"
-                    style={{ fontFamily: "var(--font-inter)" }}
-                  >
-                    {step.description}
-                  </p>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Step title */}
+                <p
+                  className={`w-full text-center text-slate-900 text-base leading-5 ${step.bold ? "font-bold" : "font-medium"} font-['Outfit']`}
+                >
+                  {step.title}
+                </p>
+
+                {/* Step description */}
+                <p
+                  className="w-full text-center text-slate-500 text-sm font-normal leading-6 font-['Inter']"
+                >
+                  {step.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         {/* ── CTA button ── */}
