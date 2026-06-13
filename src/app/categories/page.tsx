@@ -166,14 +166,3 @@ export default async function CategoriesPage() {
     </main>
   );
 }
-            {products.length === 0 && (
-              <div className="w-full py-20 text-center text-gray-500">
-                No products found. Please check your WooCommerce store.
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
-    </main>
-  );
-}
