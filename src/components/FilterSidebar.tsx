@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Filter, ChevronDown, X, SlidersHorizontal } from 'lucide-react';
-import { WPCategory } from '@/lib/wordpress';
+import { WPCategory, decodeHTMLEntities } from '@/lib/wordpress';
 
 interface FilterSidebarProps {
   categories: WPCategory[];
@@ -50,7 +50,7 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
             >
               <div className={`w-4 h-4 rounded border ${activeCategory === cat.slug ? 'bg-green-700 border-green-700' : 'border-zinc-500/70 bg-white'} transition-colors`} />
               <span className={`text-xs font-medium leading-5 truncate ${activeCategory === cat.slug ? 'text-green-700' : 'text-neutral-700 group-hover:text-green-700'}`}>
-                {cat.name} ({cat.count})
+                {decodeHTMLEntities(cat.name)} ({cat.count})
               </span>
             </Link>
           ))}

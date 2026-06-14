@@ -8,15 +8,15 @@ import { useCart } from "@/context/CartContext";
 
 const categories = [
   { label: "All Categories", href: "/categories" },
-  { label: "Embroidery", href: "/products/embroidery" },
-  { label: "DTF Prints", href: "/products/dtf-prints" },
-  { label: "Apparel", href: "/products/apparel" },
-  { label: "Drinkware", href: "/products/drinkware" },
-  { label: "Gifts & Decor", href: "/products/gifts-decor" },
-  { label: "Office Supplies", href: "/products/office-supplies" },
-  { label: "Event Merchandize", href: "/products/event-merchandize" },
-  { label: "Personalization Center", href: "/personalization" },
-  { label: "Retail", href: "/products/retail" },
+  { label: "Embroidery", href: "/categories?category=embroidery-uniforms" },
+  { label: "Custom T-Shirts", href: "/categories?category=custom-t-shirts" },
+  { label: "Drinkware", href: "/categories?category=drinkware-mugs" },
+  { label: "Bags", href: "/categories?category=bags-carrying" },
+  { label: "Photo Prints", href: "/categories?category=photo-prints-art" },
+  { label: "Apparel", href: "/categories?category=apparel-outerwear" },
+  { label: "Marketing Prints", href: "/categories?category=marketing-prints" },
+  { label: "Corporate Gifts", href: "/categories?category=corporate-gifts" },
+  { label: "Stickers & Labels", href: "/categories?category=stickers-labels" },
 ];
 
 export default function Navbar() {
@@ -93,14 +93,14 @@ export default function Navbar() {
           </Link>
 
           {/* Wishlist (Desktop) */}
-          <button className="hidden md:flex w-10 h-10 items-center justify-center hover:text-green-700 text-neutral-700 transition-colors">
+          <Link href="/wishlist" className="hidden md:flex w-10 h-10 items-center justify-center hover:text-green-700 text-neutral-700 transition-colors">
             <Heart className="w-5 h-5" />
-          </button>
+          </Link>
 
           {/* Account (Desktop) */}
-          <button className="hidden md:flex w-10 h-10 items-center justify-center hover:text-green-700 text-neutral-700 transition-colors">
+          <Link href="/account" className="hidden md:flex w-10 h-10 items-center justify-center hover:text-green-700 text-neutral-700 transition-colors">
             <User className="w-5 h-5" />
-          </button>
+          </Link>
 
           {/* Hamburger Menu (Mobile) */}
           <button
@@ -146,7 +146,7 @@ export default function Navbar() {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto py-6 flex flex-col">
+          <div className="flex-1 overflow-y-auto py-6 flex flex-col no-scrollbar">
 
             {/* Quick Links Group */}
             <div className="px-6 pb-6 border-b border-gray-100 flex flex-col gap-4">
@@ -154,25 +154,25 @@ export default function Navbar() {
                   <Phone className="w-5 h-5" />
                   <div className="flex flex-col">
                     <span className="text-xs opacity-70">Need help? Call us</span>
-                    <span className="font-bold text-sm">+1 (409) 800-3195</span>
+                    <span className="font-bold text-sm font-['Inter']">+1 (409) 800-3195</span>
                   </div>
                </div>
 
                <div className="grid grid-cols-2 gap-3">
-                 <Link href="/account" className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700">
+                 <Link href="/account" onClick={() => setIsMenuOpen(false)} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700">
                     <User className="w-5 h-5" />
-                    <span className="text-xs font-bold">Account</span>
+                    <span className="text-xs font-bold font-['Inter']">Account</span>
                  </Link>
-                 <Link href="/wishlist" className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700">
+                 <Link href="/wishlist" onClick={() => setIsMenuOpen(false)} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700">
                     <Heart className="w-5 h-5" />
-                    <span className="text-xs font-bold">Wishlist</span>
+                    <span className="text-xs font-bold font-['Inter']">Wishlist</span>
                  </Link>
                </div>
             </div>
 
             {/* Categories List */}
             <div className="flex flex-col py-4">
-              <span className="px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Shop Categories</span>
+              <span className="px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 font-['Inter']">Shop Categories</span>
               {categories.map((cat) => (
                 <Link
                   key={cat.label}
@@ -180,7 +180,7 @@ export default function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                   className="px-6 py-4 flex justify-between items-center hover:bg-green-50 group border-b border-gray-50 last:border-0"
                 >
-                  <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700 transition-colors">
+                  <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700 transition-colors font-['Inter']">
                     {cat.label}
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-green-500" />
@@ -194,7 +194,7 @@ export default function Navbar() {
             <Link
               href="/design"
               onClick={() => setIsMenuOpen(false)}
-              className="w-full py-4 bg-white text-green-700 rounded-xl font-bold text-center block shadow-lg active:scale-95 transition-transform"
+              className="w-full py-4 bg-white text-green-700 rounded-xl font-bold text-center block shadow-lg active:scale-95 transition-transform font-['Inter']"
             >
               Start Designing Free
             </Link>

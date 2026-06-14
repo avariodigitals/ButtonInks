@@ -254,7 +254,9 @@ function DesignContent() {
           <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 no-scrollbar">
             {activeTool === 'product' && (
               <div className="grid grid-cols-2 gap-4">
-                {wpProducts.map((p) => (
+                {wpProducts
+                  .filter(p => p.acf?.enable_designer !== false)
+                  .map((p) => (
                   <div
                     key={p.id}
                     onClick={() => { setSelectedProduct(p); setActiveTool(null); }}

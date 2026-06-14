@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Star, Heart, Minus, Plus, Upload, Maximize2, FileDown, CheckCircle2, ShoppingCart } from 'lucide-react';
+import { ChevronRight, Star, Heart, Minus, Plus, Upload, Maximize2, FileDown, CheckCircle2, ShoppingCart, SlidersHorizontal } from 'lucide-react';
 import { WPProduct } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
@@ -14,8 +14,33 @@ export default function ProductDetailView({ product, categorySlug }: { product: 
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("Description");
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+  const [selectedProduction, setSelectedProduction] = useState<string>(product.acf?.production_options?.[0]?.type || 'regular');
 
-  const unitPrice = parseFloat(product.price || "0");
+  // ── Price Calculation Logic ──
+
+  // 1. Get base price (check for bulk discount first)
+  const getUnitPrice = () => {
+    let price = parseFloat(product.price || "0");
+
+    // Apply bulk pricing if available
+    if (product.acf?.bulk_pricing) {
+      const sortedBulk = [...product.acf.bulk_pricing].sort((a, b) => b.min_qty - a.min_qty);
+      const tier = sortedBulk.find(b => quantity >= b.min_qty);
+      if (tier) price = parseFloat(tier.discount_price);
+    }
+
+    return price;
+  };
+
+  // 2. Add production extra cost
+  const getFinalUnitPrice = () => {
+    let price = getUnitPrice();
+    const prodOption = product.acf?.production_options?.find(o => o.type === selectedProduction);
+    if (prodOption) price += parseFloat(prodOption.extra_cost || "0");
+    return price;
+  };
+
+  const unitPrice = getFinalUnitPrice();
   const regularUnitPrice = parseFloat(product.regular_price || product.price || "0");
 
   const formatPrice = (price: number) => {
@@ -49,10 +74,12 @@ export default function ProductDetailView({ product, categorySlug }: { product: 
       .map(([name, value]) => `${name}: ${value}`)
       .join(', ');
 
+    const productionLabel = selectedProduction === 'urgent' ? 'Urgent Production' : 'Regular Production';
+
     addToCart({
       id: product.id,
-      name: attributeString ? `${product.name} (${attributeString})` : product.name,
-      price: parseFloat(product.price || "0"),
+      name: `${product.name} (${attributeString}${attributeString ? ', ' : ''}${productionLabel})`,
+      price: unitPrice,
       quantity: quantity,
       image: product.images[0]?.src || ""
     });
@@ -285,6 +312,57 @@ export default function ProductDetailView({ product, categorySlug }: { product: 
             </div>
           ))}
 
+          {/* Production Speed (ACF) */}
+          {product.acf?.production_options && (
+            <div className="flex flex-col gap-4">
+              <span className="text-slate-900 text-lg font-bold font-['Inter']">Production Speed</span>
+              <div className="flex flex-col gap-3">
+                {product.acf.production_options.map(option => (
+                  <button
+                    key={option.type}
+                    onClick={() => setSelectedProduction(option.type)}
+                    className={`p-4 rounded-xl border-2 transition-all flex justify-between items-center ${
+                      selectedProduction === option.type
+                        ? 'border-green-700 bg-green-50 shadow-md'
+                        : 'border-gray-100 hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded-full border-4 flex items-center justify-center ${selectedProduction === option.type ? 'border-green-700 bg-white' : 'border-gray-300 bg-white'}`}>
+                        {selectedProduction === option.type && <div className="w-2.5 h-2.5 rounded-full bg-green-700" />}
+                      </div>
+                      <div className="flex flex-col items-start text-left">
+                        <span className="font-bold text-gray-900 capitalize">{option.type}</span>
+                        <span className="text-xs text-gray-500">{option.delivery_days} Business Days</span>
+                      </div>
+                    </div>
+                    {parseFloat(option.extra_cost) > 0 && (
+                      <span className="text-green-700 font-bold">+{formatPrice(parseFloat(option.extra_cost))}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bulk Pricing (ACF) */}
+          {product.acf?.bulk_pricing && (
+            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+               <h4 className="text-gray-900 font-bold mb-4 flex items-center gap-2">
+                 <SlidersHorizontal className="w-4 h-4 text-green-700" />
+                 Bulk Pricing Discounts
+               </h4>
+               <div className="grid grid-cols-2 gap-4">
+                  {product.acf.bulk_pricing.map((tier, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border ${quantity >= tier.min_qty ? 'bg-white border-green-700 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                       <span className="text-[10px] uppercase font-bold text-gray-400 block">{tier.min_qty}+ units</span>
+                       <span className="text-lg font-black text-green-700">{formatPrice(parseFloat(tier.discount_price))}</span>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          )}
+
           {/* Quantity */}
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
@@ -338,13 +416,15 @@ export default function ProductDetailView({ product, categorySlug }: { product: 
               <ShoppingCart className="w-5 h-5" />
               Add to Cart
             </button>
-             <Link
-                href={`/upload?product=${product.id}`}
-                className="w-full bg-green-700 hover:bg-green-800 text-white font-bold font-['Inter'] py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-              >
-              <Upload className="w-5 h-5" />
-              Upload Design & Order
-            </Link>
+             {product.acf?.enable_designer !== false && (
+               <Link
+                  href={`/upload?product=${product.id}`}
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-bold font-['Inter'] py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                >
+                <Upload className="w-5 h-5" />
+                Upload Design & Order
+              </Link>
+             )}
           </div>
         </div>
       </section>

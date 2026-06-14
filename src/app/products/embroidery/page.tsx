@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ChevronRight, Filter, Heart, Star } from 'lucide-react';
-import { getProductCategories, getProducts } from '@/lib/wordpress';
+import { getProductCategories, getProducts, decodeHTMLEntities } from '@/lib/wordpress';
 
 export default async function EmbroideryPage() {
   // Fetch data on server
@@ -12,7 +12,7 @@ export default async function EmbroideryPage() {
     ? await getProducts(1, 20, { category: String(currentCat.id) })
     : await getProducts(1, 20);
 
-  const categoryName = currentCat?.name || "Embroidery";
+  const categoryName = decodeHTMLEntities(currentCat?.name || "Embroidery");
 
   const subCategories = [
     { name: "T-shirts", image: "https://placehold.co/283x287", href: "/products/t-shirts" },

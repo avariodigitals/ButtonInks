@@ -4,17 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
+/**
+ * Mapping the requested frontend labels to the new logical WordPress slugs
+ */
 const categories = [
   { label: "All",                      hasDropdown: true,  href: "/categories" },
-  { label: "Embroidery",               hasDropdown: true,  href: "/products/embroidery" },
-  { label: "DTF (Direct-to-Film) Prints", hasDropdown: true, href: "/products/dtf-prints" },
-  { label: "Apparel",                  hasDropdown: true,  href: "/products/apparel" },
-  { label: "Drinkware",                hasDropdown: true,  href: "/products/drinkware" },
-  { label: "Gifts & Decor",            hasDropdown: true,  href: "/products/gifts-decor" },
-  { label: "Office Supplies",          hasDropdown: true,  href: "/products/office-supplies" },
-  { label: "Event Merchandize",        hasDropdown: true,  href: "/products/event-merchandize" },
-  { label: "Personalization Center",   hasDropdown: false, href: "/personalization" },
-  { label: "Retail",                   hasDropdown: true,  href: "/products/retail" },
+  { label: "Embroidery",               hasDropdown: true,  href: "/categories?category=embroidery-uniforms" },
+  { label: "DTF Prints",               hasDropdown: true,  href: "/categories?category=custom-t-shirts" }, // Assuming DTF falls under custom t-shirts mapping
+  { label: "Apparel",                  hasDropdown: true,  href: "/categories?category=apparel-outerwear" },
+  { label: "Drinkware",                hasDropdown: true,  href: "/categories?category=drinkware-mugs" },
+  { label: "Gifts & Decor",            hasDropdown: true,  href: "/categories?category=photo-prints-art" },
+  { label: "Office Supplies",          hasDropdown: true,  href: "/categories?category=marketing-prints" },
+  { label: "Event Merchandize",        hasDropdown: true,  href: "/categories?category=event-tradeshow" },
+  { label: "Personalization Center",   hasDropdown: false, href: "/categories" },
+  { label: "Retail",                   hasDropdown: true,  href: "/categories?category=stickers-labels" },
 ];
 
 export default function CategoryNav() {
@@ -24,7 +27,7 @@ export default function CategoryNav() {
   if (pathname?.startsWith('/design')) return null;
 
   return (
-    <div className="hidden lg:flex w-full h-16 px-20 border-b border-slate-400/20 items-center bg-white shrink-0 overflow-x-auto">
+    <div className="hidden lg:flex w-full h-16 px-20 border-b border-slate-400/20 items-center bg-white shrink-0 overflow-x-auto no-scrollbar">
       <div className="flex-1 flex justify-between items-center min-w-max">
         {categories.map((cat) => (
           <Link

@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ChevronRight, Filter, ChevronDown, Heart, Star, SlidersHorizontal } from 'lucide-react';
-import { getProductCategories, getProducts, getProductAttributes, getAttributeTerms } from '@/lib/wordpress';
+import { getProductCategories, getProducts, getProductAttributes, getAttributeTerms, decodeHTMLEntities } from '@/lib/wordpress';
 import FilterSidebar from '@/components/FilterSidebar';
 
 interface PageProps {
@@ -46,7 +46,7 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
           {categorySlug && (
             <>
               <ChevronRight className="w-4 h-4 text-emerald-500" />
-              <span className="text-zinc-900 text-sm font-bold font-['Inter'] leading-5 capitalize">{categorySlug.replace(/-/g, ' ')}</span>
+              <span className="text-zinc-900 text-sm font-bold font-['Inter'] leading-5 capitalize">{decodeHTMLEntities(categorySlug.replace(/-/g, ' '))}</span>
             </>
           )}
         </div>
@@ -56,7 +56,7 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
       <section className="self-stretch px-4 md:px-20 py-12 md:py-16 bg-emerald-50 border-b border-gray-200">
         <div className="max-w-[1280px] mx-auto flex flex-col justify-center items-center gap-6 text-center">
           <h1 className="text-green-500 text-4xl md:text-6xl font-bold font-['Outfit'] leading-tight">
-            {categorySlug ? categorySlug.replace(/-/g, ' ') : 'Product Categories'}
+            {categorySlug ? decodeHTMLEntities(categorySlug.replace(/-/g, ' ')) : 'Product Categories'}
           </h1>
           <p className="max-w-[480px] text-zinc-500/90 text-base font-normal font-['Inter'] leading-6">
             Professionally printed custom products. Premium quality, bulk pricing, and fast delivery guaranteed.
@@ -83,7 +83,7 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
                 </div>
                 <div className="self-stretch flex flex-col justify-center items-center gap-2">
                   <div className="self-stretch text-center text-zinc-900 text-2xl font-medium font-['Outfit'] leading-7 truncate">
-                    {cat.name}
+                    {decodeHTMLEntities(cat.name)}
                   </div>
                   <div className="py-1 border-b border-black inline-flex justify-center items-center gap-2.5">
                     <div className="text-center text-zinc-900 text-base font-normal font-['Outfit'] leading-6">View all</div>
@@ -153,10 +153,10 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
                   {/* Details */}
                   <div className="p-6 bg-white border-t border-zinc-100 flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
-                       <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{p.categories[0]?.name || 'Printing'}</span>
+                       <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{decodeHTMLEntities(p.categories[0]?.name || 'Printing')}</span>
                        <Link href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}>
                           <h3 className="text-slate-900 text-lg font-bold font-['Outfit'] leading-tight group-hover:text-green-700 transition-colors line-clamp-1">
-                            {p.name}
+                            {decodeHTMLEntities(p.name)}
                           </h3>
                        </Link>
                     </div>

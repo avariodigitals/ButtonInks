@@ -57,6 +57,19 @@ export interface WPProduct {
   related_ids: number[];
   stock_status: string;
   menu_order: number;
+  acf?: {
+    enable_designer?: boolean;
+    available_colors?: string[];
+    bulk_pricing?: {
+      min_qty: number;
+      discount_price: string;
+    }[];
+    production_options?: {
+      type: 'regular' | 'urgent';
+      extra_cost: string;
+      delivery_days: string;
+    }[];
+  };
 }
 
 export interface WPCategory {
@@ -72,6 +85,20 @@ export interface WPCategory {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Decodes basic HTML entities like &amp; to &
+ */
+export function decodeHTMLEntities(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
 
 let cachedToken: string | null = null;
 
