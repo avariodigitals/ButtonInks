@@ -2,7 +2,8 @@
  * ButtonInks – WordPress & WooCommerce REST API client
  */
 
-const WP_BASE_URL = process.env.NEXT_PUBLIC_WP_API_URL || "https://buttoninks.com/wp-json";
+export const WP_URL = process.env.NEXT_PUBLIC_WP_URL || "https://central.buttoninks.com";
+export const WP_BASE_URL = process.env.NEXT_PUBLIC_WP_API_URL || `${WP_URL}/wp-json`;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,15 +59,18 @@ export interface WPProduct {
   stock_status: string;
   menu_order: number;
   acf?: {
-    enable_designer?: boolean;
-    available_colors?: string[];
+    enable_designer?:    boolean;      // Design Your Own — opens designer tool
+    enable_upload?:      boolean;      // Upload Design — customer uploads artwork
+    buy_as_is?:          boolean;      // Retail / no customisation
+    available_colors?:   string[];     // e.g. ['Black', 'Navy', 'White']
+    print_notes?:        string;       // Artwork / print guidelines
     bulk_pricing?: {
-      min_qty: number;
+      min_qty:        number;
       discount_price: string;
     }[];
     production_options?: {
-      type: 'regular' | 'urgent';
-      extra_cost: string;
+      type:          'regular' | 'urgent';
+      extra_cost:    string;
       delivery_days: string;
     }[];
   };

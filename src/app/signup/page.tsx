@@ -21,7 +21,8 @@ export default function SignupPage() {
     setError("");
 
     try {
-      const res = await fetch('https://buttoninks.com/wp-json/buttoninks/v1/register', {
+      const wpBaseUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://central.buttoninks.com/wp-json';
+      const res = await fetch(`${wpBaseUrl}/buttoninks/v1/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

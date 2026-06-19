@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { WP_URL } from "@/lib/wordpress";
 
 export default function HeroSection() {
   return (
@@ -8,7 +9,7 @@ export default function HeroSection() {
 
         {/* ── Background image ── */}
         <Image
-          src="https://buttoninks.com/wp-content/uploads/2026/06/aa4015b2d0f56fc883cc1ae9615d887744808bd1.png"
+          src={`${WP_URL}/wp-content/uploads/2026/06/aa4015b2d0f56fc883cc1ae9615d887744808bd1.png`}
           alt="Custom printing products spread"
           fill
           className="object-cover object-center"

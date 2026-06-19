@@ -35,7 +35,7 @@ import {
   Eye,
   Info
 } from 'lucide-react';
-import { WPProduct } from '@/lib/wordpress';
+import { WPProduct, WP_URL } from '@/lib/wordpress';
 import { useNotification } from '@/context/NotificationContext';
 import { useCart } from '@/context/CartContext';
 
@@ -347,7 +347,7 @@ function DesignContent() {
               {/* Product Base */}
               <div className="absolute inset-0 flex items-center justify-center p-12 bg-stone-50/50">
                  <img
-                   src={selectedProduct?.images[0]?.src || "https://buttoninks.com/wp-content/uploads/2022/08/cropped-Screenshot_3.png"}
+                   src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
                    alt="Base"
                    className="max-w-full max-h-full object-contain pointer-events-none opacity-20"
                  />
@@ -529,7 +529,7 @@ function DesignContent() {
                     {/* Render Product Base (Clearer visibility) */}
                     <div className="absolute inset-0 flex items-center justify-center p-8 bg-white">
                        <img
-                         src={selectedProduct?.images[0]?.src || "https://buttoninks.com/wp-content/uploads/2022/08/cropped-Screenshot_3.png"}
+                         src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
                          className="max-h-full opacity-60"
                          alt="Product Base"
                        />

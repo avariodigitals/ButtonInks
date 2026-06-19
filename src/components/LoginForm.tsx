@@ -23,7 +23,8 @@ export default function LoginForm() {
     setError("");
 
     try {
-      const res = await fetch('https://buttoninks.com/wp-json/jwt-auth/v1/token', {
+      const wpBaseUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://central.buttoninks.com/wp-json';
+      const res = await fetch(`${wpBaseUrl}/jwt-auth/v1/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

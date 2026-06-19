@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "buttoninks.com",
+        hostname: "central.buttoninks.com",
       },
       {
         protocol: "https",

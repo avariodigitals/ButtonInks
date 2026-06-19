@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { WP_URL } from "@/lib/wordpress";
 
 const categories = [
   { label: "All Categories", href: "/categories" },
@@ -43,7 +44,7 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <div className="w-12 h-12 md:w-16 md:h-16 relative overflow-hidden flex items-center justify-center">
             <Image
-              src="https://buttoninks.com/wp-content/uploads/2022/08/cropped-Screenshot_3.png"
+              src={`${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
               alt="ButtonInks logo"
               width={64}
               height={64}
@@ -130,7 +131,7 @@ export default function Navbar() {
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-stone-50">
             <Link href="/" onClick={() => setIsMenuOpen(false)}>
               <Image
-                src="https://buttoninks.com/wp-content/uploads/2022/08/cropped-Screenshot_3.png"
+                src={`${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
                 alt="Logo"
                 width={40}
                 height={40}

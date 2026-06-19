@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import FooterCTA from './FooterCTA';
 import { Phone, Mail, MapPin } from 'lucide-react';
+import { WP_URL } from '@/lib/wordpress';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -27,7 +28,7 @@ const Footer = () => {
             <Link href="/" className="inline-flex justify-start items-center gap-2">
               <img
                 className="w-24 h-24 md:w-28 md:h-28 object-contain"
-                src="https://buttoninks.com/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png"
+                src={`${WP_URL}/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png`}
                 alt="ButtonInks Logo"
               />
             </Link>

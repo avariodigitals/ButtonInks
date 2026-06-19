@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { CartProvider } from "@/context/CartContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import ScrollToTop from "@/components/ScrollToTop";
+import { WP_URL } from "@/lib/wordpress";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -31,9 +32,9 @@ export const metadata: Metadata = {
   description:
     "T-shirts, business cards, stickers, banners, and 500+ more products. Professional quality, fast turnaround, unbeatable bulk pricing.",
   icons: {
-    icon: "https://buttoninks.com/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png",
-    shortcut: "https://buttoninks.com/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png",
-    apple: "https://buttoninks.com/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png",
+    icon: `${WP_URL}/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png`,
+    shortcut: `${WP_URL}/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png`,
+    apple: `${WP_URL}/wp-content/uploads/2026/06/cropped-Screenshot_3-removebg-preview.png`,
   },
   keywords: [
     "custom printing",
