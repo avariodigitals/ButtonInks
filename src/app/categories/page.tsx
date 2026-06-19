@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ChevronRight, Filter, ChevronDown, Heart, Star, SlidersHorizontal } from 'lucide-react';
 import { getProductCategories, getProducts, getProductAttributes, getAttributeTerms, decodeHTMLEntities } from '@/lib/wordpress';
 import FilterSidebar from '@/components/FilterSidebar';
+import { CATEGORY_CONFIG, getCategoryImage, getConfigForSlug } from '@/lib/categoryConfig';
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -14,7 +15,7 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
 
   // Fetch data on the server
   const categoriesData = await getProductCategories();
-  const rootCategories = categoriesData.filter(c => c.parent === 0 && c.count > 0);
+  const rootCategories = categoriesData.filter(c => c.parent === 0 && c.slug !== 'uncategorized');
 
   // Find current category ID if filtering
   let currentCategoryId: number | undefined = undefined;
@@ -30,8 +31,13 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
   // Note: We might want to limit this or cache it
   const attributes = await getProductAttributes().catch(() => []);
 
-  // Featured categories for the top row
-  const featuredRow = rootCategories.slice(0, 5);
+  // Build ordered featured row using CATEGORY_CONFIG order (same as homepage)
+  const orderedCategories = CATEGORY_CONFIG.reduce<typeof rootCategories>((acc, cfg) => {
+    const match = rootCategories.find(c => cfg.slugs.includes(c.slug));
+    if (match) acc.push(match);
+    return acc;
+  }, []);
+  const featuredRow = orderedCategories.slice(0, 5);
   const rowColors = ['bg-zinc-100', 'bg-orange-50', 'bg-emerald-50', 'bg-slate-50', 'bg-rose-50'];
 
   return (
@@ -68,29 +74,35 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
       {!categorySlug && (
         <section className="self-stretch px-4 md:px-20 py-10 overflow-x-auto no-scrollbar">
           <div className="max-w-[1280px] mx-auto flex items-start gap-6 min-w-max md:min-w-0">
-            {featuredRow.map((cat, i) => (
+            {featuredRow.map((cat, i) => {
+              const cfg = getConfigForSlug(cat.slug);
+              const bg = cfg?.bg ?? 'bg-gray-50';
+              const displayName = cfg?.displayName ?? decodeHTMLEntities(cat.name);
+              const imgSrc = getCategoryImage(cat.image, cfg?.fallback ?? `https://placehold.co/212x212?text=${encodeURIComponent(displayName)}`);
+              return (
               <Link
                 key={cat.id}
                 href={`/categories?category=${cat.slug}`}
-                className={`w-72 px-5 py-9 ${rowColors[i % rowColors.length]} rounded-xl flex flex-col justify-center items-center gap-8 overflow-hidden hover:shadow-lg transition-all group`}
+                className={`w-72 px-5 py-9 ${bg} rounded-xl flex flex-col justify-center items-center gap-8 overflow-hidden hover:shadow-lg transition-all group`}
               >
                 <div className="w-52 h-52 relative flex items-center justify-center">
                   <img
                     className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                    src={cat.image?.src || `https://placehold.co/212x212?text=${encodeURIComponent(decodeHTMLEntities(cat.name))}`}
-                    alt={decodeHTMLEntities(cat.name)}
+                    src={imgSrc}
+                    alt={displayName}
                   />
                 </div>
                 <div className="self-stretch flex flex-col justify-center items-center gap-2">
                   <div className="self-stretch text-center text-zinc-900 text-2xl font-medium font-['Outfit'] leading-7">
-                    {decodeHTMLEntities(cat.name)}
+                    {displayName}
                   </div>
                   <div className="py-1 border-b border-black inline-flex justify-center items-center gap-2.5">
                     <div className="text-center text-zinc-900 text-base font-normal font-['Outfit'] leading-6">View all</div>
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
