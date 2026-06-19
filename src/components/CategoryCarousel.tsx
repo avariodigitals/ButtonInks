@@ -6,44 +6,40 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { WPCategory, decodeHTMLEntities } from '@/lib/wordpress';
 
-// Fallback images per category slug — used only when WP has no image set.
-// Once an image is uploaded to the category in WP, that takes priority automatically.
 const CATEGORY_FALLBACKS: Record<string, string> = {
-  'embroidery-uniforms':     'https://placehold.co/212x212?text=Embroidery',
-  't-shirts':                'https://placehold.co/212x212?text=T-Shirts',
-  'personalized-cups':       'https://placehold.co/212x212?text=Mugs',
-  'bags':                    'https://placehold.co/212x212?text=Bags',
-  'photo-prints':            'https://placehold.co/212x212?text=Prints',
-  'custom-mugs':             'https://placehold.co/212x212?text=Mugs',
-  'apparel':                 'https://placehold.co/212x212?text=Apparel',
-  'event-tradeshow-supplies':'https://placehold.co/212x212?text=Events',
-  'marketing-prints':        'https://placehold.co/212x212?text=Marketing',
-  'corporate-gifts':         'https://placehold.co/212x212?text=Gifts',
-  'vehicle-branding':        'https://placehold.co/212x212?text=Vehicle',
-  'banners':                 'https://placehold.co/212x212?text=Banners',
-  'stickers':                'https://placehold.co/212x212?text=Stickers',
-  'back-to-school':          'https://placehold.co/212x212?text=School',
+  'embroidery-uniforms':      'https://placehold.co/212x212?text=Embroidery',
+  't-shirts':                 'https://placehold.co/212x212?text=T-Shirts',
+  'personalized-cups':        'https://placehold.co/212x212?text=Mugs',
+  'bags':                     'https://placehold.co/212x212?text=Bags',
+  'photo-prints':             'https://placehold.co/212x212?text=Prints',
+  'custom-mugs':              'https://placehold.co/212x212?text=Mugs',
+  'apparel':                  'https://placehold.co/212x212?text=Apparel',
+  'event-tradeshow-supplies': 'https://placehold.co/212x212?text=Events',
+  'marketing-prints':         'https://placehold.co/212x212?text=Marketing',
+  'corporate-gifts':          'https://placehold.co/212x212?text=Gifts',
+  'vehicle-branding':         'https://placehold.co/212x212?text=Vehicle',
+  'banners':                  'https://placehold.co/212x212?text=Banners',
+  'stickers':                 'https://placehold.co/212x212?text=Stickers',
+  'back-to-school':           'https://placehold.co/212x212?text=School',
 };
 
 function getCategoryImage(cat: WPCategory): string {
-  // 1. WP category image — highest priority (set in WP Admin > Products > Categories)
+  // Priority 1 — image uploaded to WP category (always wins)
   if (cat.image?.src) return cat.image.src;
-  // 2. Slug-based fallback
+  // Priority 2 — named slug fallback
   if (CATEGORY_FALLBACKS[cat.slug]) return CATEGORY_FALLBACKS[cat.slug];
-  // 3. Generic placeholder
-  return `https://placehold.co/212x212?text=${encodeURIComponent(cat.name)}`;
+  // Priority 3 — generic
+  return `https://placehold.co/212x212?text=${encodeURIComponent(decodeHTMLEntities(cat.name))}`;
 }
 
 export default function CategoryCarousel({ categories }: { categories: WPCategory[] }) {
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollBy({
-        left: direction === 'left' ? -300 : 300,
-        behavior: 'smooth'
-      });
-    }
+    carouselRef.current?.scrollBy({
+      left: direction === 'left' ? -300 : 300,
+      behavior: 'smooth',
+    });
   };
 
   return (

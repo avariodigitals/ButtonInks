@@ -15,8 +15,8 @@ export default async function HomePage() {
     getProducts(1, 8) // Fetch first 8 products for arrivals/featured
   ]);
 
-  // Filter root categories for the grid
-  const rootCategories = categories.filter(c => c.parent === 0 && c.count > 0);
+  // Filter root categories for the grid (show all, even empty ones)
+  const rootCategories = categories.filter(c => c.parent === 0 && c.slug !== 'uncategorized');
 
   return (
     <main>

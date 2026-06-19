@@ -77,12 +77,12 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
                 <div className="w-52 h-52 relative flex items-center justify-center">
                   <img
                     className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                    src={cat.image?.src || "https://placehold.co/212x212"}
-                    alt={cat.name}
+                    src={cat.image?.src || `https://placehold.co/212x212?text=${encodeURIComponent(decodeHTMLEntities(cat.name))}`}
+                    alt={decodeHTMLEntities(cat.name)}
                   />
                 </div>
                 <div className="self-stretch flex flex-col justify-center items-center gap-2">
-                  <div className="self-stretch text-center text-zinc-900 text-2xl font-medium font-['Outfit'] leading-7 truncate">
+                  <div className="self-stretch text-center text-zinc-900 text-2xl font-medium font-['Outfit'] leading-7">
                     {decodeHTMLEntities(cat.name)}
                   </div>
                   <div className="py-1 border-b border-black inline-flex justify-center items-center gap-2.5">
