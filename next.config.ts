@@ -13,7 +13,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "*.your-wordpress-site.com", // update when backend is live
+        hostname: "buttoninks.com",
+      },
+      {
+        protocol: "https",
+        hostname: "www.buttoninks.com",
       },
     ],
   },

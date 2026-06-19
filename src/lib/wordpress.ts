@@ -95,13 +95,20 @@ export interface WPCategory {
  */
 export function decodeHTMLEntities(text: string): string {
   if (!text) return '';
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&nbsp;/g, ' ');
+  // Keep decoding until there are no more entities (handles double-encoding like &amp;amp;)
+  let decoded = text;
+  let previous = '';
+  while (decoded !== previous) {
+    previous = decoded;
+    decoded = decoded
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&nbsp;/g, ' ');
+  }
+  return decoded;
 }
 
 let cachedToken: string | null = null;
