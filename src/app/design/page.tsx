@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, Suspense, TouchEvent } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -9,7 +9,7 @@ import {
   ChevronDown, Plus, ChevronLeft, ChevronRight, Layers, Palette,
   Settings2, Copy, CheckCircle2, Loader2, Move, ShoppingCart,
   Minus, RefreshCw, Eye, ArrowLeft, AlignLeft, AlignCenter, AlignRight,
-  ImageIcon, Square, Circle, Triangle, Search
+  ImageIcon, Circle, Search
 } from 'lucide-react';
 import { WPProduct, WP_URL } from '@/lib/wordpress';
 import { useNotification } from '@/context/NotificationContext';
@@ -35,6 +35,16 @@ interface DesignElement {
   side: 'front' | 'back';
 }
 
+interface RawTemplateElement {
+  type: 'text' | 'image' | 'graphic';
+  content: string;
+  x: number; y: number; width: number; height: number;
+  rotation?: number; opacity?: number;
+  color?: string; fontFamily?: string; fontSize?: number;
+  fontWeight?: string; textAlign?: 'left' | 'center' | 'right';
+}
+interface RawTemplate { id?: string; name?: string; category?: string; elements: RawTemplateElement[]; }
+
 const sidebarTools = [
   { id: 'product',  icon: Package,       label: 'Product'  },
   { id: 'text',     icon: Type,          label: 'Text'     },
@@ -51,25 +61,6 @@ const colorPalette = [
 
 const fontFamilies = ['Inter','Outfit','Montserrat','Georgia','Courier New','Arial','Playfair Display','Roboto'];
 
-// Built-in graphics (SVG shapes as data URIs + emoji-style stickers)
-const builtInGraphics = [
-  { id: 'star',     label: 'Star',     content: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 61,35 95,35 68,57 79,91 50,70 21,91 32,57 5,35 39,35' fill='%23F59E0B'/%3E%3C/svg%3E" },
-  { id: 'heart',    label: 'Heart',    content: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 85 C50 85 10 55 10 30 C10 15 20 5 35 5 C42 5 48 9 50 14 C52 9 58 5 65 5 C80 5 90 15 90 30 C90 55 50 85 50 85Z' fill='%23DC2626'/%3E%3C/svg%3E" },
-  { id: 'circle',   label: 'Circle',   content: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%230EA5E9'/%3E%3C/svg%3E" },
-  { id: 'square',   label: 'Square',   content: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='5' y='5' width='90' height='90' rx='8' fill='%23064E3B'/%3E%3C/svg%3E" },
-  { id: 'triangle', label: 'Triangle', content: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 95,95 5,95' fill='%238B5CF6'/%3E%3C/svg%3E" },
-  { id: 'badge',    label: 'Badge',    content: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23064E3B'/%3E%3Ccircle cx='50' cy='50' r='35' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E" },
-];
-
-// Template presets
-const templates = [
-  { id: 'tpl1', label: 'Bold Text', elements: [{ type: 'text' as const, content: 'YOUR BRAND', fontSize: 48, fontFamily: 'Outfit', color: '#064E3B', fontWeight: '900', x: 100, y: 280, width: 400, height: 80, textAlign: 'center' as const }] },
-  { id: 'tpl2', label: 'Two Lines',  elements: [
-    { type: 'text' as const, content: 'BRAND NAME', fontSize: 40, fontFamily: 'Outfit', color: '#171717', fontWeight: '900', x: 100, y: 240, width: 400, height: 70, textAlign: 'center' as const },
-    { type: 'text' as const, content: 'Est. 2024',  fontSize: 20, fontFamily: 'Inter',  color: '#4B5563', fontWeight: '400', x: 150, y: 330, width: 300, height: 40, textAlign: 'center' as const },
-  ]},
-  { id: 'tpl3', label: 'Slogan',    elements: [{ type: 'text' as const, content: '"Just Do It Better"', fontSize: 28, fontFamily: 'Georgia', color: '#B45309', fontWeight: '700', x: 80, y: 310, width: 440, height: 60, textAlign: 'center' as const }] },
-];
 
 // ── Design Content Component ──────────────────────────────────────────────────
 
@@ -99,6 +90,11 @@ function DesignContent() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
+  // ── Mobile inline text editing ───────────────────────────────────────────
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const inlineInputRef = useRef<HTMLTextAreaElement>(null);
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+
   // ── Graphics (Iconify) state ─────────────────────────────────────────────
   const [iconSearch, setIconSearch] = useState('print');
   const [iconResults, setIconResults] = useState<{ id: string; label: string; svgUrl: string }[]>([]);
@@ -106,7 +102,7 @@ function DesignContent() {
 
   // ── Templates state ──────────────────────────────────────────────────────
   const [templateCategory, setTemplateCategory] = useState('all');
-  const [apiTemplates, setApiTemplates] = useState<any[]>([]);
+  const [apiTemplates, setApiTemplates] = useState<RawTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
 
   // ── Product panel pagination ──────────────────────────────────────────────
@@ -118,9 +114,9 @@ function DesignContent() {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const selectedElement = elements.find(el => el.id === selectedId);
 
-  // Drag state (mouse + touch)
-  const isDragging = useRef(false);
+  const idCounterRef = useRef(0);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
 
   // ── Fetch products & media ──────────────────────────────────────────────────
   useEffect(() => {
@@ -155,26 +151,38 @@ function DesignContent() {
     finally { setIconsLoading(false); }
   }, []);
 
-  // Load default icons when graphics panel opens
+  const iconsLoadedRef = useRef(false);
+
+  // Load default icons when graphics panel opens (once)
   useEffect(() => {
-    if (activeTool === 'graphics' && iconResults.length === 0) {
-      searchIcons('star crown badge shield');
-    }
+    if (activeTool !== 'graphics' || iconsLoadedRef.current) return;
+    iconsLoadedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      setIconsLoading(true);
+      try {
+        const res = await fetch(`/api/icons?q=${encodeURIComponent('star crown badge shield')}&limit=40`);
+        const data = await res.json();
+        if (!cancelled) setIconResults(data.icons || []);
+      } catch { if (!cancelled) setIconResults([]); }
+      finally { if (!cancelled) setIconsLoading(false); }
+    })();
+    return () => { cancelled = true; };
   }, [activeTool]);
 
-  // ── Fetch templates ──────────────────────────────────────────────────────
-  const fetchTemplates = useCallback(async (cat: string) => {
-    setTemplatesLoading(true);
-    try {
-      const res = await fetch(`/api/design-templates?category=${cat}`);
-      const data = await res.json();
-      setApiTemplates(data.templates || []);
-    } catch { setApiTemplates([]); }
-    finally { setTemplatesLoading(false); }
-  }, []);
-
   useEffect(() => {
-    if (activeTool === 'template') fetchTemplates(templateCategory);
+    if (activeTool !== 'template') return;
+    let cancelled = false;
+    (async () => {
+      setTemplatesLoading(true);
+      try {
+        const res = await fetch(`/api/design-templates?category=${templateCategory}`);
+        const data = await res.json();
+        if (!cancelled) setApiTemplates(data.templates || []);
+      } catch { if (!cancelled) setApiTemplates([]); }
+      finally { if (!cancelled) setTemplatesLoading(false); }
+    })();
+    return () => { cancelled = true; };
   }, [activeTool, templateCategory]);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -200,7 +208,8 @@ function DesignContent() {
   };
 
   const addGraphic = (content: string) => {
-    const newId = Date.now().toString();
+    idCounterRef.current += 1;
+    const newId = `g-${idCounterRef.current}`;
     setElements(prev => [...prev, {
       id: newId, type: 'graphic', content,
       x: 200, y: 200, width: 150, height: 150,
@@ -210,10 +219,11 @@ function DesignContent() {
     setActiveTool(null);
   };
 
-  const applyTemplate = (tpl: any) => {
-    const elems = tpl.elements || tpl.elements;
-    const newEls: DesignElement[] = elems.map((e: any, i: number) => ({
-      id: Date.now().toString() + i,
+  const applyTemplate = (tpl: RawTemplate) => {
+    idCounterRef.current += 1;
+    const base = idCounterRef.current;
+    const newEls: DesignElement[] = tpl.elements.map((e: RawTemplateElement, i: number) => ({
+      id: `t-${base}-${i}`,
       type: e.type,
       content: e.content,
       x: e.x, y: e.y, width: e.width, height: e.height,
@@ -246,8 +256,8 @@ function DesignContent() {
         }]);
         setSelectedId(newId);
       } else throw new Error(result.error);
-    } catch (err: any) {
-      showNotification({ title: 'Upload Failed', message: err.message, type: 'error' });
+    } catch (err: unknown) {
+      showNotification({ title: 'Upload Failed', message: err instanceof Error ? err.message : 'Upload failed', type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -257,7 +267,7 @@ function DesignContent() {
   const startDrag = (clientX: number, clientY: number, id: string) => {
     const el = elements.find(item => item.id === id);
     if (!el) return;
-    isDragging.current = true;
+    isDraggingRef.current = true;
     dragOffset.current = {
       x: clientX - el.x * (zoom / 100),
       y: clientY - el.y * (zoom / 100),
@@ -265,14 +275,14 @@ function DesignContent() {
   };
 
   const moveDrag = useCallback((clientX: number, clientY: number) => {
-    if (!isDragging.current || !selectedId) return;
+    if (!isDraggingRef.current || !selectedId) return;
     updateElement(selectedId, {
       x: (clientX - dragOffset.current.x) / (zoom / 100),
       y: (clientY - dragOffset.current.y) / (zoom / 100),
     });
   }, [selectedId, zoom]);
 
-  const endDrag = useCallback(() => { isDragging.current = false; }, []);
+  const endDrag = useCallback(() => { isDraggingRef.current = false; }, []);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -284,12 +294,34 @@ function DesignContent() {
   const handleMouseUp   = useCallback(() => endDrag(), [endDrag]);
 
   // ── Touch drag ──────────────────────────────────────────────────────────────
-  const handleTouchStart = (e: React.TouchEvent, id: string) => {
+  const nowRef = useRef(Date.now);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent, id: string) => {
     e.stopPropagation();
+
+    const el = elements.find(item => item.id === id);
+    const now = nowRef.current();
+
+    // Double-tap detection: two taps on same element within 300ms → inline edit
+    if (
+      el?.type === 'text' &&
+      lastTapRef.current?.id === id &&
+      now - lastTapRef.current.time < 300
+    ) {
+      // Double tap — open inline editor, do NOT start drag
+      lastTapRef.current = null;
+      setSelectedId(id);
+      setInlineEditId(id);
+      setTimeout(() => inlineInputRef.current?.focus(), 50);
+      return;
+    }
+
+    lastTapRef.current = { id, time: nowRef.current() };
     setSelectedId(id);
     const t = e.touches[0];
     startDrag(t.clientX, t.clientY, id);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements]);
 
   const handleTouchMove = useCallback((e: globalThis.TouchEvent) => {
     e.preventDefault();
@@ -399,7 +431,7 @@ function DesignContent() {
                   {/* Selected product indicator */}
                   {selectedProduct && (
                     <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
-                      <img src={selectedProduct.images[0]?.src || "https://placehold.co/32x32"} className="w-8 h-8 object-contain rounded-lg" alt={selectedProduct.name} />
+                      <Image src={selectedProduct.images[0]?.src || "https://placehold.co/32x32"} width={32} height={32} className="w-8 h-8 object-contain rounded-lg" alt={selectedProduct.name} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] text-green-700 font-black uppercase tracking-widest">Selected</p>
                         <p className="text-xs font-bold text-zinc-800 truncate">{selectedProduct.name}</p>
@@ -431,11 +463,15 @@ function DesignContent() {
                           }`}
                         >
                           <div className="aspect-square w-full overflow-hidden rounded-xl bg-white mb-2 flex items-center justify-center p-2">
-                            <img
-                              src={p.images[0]?.src || "https://placehold.co/150x150"}
-                              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                              alt={p.name}
-                            />
+                            <div className="relative w-full h-full">
+                              <Image
+                                src={p.images[0]?.src || "https://placehold.co/150x150"}
+                                fill
+                                className="object-contain group-hover:scale-105 transition-transform duration-300"
+                                sizes="(max-width: 768px) 40vw, 160px"
+                                alt={p.name}
+                              />
+                            </div>
                           </div>
                           <p className="text-xs font-bold text-center text-zinc-800 line-clamp-2 leading-tight">{p.name}</p>
                           {p.price && (
@@ -508,8 +544,8 @@ function DesignContent() {
                           const newId = Date.now().toString();
                           setElements(prev => [...prev, { id: newId, type: 'image', content: img.source_url, x: 200, y: 200, width: 150, height: 150, rotation: 0, opacity: 1, side }]);
                           setSelectedId(newId);
-                        }} className="aspect-square bg-white rounded-lg border border-black/5 overflow-hidden cursor-pointer hover:border-green-500 transition-all hover:scale-105">
-                          <img src={img.source_url} className="w-full h-full object-cover" alt="upload" />
+                        }} className="relative aspect-square bg-white rounded-lg border border-black/5 overflow-hidden cursor-pointer hover:border-green-500 transition-all hover:scale-105">
+                          <Image src={img.source_url} fill className="object-cover" sizes="80px" alt="upload" />
                         </div>
                       ))}
                     </div>
@@ -567,7 +603,7 @@ function DesignContent() {
                       <div key={icon.id} onClick={() => addGraphic(icon.svgUrl)}
                         title={icon.label}
                         className="aspect-square bg-gray-50 rounded-xl border border-gray-100 hover:border-green-500 cursor-pointer flex flex-col items-center justify-center gap-1.5 p-2 transition-all hover:scale-105 hover:bg-green-50">
-                        <img src={icon.svgUrl} className="w-10 h-10 object-contain" alt={icon.label} />
+                        <Image src={icon.svgUrl} width={40} height={40} className="object-contain" alt={icon.label} />
                         <span className="text-[9px] font-bold text-zinc-400 truncate w-full text-center">{icon.label}</span>
                       </div>
                     ))}
@@ -626,7 +662,7 @@ function DesignContent() {
                         sticker:   <Sticker        className="w-3.5 h-3.5" />,
                         banner:    <LayoutTemplate className="w-3.5 h-3.5" />,
                       };
-                      const catIcon = catIcons[tpl.category] ?? <Layers className="w-3.5 h-3.5" />;
+                      const catIcon = (tpl.category ? catIcons[tpl.category] : undefined) ?? <Layers className="w-3.5 h-3.5" />;
 
                       return (
                         <div
@@ -647,7 +683,7 @@ function DesignContent() {
                                 pointerEvents: 'none',
                               }}
                             >
-                              {(tpl.elements || []).map((el: any, i: number) => (
+                              {(tpl.elements || []).map((el: RawTemplateElement, i: number) => (
                                 <div
                                   key={i}
                                   className="absolute flex items-center justify-center"
@@ -674,6 +710,7 @@ function DesignContent() {
                                       {el.content}
                                     </div>
                                   ) : (
+                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img src={el.content} className="w-full h-full object-contain" alt="" />
                                   )}
                                 </div>
@@ -747,11 +784,15 @@ function DesignContent() {
             >
               {/* Product Base — opacity raised to 50% so users can see what they're designing on */}
               <div className="absolute inset-0 flex items-center justify-center p-12 bg-stone-50/50 pointer-events-none">
-                <img
-                  src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
-                  alt="Base Product"
-                  className="max-w-full max-h-full object-contain opacity-50"
-                />
+                <div className="relative w-full h-full">
+                  <Image
+                    src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
+                    fill
+                    className="object-contain opacity-50"
+                    sizes="600px"
+                    alt="Base Product"
+                  />
+                </div>
               </div>
 
               {/* Dynamic Elements */}
@@ -770,24 +811,45 @@ function DesignContent() {
                   }}
                 >
                   {el.type === 'text' ? (
-                    <div
-                      className="w-full h-full flex items-center justify-center text-center leading-tight"
-                      style={{
-                        color: el.color,
-                        fontSize: `${el.fontSize}px`,
-                        fontFamily: el.fontFamily,
-                        fontWeight: el.fontWeight || '700',
-                        textAlign: el.textAlign,
-                        userSelect: 'none',
-                      }}
-                    >
-                      {el.content}
-                    </div>
+                    // Inline editing mode (mobile double-tap)
+                    inlineEditId === el.id ? (
+                      <textarea
+                        ref={inlineInputRef}
+                        value={el.content}
+                        onChange={(e) => updateElement(el.id, { content: e.target.value })}
+                        onBlur={() => setInlineEditId(null)}
+                        className="w-full h-full bg-transparent border-none outline-none resize-none text-center leading-tight p-0"
+                        style={{
+                          color: el.color,
+                          fontSize: `${el.fontSize}px`,
+                          fontFamily: el.fontFamily,
+                          fontWeight: el.fontWeight || '700',
+                          textAlign: el.textAlign,
+                          caretColor: el.color,
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center text-center leading-tight"
+                        style={{
+                          color: el.color,
+                          fontSize: `${el.fontSize}px`,
+                          fontFamily: el.fontFamily,
+                          fontWeight: el.fontWeight || '700',
+                          textAlign: el.textAlign,
+                          userSelect: 'none',
+                        }}
+                      >
+                        {el.content}
+                      </div>
+                    )
                   ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={el.content} className="w-full h-full object-contain pointer-events-none" alt="element" />
                   )}
 
-                  {selectedId === el.id && (
+                  {selectedId === el.id && inlineEditId !== el.id && (
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg pointer-events-none">
                       <Move className="w-4 h-4 text-white" />
                     </div>
@@ -804,6 +866,58 @@ function DesignContent() {
               <div className="w-px h-6 bg-gray-100 mx-1" />
               <button onClick={() => setZoom(100)} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 rounded-xl text-zinc-600 transition-colors"><RefreshCw className="w-4 h-4" /></button>
             </div>
+
+            {/* Mobile floating action bar — shown when element selected, hides when inline editing */}
+            {selectedId && inlineEditId !== selectedId && (
+              <div className="md:hidden fixed bottom-[80px] left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-zinc-900 rounded-2xl p-1.5 shadow-2xl">
+                {/* Edit text — only for text elements */}
+                {selectedElement?.type === 'text' && (
+                  <button
+                    onPointerDown={(e) => { e.stopPropagation(); setInlineEditId(selectedId); setTimeout(() => inlineInputRef.current?.focus(), 50); }}
+                    className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                  >
+                    <Type className="w-4 h-4 text-white" />
+                    <span className="text-[9px] text-white/70 font-bold uppercase">Edit</span>
+                  </button>
+                )}
+                {/* Color quick pick */}
+                {selectedElement?.type === 'text' && (
+                  <div className="flex items-center gap-1 px-2">
+                    {colorPalette.slice(0, 5).map(c => (
+                      <button
+                        key={c}
+                        onPointerDown={(e) => { e.stopPropagation(); updateElement(selectedId, { color: c }); }}
+                        className={`w-5 h-5 rounded-full border-2 transition-all ${selectedElement.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                )}
+                {/* Duplicate */}
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); if (selectedElement) { const newEl = { ...selectedElement, id: Date.now().toString(), x: selectedElement.x + 20, y: selectedElement.y + 20 }; setElements(prev => [...prev, newEl]); setSelectedId(newEl.id); } }}
+                  className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <Copy className="w-4 h-4 text-white" />
+                  <span className="text-[9px] text-white/70 font-bold uppercase">Copy</span>
+                </button>
+                {/* Delete */}
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); deleteElement(selectedId); }}
+                  className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl hover:bg-red-500/20 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                  <span className="text-[9px] text-red-400 font-bold uppercase">Del</span>
+                </button>
+                {/* Deselect */}
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); setSelectedId(null); }}
+                  className="flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white/50" />
+                </button>
+              </div>
+            )}
 
             {/* Mobile Bottom Tool Bar */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-white border-t border-gray-200 flex items-center justify-around px-2 z-40">
@@ -824,8 +938,8 @@ function DesignContent() {
         {/* ── Right Properties Panel ── */}
         <aside className={`
           fixed md:relative z-30 bg-white border-t md:border-t-0 md:border-l border-gray-200 flex-col shrink-0 transition-transform duration-300
-          inset-x-0 bottom-0 h-[72vh] md:inset-y-0 md:right-0 md:h-full md:w-80
-          ${selectedId ? 'translate-y-0 md:translate-x-0 flex' : 'translate-y-full md:translate-x-full hidden md:flex'}
+          inset-x-0 bottom-0 h-[50vh] md:inset-y-0 md:right-0 md:h-full md:w-80
+          ${selectedId ? 'translate-y-0 md:translate-x-0 hidden md:flex' : 'translate-y-full md:translate-x-full hidden md:flex'}
         `}>
           {/* Mobile drag handle + close */}
           <div className="md:hidden w-full flex flex-col items-center pt-2 pb-0 bg-white">
@@ -865,7 +979,7 @@ function DesignContent() {
                   {(['x','y','width','height'] as const).map(p => (
                     <div key={p} className="flex flex-col gap-1">
                       <label className="text-zinc-500 text-[9px] font-bold uppercase">{p}</label>
-                      <input type="number" value={Math.round((selectedElement as any)[p])}
+                      <input type="number" value={Math.round(selectedElement[p as keyof Pick<DesignElement, 'x'|'y'|'width'|'height'>] as number)}
                         onChange={(e) => updateElement(selectedId!, { [p]: Number(e.target.value) })}
                         className="w-full p-2.5 bg-stone-50 border border-gray-100 rounded-xl text-xs font-bold focus:border-green-700 outline-none" />
                     </div>
@@ -982,7 +1096,7 @@ function DesignContent() {
                 {elements.filter(el => el.side === side).length === 0 && (
                   <p className="text-sm text-zinc-400 text-center pt-4">No elements on this side yet.</p>
                 )}
-                {elements.filter(el => el.side === side).map((el, idx) => (
+                {elements.filter(el => el.side === side).map((el) => (
                   <div key={el.id}
                     onClick={() => setSelectedId(el.id)}
                     className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedId === el.id ? 'border-green-500 bg-green-50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
@@ -1054,8 +1168,15 @@ function DesignContent() {
               <div className="relative bg-white shadow-2xl rounded-[40px] border border-gray-100 overflow-hidden flex items-center justify-center"
                 style={{ width: '420px', height: '525px' }}>
                 <div className="absolute inset-0 flex items-center justify-center p-8 bg-white">
-                  <img src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
-                    className="max-h-full opacity-60" alt="Product Base" />
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
+                      fill
+                      className="object-contain opacity-60"
+                      sizes="420px"
+                      alt="Product Base"
+                    />
+                  </div>
                 </div>
                 <div className="absolute inset-0 pointer-events-none" style={{ transform: 'scale(0.7)', width: '600px', height: '750px' }}>
                   {elements.filter(el => el.side === previewSide).map((el) => (
@@ -1067,6 +1188,7 @@ function DesignContent() {
                           {el.content}
                         </div>
                       ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={el.content} className="w-full h-full object-contain" alt="Custom Graphic" />
                       )}
                     </div>
