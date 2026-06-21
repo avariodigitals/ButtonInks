@@ -12,6 +12,7 @@ import FilterSidebar from '@/components/FilterSidebar';
 import CategoryCarousel, { CarouselCategory } from '@/components/CategoryCarousel';
 import { CATEGORY_CONFIG, getCategoryImage, getConfigForSlug } from '@/lib/categoryConfig';
 import CategoriesPagination from '@/components/CategoriesPagination';
+import CategoriesProductCard from '@/components/CategoriesProductCard';
 
 const PER_PAGE = 24;
 
@@ -155,62 +156,7 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
             {/* Product Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-8">
               {products.map((p, i) => (
-                <Link
-                  key={p.id}
-                  href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
-                  className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.04)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group hover:shadow-2xl transition-all duration-500"
-                >
-                  {/* Image */}
-                  <div className="relative aspect-[4/3] p-4 flex items-center justify-center bg-white overflow-hidden">
-                    {p.on_sale && (
-                      <span className="absolute top-3 left-3 px-3 py-1 bg-red-600 text-white text-[10px] font-black rounded-full z-10 shadow-lg">SALE</span>
-                    )}
-                    {i === 0 && !p.on_sale && (
-                      <span className="absolute top-3 left-3 px-3 py-1 bg-green-700 text-white text-[10px] font-black rounded-full z-10 shadow-lg">BEST SELLER</span>
-                    )}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      className="max-h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
-                      src={p.images[0]?.src || 'https://placehold.co/400x300?text=ButtonInks'}
-                      alt={decodeHTMLEntities(p.name)}
-                    />
-                  </div>
-
-                  {/* Details */}
-                  <div className="p-4 sm:p-6 bg-white border-t border-zinc-100 flex flex-col gap-3">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
-                        {decodeHTMLEntities(p.categories[0]?.name || 'Printing')}
-                      </span>
-                      <h3 className="text-slate-900 text-base sm:text-lg font-bold font-['Outfit'] leading-tight group-hover:text-green-700 transition-colors line-clamp-1">
-                        {decodeHTMLEntities(p.name)}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-0.5">
-                        {[1,2,3,4,5].map((star) => (
-                          <Star key={star} className={`w-3.5 h-3.5 ${star <= Math.round(Number(p.average_rating || 4.5)) ? 'text-amber-400 fill-current' : 'text-gray-200'}`} />
-                        ))}
-                      </div>
-                      <span className="text-zinc-500 text-xs font-bold font-['Inter']">{p.average_rating || '4.5'}</span>
-                    </div>
-
-                    <div className="flex justify-between items-end mt-1">
-                      <div className="flex flex-col gap-1">
-                        {/* price_html from WP preserves <del>/<ins> strikethrough for sale prices */}
-                        <div
-                          className="text-slate-900 text-lg sm:text-xl font-black font-['Outfit'] [&_del]:text-gray-400 [&_del]:text-sm [&_del]:font-normal [&_del]:mr-1 [&_ins]:no-underline"
-                          dangerouslySetInnerHTML={{ __html: p.price_html || `$${p.price}` }}
-                        />
-                        <span className="text-gray-400 text-[10px] font-medium font-['Inter']">Free Shipping over $75</span>
-                      </div>
-                      <span className="px-4 sm:px-6 py-3 bg-green-700 group-hover:bg-green-800 text-white text-xs font-bold font-['Inter'] rounded-xl shadow-xl shadow-green-700/20 transition-all uppercase tracking-widest whitespace-nowrap min-h-[44px] flex items-center">
-                        Shop Now
-                      </span>
-                    </div>
-                  </div>
-                </Link>
+                <CategoriesProductCard key={p.id} product={p} index={i} />
               ))}
             </div>
 

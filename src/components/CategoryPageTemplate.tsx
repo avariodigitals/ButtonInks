@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   ChevronRight, Filter, ChevronDown,
-  Star, SlidersHorizontal, X, ArrowUpDown, Loader2, Package,
+  Star, Heart, SlidersHorizontal, X, ArrowUpDown, Loader2, Package,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { WPProduct } from '@/lib/wordpress';
 
 import Pagination from '@/components/Pagination';
@@ -104,11 +105,25 @@ function FilterPanel({ groups, onClose }: { groups: FilterGroup[]; onClose?: () 
 
 // ── Product card ──────────────────────────────────────────────────────────────
 function ProductCard({ product }: { product: WPProduct }) {
+  const router = useRouter();
   const categorySlug = product.categories?.[0]?.slug ?? 'all';
   const href  = `/products/${categorySlug}/${product.slug}`;
   const image = product.images?.[0]?.src;
   const price = product.price ? `from $${parseFloat(product.price).toFixed(2)}` : 'Get a quote';
   const rating = parseFloat(product.average_rating);
+
+  const [wishlisted,      setWishlisted]      = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  const handleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { const t = localStorage.getItem('bi_token'); if (!t) { router.push(`/login?redirect=${encodeURIComponent(href)}`); return; }
+      setWishlistLoading(true);
+      await fetch('/api/wishlist', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ product_id: product.id, action: wishlisted ? 'remove' : 'add' }) });
+      setWishlisted(v => !v);
+    } finally { setWishlistLoading(false); }
+  };
 
   return (
     <Link
@@ -122,6 +137,18 @@ function ProductCard({ product }: { product: WPProduct }) {
         {!product.on_sale && (product.acf?.enable_designer || product.acf?.enable_upload) && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-green-700 text-white text-[10px] font-bold rounded-full">Custom</span>
         )}
+        {/* Wishlist button */}
+        <button
+          onClick={handleWishlist}
+          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          className={`absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all active:scale-90
+            ${wishlisted ? "bg-red-500 text-white" : "bg-white/90 backdrop-blur-sm text-zinc-400 hover:text-red-500 hover:bg-white"}`}
+        >
+          {wishlistLoading
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            : <Heart className={`w-3.5 h-3.5 ${wishlisted ? 'fill-white' : ''}`} />
+          }
+        </button>
         {image ? (
           <Image
             src={image}

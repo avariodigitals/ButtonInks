@@ -42,9 +42,10 @@ const FeaturedSellingSection = ({ products }: FeaturedSellingSectionProps) => {
               reviewCount={p.rating_count}
               filledStars={Math.round(Number(p.average_rating))}
               price={p.price_html || `$${p.price}`}
-              minQty="Best Seller" // Since it's top selling section
+              minQty="Best Seller"
               image={p.images[0]?.src || "https://placehold.co/310x220"}
               href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
+              productId={p.id}
             />
           ))}
         </div>
