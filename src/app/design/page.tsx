@@ -151,7 +151,11 @@ function DesignContent() {
   }, [initialProductId]);
 
   useEffect(() => {
-    fetch('/api/media')
+    const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    fetch('/api/media', { headers })
       .then(r => r.json())
       .then(d => setRecentUploads(Array.isArray(d) ? d : []))
       .catch(() => {});
@@ -272,6 +276,15 @@ function DesignContent() {
           rotation: 0, opacity: 1, side
         }]);
         setSelectedId(newId);
+
+        // Refresh the media list so it reflects the new upload scoped to this user
+        const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        fetch('/api/media', { headers })
+          .then(r => r.json())
+          .then(d => setRecentUploads(Array.isArray(d) ? d : []))
+          .catch(() => {});
       } else throw new Error(result.error);
     } catch (err: unknown) {
       showNotification({ title: 'Upload Failed', message: err instanceof Error ? err.message : 'Upload failed', type: 'error' });
