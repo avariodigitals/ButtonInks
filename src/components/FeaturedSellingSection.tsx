@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import { WPProduct } from '@/lib/wordpress';
 
@@ -20,14 +21,11 @@ const FeaturedSellingSection = ({ products }: FeaturedSellingSectionProps) => {
             </div>
             <h2 className="text-xl md:text-4xl font-semibold font-['Outfit'] leading-tight md:leading-10 text-slate-900">Top-Selling Products</h2>
           </div>
-          <Link href="/categories" className="flex justify-start items-center gap-1.5 group shrink-0 pb-1 md:pb-2">
-            <span className="text-emerald-500 text-[10px] sm:text-sm font-semibold leading-5 group-hover:text-emerald-600 transition-colors">
+          <Link href="/categories" className="flex items-center gap-1.5 hover:gap-2.5 transition-all group shrink-0 pb-1 md:pb-2">
+            <span className="text-emerald-500 text-[10px] sm:text-sm font-semibold leading-5 group-hover:text-emerald-600 font-['Inter']">
               View all <span className="hidden sm:inline">products</span>
             </span>
-            <div className="w-3.5 h-3.5 relative overflow-hidden">
-              <div className="w-2 h-0 left-[2.92px] top-[7px] absolute outline outline-1 outline-offset-[-0.58px] outline-emerald-500 group-hover:outline-emerald-600 transition-colors" />
-              <div className="w-1 h-2 left-[7px] top-[2.92px] absolute outline outline-1 outline-offset-[-0.58px] outline-emerald-500 group-hover:outline-emerald-600 transition-colors" />
-            </div>
+            <ArrowRight className="w-4 h-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" strokeWidth={2.5} />
           </Link>
         </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { ChevronRight, Filter, ChevronDown, Star } from 'lucide-react';
+import { ChevronRight, Filter } from 'lucide-react';
 import {
   getProductCategories,
   getProducts,
@@ -141,16 +141,12 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
           <div className="flex-1 flex flex-col gap-6 w-full min-w-0">
 
             {/* Results bar */}
-            <div className="flex justify-between items-center">
+            <div className="hidden lg:flex justify-between items-center">
               <p className="text-sm font-normal font-['Inter']">
                 <span className="text-gray-600">Showing </span>
                 <span className="text-neutral-900 font-bold">{products.length}</span>
                 <span className="text-gray-600"> results</span>
               </p>
-              <div className="px-3 py-2 bg-white rounded-lg border border-gray-200 flex items-center gap-2 cursor-pointer hover:border-green-700 transition-colors">
-                <span className="text-gray-600 text-xs font-medium font-['Inter'] whitespace-nowrap">Sort: Most Popular</span>
-                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-              </div>
             </div>
 
             {/* Product Grid */}

@@ -2,8 +2,12 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Filter, ChevronDown, X, SlidersHorizontal } from 'lucide-react';
+import { Filter, ChevronDown, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { WPCategory, decodeHTMLEntities } from '@/lib/wordpress';
+
+const SORT_OPTIONS = [
+  'Most Popular', 'Newest', 'Price: Low to High', 'Price: High to Low', 'Best Rated',
+];
 
 interface FilterSidebarProps {
   categories: WPCategory[];
@@ -12,42 +16,34 @@ interface FilterSidebarProps {
 }
 
 export default function FilterSidebar({ categories, activeCategory, attributes }: FilterSidebarProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOpen,   setSortOpen]   = useState(false);
 
-  const FilterContent = () => (
+  const FilterContent = ({ onClose }: { onClose: () => void }) => (
     <div className="w-full flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-green-900" />
           <span className="text-neutral-900 text-base font-bold font-['Inter'] leading-6">Filters</span>
         </div>
-        <button onClick={() => setIsOpen(false)} className="lg:hidden p-2 hover:bg-gray-100 rounded-full">
-           <X className="w-5 h-5 text-gray-500" />
+        <button onClick={onClose} className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <X className="w-5 h-5 text-gray-500" />
         </button>
       </div>
 
       {/* Categories Filter */}
       <div className="py-2 border-t border-green-900/5 flex flex-col gap-4">
-        <div className="flex justify-between items-center cursor-pointer">
+        <div className="flex justify-between items-center">
           <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">Categories</span>
           <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
         </div>
         <div className="flex flex-col gap-3">
-          <Link
-            href="/categories"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-2 group"
-          >
+          <Link href="/categories" onClick={onClose} className="flex items-center gap-2 group">
             <div className={`w-4 h-4 rounded border ${!activeCategory ? 'bg-green-700 border-green-700' : 'border-zinc-500/70 bg-white'} transition-colors`} />
             <span className={`text-xs font-medium leading-5 ${!activeCategory ? 'text-green-700' : 'text-neutral-700 group-hover:text-green-700'}`}>All Products</span>
           </Link>
           {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/categories?category=${cat.slug}`}
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 group"
-            >
+            <Link key={cat.id} href={`/categories?category=${cat.slug}`} onClick={onClose} className="flex items-center gap-2 group">
               <div className={`w-4 h-4 rounded border ${activeCategory === cat.slug ? 'bg-green-700 border-green-700' : 'border-zinc-500/70 bg-white'} transition-colors`} />
               <span className={`text-xs font-medium leading-5 truncate ${activeCategory === cat.slug ? 'text-green-700' : 'text-neutral-700 group-hover:text-green-700'}`}>
                 {decodeHTMLEntities(cat.name)} ({cat.count})
@@ -60,7 +56,7 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
       {/* Dynamic Attributes */}
       {attributes.slice(0, 3).map((attr) => (
         <div key={attr.id} className="py-2 border-t border-green-900/5 flex flex-col gap-4">
-          <div className="flex justify-between items-center cursor-pointer">
+          <div className="flex justify-between items-center">
             <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">{attr.name}</span>
             <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
           </div>
@@ -72,7 +68,7 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
 
       {/* Price Range */}
       <div className="py-2 border-t border-green-900/5 flex flex-col gap-4">
-        <div className="flex justify-between items-center cursor-pointer">
+        <div className="flex justify-between items-center">
           <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">Price Range (USD)</span>
           <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
         </div>
@@ -90,40 +86,66 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <div className="lg:hidden w-full px-4 py-4 sticky top-16 bg-white border-b border-gray-100 z-30 flex justify-between items-center">
-         <span className="text-sm font-bold text-gray-900">
-           {activeCategory ? activeCategory.replace(/-/g, ' ') : 'All Products'}
-         </span>
-         <button
-           onClick={() => setIsOpen(true)}
-           className="px-4 py-2 bg-green-700 text-white rounded-xl flex items-center gap-2 shadow-lg shadow-green-900/20 active:scale-95 transition-all"
-         >
-            <SlidersHorizontal className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">Filters</span>
-         </button>
+      {/* ── Mobile sticky toolbar ── */}
+      <div className="lg:hidden w-full sticky top-[64px] z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 pt-4 pb-3 flex items-center gap-2 shadow-sm">
+        <button
+          onClick={() => setFilterOpen(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-700 text-white rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+        </button>
+        <button
+          onClick={() => setSortOpen(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-50 border border-gray-200 text-zinc-700 rounded-xl text-xs font-bold active:scale-95 transition-all"
+        >
+          <ArrowUpDown className="w-3.5 h-3.5" /> Sort
+        </button>
       </div>
 
-      {/* Desktop Sidebar */}
+      {/* ── Mobile sort bottom sheet ── */}
+      {sortOpen && (
+        <div className="lg:hidden fixed inset-0 z-[100]" onClick={() => setSortOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
+            <p className="text-sm font-bold text-zinc-900 mb-4 font-['Inter']">Sort By</p>
+            {SORT_OPTIONS.map(opt => (
+              <button key={opt} onClick={() => setSortOpen(false)}
+                className="w-full text-left py-3.5 text-sm text-zinc-700 border-b border-gray-100 last:border-0 font-['Inter'] hover:text-green-700 transition-colors">
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Desktop sidebar ── */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col gap-6 sticky top-24">
         <div className="w-full p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-6">
-           <FilterContent />
+          <FilterContent onClose={() => {}} />
         </div>
       </aside>
 
-      {/* Mobile Sidebar Overlay */}
-      {isOpen && (
+      {/* ── Mobile filter bottom sheet ── */}
+      {filterOpen && (
         <div className="fixed inset-0 z-[100] lg:hidden">
-           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
-           <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-500">
-              <FilterContent />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setFilterOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] flex flex-col max-h-[88dvh]">
+            <div className="flex justify-center pt-4 pb-2 shrink-0">
+              <div className="w-10 h-1.5 bg-gray-200 rounded-full" />
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 pb-4 no-scrollbar">
+              <FilterContent onClose={() => setFilterOpen(false)} />
+            </div>
+            <div className="px-6 pb-6 pt-3 shrink-0 border-t border-gray-100">
               <button
-                onClick={() => setIsOpen(false)}
-                className="w-full mt-8 py-4 bg-green-700 text-white rounded-2xl font-bold shadow-xl"
+                onClick={() => setFilterOpen(false)}
+                className="w-full py-4 bg-green-700 hover:bg-green-800 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-[0.98] transition-all"
               >
                 Apply Filters
               </button>
-           </div>
+            </div>
+          </div>
         </div>
       )}
     </>

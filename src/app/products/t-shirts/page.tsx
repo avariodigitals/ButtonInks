@@ -191,8 +191,9 @@ function ProductCard({ product }: { product: WPProduct }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function TshirtsPage() {
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [sortOpen,   setSortOpen]   = useState(false);
+  const [filterOpen,      setFilterOpen]      = useState(false);
+  const [sortOpenMobile,  setSortOpenMobile]  = useState(false);
+  const [sortOpenDesktop, setSortOpenDesktop] = useState(false);
 
   // ── Live WP products ────────────────────────────────────────────────────
   const [products,  setProducts]  = useState<WPProduct[]>([]);
@@ -298,7 +299,7 @@ export default function TshirtsPage() {
           Filters
         </button>
         <button
-          onClick={() => setSortOpen(v => !v)}
+          onClick={() => setSortOpenMobile(v => !v)}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-50 border border-gray-200 text-zinc-700 rounded-xl text-xs font-bold active:scale-95 transition-all"
         >
           <ArrowUpDown className="w-3.5 h-3.5" />
@@ -307,17 +308,17 @@ export default function TshirtsPage() {
       </div>
 
       {/* ── Sort sheet (mobile) ── */}
-      {sortOpen && (
-        <div className="lg:hidden fixed inset-0 z-50" onClick={() => setSortOpen(false)}>
-          <div className="absolute inset-0 bg-black/40" />
+      {sortOpenMobile && (
+        <div className="lg:hidden fixed inset-0 z-50" onClick={() => setSortOpenMobile(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
             <p className="text-sm font-bold text-zinc-900 mb-4 font-['Inter']">Sort By</p>
             {['Most Popular', 'Newest', 'Price: Low to High', 'Price: High to Low', 'Best Rated'].map(opt => (
               <button
                 key={opt}
-                onClick={() => setSortOpen(false)}
-                className="w-full text-left py-3.5 text-sm text-zinc-700 border-b border-gray-50 last:border-0 font-['Inter'] hover:text-green-700 transition-colors"
+                onClick={() => setSortOpenMobile(false)}
+                className="w-full text-left py-3.5 text-sm text-zinc-700 border-b border-gray-100 last:border-0 font-['Inter'] hover:text-green-700 transition-colors"
               >
                 {opt}
               </button>
@@ -349,19 +350,19 @@ export default function TshirtsPage() {
             </p>
             <div className="relative">
               <button
-                onClick={() => setSortOpen(v => !v)}
+                onClick={() => setSortOpenDesktop(v => !v)}
                 className="px-3 py-2 bg-white rounded-lg border border-gray-200 flex items-center gap-2 text-xs font-medium text-gray-600 hover:border-green-500 hover:text-green-700 transition-all"
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
                 Sort: Most Popular
                 <ChevronDown className="w-3 h-3" />
               </button>
-              {sortOpen && (
+              {sortOpenDesktop && (
                 <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl border border-gray-100 shadow-xl z-20 overflow-hidden">
                   {['Most Popular', 'Newest', 'Price: Low to High', 'Price: High to Low', 'Best Rated'].map(opt => (
                     <button
                       key={opt}
-                      onClick={() => setSortOpen(false)}
+                      onClick={() => setSortOpenDesktop(false)}
                       className="w-full text-left px-4 py-2.5 text-xs text-zinc-700 hover:bg-green-50 hover:text-green-700 font-['Inter'] transition-colors"
                     >
                       {opt}
