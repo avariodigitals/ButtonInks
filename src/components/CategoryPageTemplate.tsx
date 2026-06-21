@@ -4,10 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  ChevronRight, Filter, ChevronDown, Heart, Star,
-  SlidersHorizontal, X, ArrowUpDown, Loader2, Package,
+  ChevronRight, Filter, ChevronDown,
+  Star, SlidersHorizontal, X, ArrowUpDown, Loader2, Package,
 } from 'lucide-react';
 import { WPProduct } from '@/lib/wordpress';
+
+import Pagination from '@/components/Pagination';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -109,7 +111,10 @@ function ProductCard({ product }: { product: WPProduct }) {
   const rating = parseFloat(product.average_rating);
 
   return (
-    <div className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.06)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group active:scale-[0.98] transition-all">
+    <Link
+      href={href}
+      className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.06)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group active:scale-[0.98] transition-all hover:shadow-md"
+    >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50">
         {product.on_sale && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">Sale</span>
@@ -117,9 +122,6 @@ function ProductCard({ product }: { product: WPProduct }) {
         {!product.on_sale && (product.acf?.enable_designer || product.acf?.enable_upload) && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-green-700 text-white text-[10px] font-bold rounded-full">Custom</span>
         )}
-        <button className="absolute top-3 right-3 z-10 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors" aria-label="Wishlist">
-          <Heart className="w-3.5 h-3.5 text-zinc-400 hover:text-red-500 transition-colors" />
-        </button>
         {image ? (
           <Image
             src={image}
@@ -161,12 +163,12 @@ function ProductCard({ product }: { product: WPProduct }) {
               <span className="text-gray-400 text-[10px] font-['Inter']">min {product.acf.bulk_pricing[0].min_qty}</span>
             )}
           </div>
-          <Link href={href} className="px-3.5 py-2 bg-green-700 hover:bg-green-800 active:scale-95 rounded-xl text-white text-xs font-bold font-['Inter'] transition-all shadow-sm shadow-green-900/20">
+          <span className="px-3.5 py-2 bg-green-700 group-hover:bg-green-800 rounded-xl text-white text-xs font-bold font-['Inter'] transition-colors shadow-sm shadow-green-900/20">
             Shop
-          </Link>
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -179,20 +181,34 @@ export default function CategoryPageTemplate({ config }: { config: CategoryPageC
   const [products,   setProducts]   = useState<WPProduct[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [loadError,  setLoadError]  = useState(false);
+  const [page,       setPage]       = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const PER_PAGE = 24;
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (pageNum = 1) => {
     setLoading(true);
     setLoadError(false);
     try {
-      const res = await fetch(`/api/products-list?category=${wpCategorySlug}&per_page=24`);
+      const res = await fetch(
+        `/api/products-list?category=${wpCategorySlug}&per_page=${PER_PAGE}&page=${pageNum}`
+      );
       const data = await res.json();
+      const tp = parseInt(res.headers.get('X-WP-TotalPages') ?? '1');
+      setTotalPages(isNaN(tp) ? 1 : tp);
 
       if (res.ok && Array.isArray(data) && data.length > 0) {
         setProducts(data);
-      } else {
-        const fallbackRes = await fetch(`/api/products-list?search=${encodeURIComponent(searchFallback)}&per_page=24`);
+      } else if (pageNum === 1) {
+        // First page empty — try keyword fallback
+        const fallbackRes = await fetch(
+          `/api/products-list?search=${encodeURIComponent(searchFallback)}&per_page=${PER_PAGE}&page=1`
+        );
         const fallbackData = await fallbackRes.json();
+        const fbTp = parseInt(fallbackRes.headers.get('X-WP-TotalPages') ?? '1');
+        setTotalPages(isNaN(fbTp) ? 1 : fbTp);
         setProducts(fallbackRes.ok && Array.isArray(fallbackData) ? fallbackData : []);
+      } else {
+        setProducts([]);
       }
     } catch {
       setLoadError(true);
@@ -202,7 +218,13 @@ export default function CategoryPageTemplate({ config }: { config: CategoryPageC
     }
   }, [wpCategorySlug, searchFallback]);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  useEffect(() => { fetchProducts(1); }, [fetchProducts]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    fetchProducts(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <main className="w-full flex flex-col items-center bg-white">
@@ -328,7 +350,7 @@ export default function CategoryPageTemplate({ config }: { config: CategoryPageC
                 <Package className="w-7 h-7 text-red-300" />
               </div>
               <p className="text-zinc-500 font-semibold font-['Inter']">Could not load products right now.</p>
-              <button onClick={fetchProducts} className="px-5 py-2.5 bg-green-700 text-white text-sm font-bold rounded-xl hover:bg-green-800 transition-colors">Try again</button>
+              <button onClick={() => fetchProducts(page)} className="px-5 py-2.5 bg-green-700 text-white text-sm font-bold rounded-xl hover:bg-green-800 transition-colors">Try again</button>
             </div>
           )}
 
@@ -345,9 +367,16 @@ export default function CategoryPageTemplate({ config }: { config: CategoryPageC
 
           {/* Grid */}
           {!loading && !loadError && products.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {products.map(p => <ProductCard key={p.id} product={p} />)}
-            </div>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {products.map(p => <ProductCard key={p.id} product={p} />)}
+              </div>
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </>
           )}
         </div>
       </div>

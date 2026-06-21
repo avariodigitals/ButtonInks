@@ -11,6 +11,15 @@ import { WPProduct, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
 
+// ── Light color detection (for checkmark contrast) ───────────────────────────
+function isLightColor(hex: string): boolean {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  // Perceived luminance formula
+  return (r * 299 + g * 587 + b * 114) / 1000 > 160;
+}
+
 export default function ProductDetailView({
   product,
   categorySlug,
@@ -35,7 +44,45 @@ export default function ProductDetailView({
     product.acf?.production_options?.[0]?.type || 'regular'
   );
 
-  // ── ACF flags ─────────────────────────────────────────────────────────────
+  // ── Color name → hex map ─────────────────────────────────────────────────
+  const COLOR_MAP: Record<string, string> = {
+    // Neutrals
+    'black':          '#111827', 'white':         '#F9FAFB', 'grey':           '#9CA3AF',
+    'gray':           '#9CA3AF', 'charcoal':      '#374151', 'dark heather':   '#4B5563',
+    'heather grey':   '#D1D5DB', 'sport grey':    '#E5E7EB', 'ash':            '#9CA3AF',
+    'silver':         '#C0C0C0', 'natural':       '#FAF5EB',
+    // Blues
+    'navy':           '#1E3A5F', 'royal blue':    '#1D4ED8', 'sapphire':       '#0F52BA',
+    'light blue':     '#BFDBFE', 'sky blue':      '#38BDF8', 'columbia blue':  '#9EC8E8',
+    'carolina blue':  '#56A0D3', 'powder blue':   '#B0E0E6', 'tour blue':      '#0369A1',
+    // Greens
+    'forest green':   '#166534', 'irish green':   '#15803D', 'kelly green':    '#22C55E',
+    'military green': '#4B5320', 'olive':         '#6B7280', 'lime':           '#84CC16',
+    // Reds & Pinks
+    'red':            '#DC2626', 'cardinal':      '#9F1239', 'maroon':         '#7F1D1D',
+    'burgundy':       '#800020', 'cranberry':     '#9B1B30', 'cherry red':     '#DC143C',
+    'hot pink':       '#EC4899', 'light pink':    '#FBD5E4', 'pink':           '#F9A8D4',
+    'coral':          '#F87171',
+    // Oranges & Yellows
+    'orange':         '#EA580C', 'gold':          '#D97706', 'yellow':         '#FBBF24',
+    'sand':           '#D6C9A0', 'daisy':         '#FDE047',
+    // Purples
+    'purple':         '#7C3AED', 'violet':        '#8B5CF6', 'plum':           '#9D174D',
+    'lavender':       '#C4B5FD',
+    // Browns
+    'brown':          '#92400E', 'chocolate':     '#3B1F0A', 'tan':            '#D2B48C',
+    // Other
+    'mint':           '#6EE7B7', 'teal':          '#0D9488', 'cyan':           '#06B6D4',
+  };
+
+  function getColorHex(name: string): string | null {
+    return COLOR_MAP[name.toLowerCase().trim()] ?? null;
+  }
+
+  // ── Available colors from ACF (plugin field) or WC attribute ─────────────
+  const acfColors = product.acf?.available_colors ?? [];
+
+
   const enableDesigner = product.acf?.enable_designer === true;
   const enableUpload   = product.acf?.enable_upload   === true;
   const buyAsIs        = product.acf?.buy_as_is       === true;
@@ -62,7 +109,13 @@ export default function ProductDetailView({
   };
 
   const unitPrice        = getFinalUnitPrice();
-  const regularUnitPrice = parseFloat(product.regular_price || product.price || '0');
+  const regularUnitPrice = parseFloat(product.regular_price || '0');
+  const currentPrice     = parseFloat(product.price || '0');
+  // Only show strikethrough if WP explicitly marks it on sale AND regular > current
+  const isActuallyOnSale = product.on_sale === true
+    && regularUnitPrice > 0
+    && currentPrice > 0
+    && regularUnitPrice > currentPrice;
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
@@ -321,35 +374,89 @@ export default function ProductDetailView({
             </div>
 
             {/* Attributes (Color, Size etc) */}
-            {product.attributes.map((attr, idx) => (
-              <div key={`${attr.name}-${idx}`} className="flex flex-col gap-3">
-                <span className="text-slate-900 text-sm font-bold font-['Inter'] uppercase tracking-wide">
-                  {attr.name}
-                  {selectedAttributes[attr.name] && (
-                    <span className="ml-2 text-green-700 normal-case font-semibold">— {selectedAttributes[attr.name]}</span>
-                  )}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {attr.options.map(option => {
-                    const isSelected = selectedAttributes[attr.name] === option;
-                    const isColor    = attr.name.toLowerCase() === 'color';
-                    return (
-                      <button
-                        key={option}
-                        onClick={() => handleAttributeSelect(attr.name, option)}
-                        className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
-                          isSelected
-                            ? 'border-green-700 bg-green-50 text-green-700 ring-2 ring-green-700/20'
-                            : 'border-gray-200 hover:border-green-700 text-gray-700 bg-white'
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    );
-                  })}
+            {product.attributes.map((attr, idx) => {
+              const isColor = attr.name.toLowerCase() === 'color';
+              // For color: merge WC attribute options with ACF available_colors (ACF wins if present)
+              const colorOptions = isColor && acfColors.length > 0 ? acfColors : attr.options;
+              const displayOptions = isColor ? colorOptions : attr.options;
+
+              return (
+                <div key={`${attr.name}-${idx}`} className="flex flex-col gap-3">
+                  <span className="text-slate-900 text-sm font-bold font-['Inter'] uppercase tracking-wide">
+                    {attr.name}
+                    {selectedAttributes[attr.name] && (
+                      <span className="ml-2 text-green-700 normal-case font-semibold">— {selectedAttributes[attr.name]}</span>
+                    )}
+                  </span>
+
+                  <div className="flex flex-wrap gap-2.5">
+                    {displayOptions.map(option => {
+                      const isSelected = selectedAttributes[attr.name] === option;
+
+                      if (isColor) {
+                        const hex = getColorHex(option);
+                        const isLight = hex ? isLightColor(hex) : false;
+
+                        return hex ? (
+                          // ── Circular color swatch ──
+                          <button
+                            key={option}
+                            title={option}
+                            onClick={() => handleAttributeSelect(attr.name, option)}
+                            className={`relative w-9 h-9 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
+                              isSelected
+                                ? 'border-green-700 scale-110 shadow-md'
+                                : 'border-transparent hover:scale-105 hover:border-gray-300'
+                            }`}
+                            style={{ backgroundColor: hex }}
+                            aria-label={option}
+                            aria-pressed={isSelected}
+                          >
+                            {isSelected && (
+                              <span className={`absolute inset-0 flex items-center justify-center text-xs font-black ${isLight ? 'text-gray-800' : 'text-white'}`}>
+                                ✓
+                              </span>
+                            )}
+                            {/* White border ring for white/very-light swatches */}
+                            {isLight && (
+                              <span className="absolute inset-0 rounded-full ring-1 ring-gray-200" />
+                            )}
+                          </button>
+                        ) : (
+                          // ── Fallback pill for unknown color names ──
+                          <button
+                            key={option}
+                            onClick={() => handleAttributeSelect(attr.name, option)}
+                            className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
+                              isSelected
+                                ? 'border-green-700 bg-green-50 text-green-700 ring-2 ring-green-700/20'
+                                : 'border-gray-200 hover:border-green-700 text-gray-700 bg-white'
+                            }`}
+                          >
+                            {option}
+                          </button>
+                        );
+                      }
+
+                      // ── Non-color attribute pill ──
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => handleAttributeSelect(attr.name, option)}
+                          className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
+                            isSelected
+                              ? 'border-green-700 bg-green-50 text-green-700 ring-2 ring-green-700/20'
+                              : 'border-gray-200 hover:border-green-700 text-gray-700 bg-white'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Production Speed */}
             {product.acf?.production_options && product.acf.production_options.length > 0 && (
@@ -427,7 +534,7 @@ export default function ProductDetailView({
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total</span>
                 <div className="flex items-baseline gap-2">
-                  {product.on_sale && (
+                  {isActuallyOnSale && (
                     <span className="text-gray-400 text-base font-normal line-through">{fmt(regularUnitPrice * quantity)}</span>
                   )}
                   <span className="text-green-700 text-3xl font-extrabold font-['Outfit']">{fmt(unitPrice * quantity)}</span>

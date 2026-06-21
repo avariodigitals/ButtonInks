@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  ChevronRight, Filter, ChevronDown, Heart, Star,
+  ChevronRight, Filter, ChevronDown, Star,
   SlidersHorizontal, X, ArrowUpDown, Loader2, Package,
 } from 'lucide-react';
 import { WPProduct } from '@/lib/wordpress';
@@ -117,8 +117,10 @@ function ProductCard({ product }: { product: WPProduct }) {
   const isNew = product.acf?.enable_designer || product.acf?.enable_upload;
 
   return (
-    <div className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.06)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group active:scale-[0.98] transition-all">
-
+    <Link
+      href={href}
+      className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.06)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group active:scale-[0.98] transition-all hover:shadow-md"
+    >
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50">
         {product.on_sale && (
@@ -127,12 +129,6 @@ function ProductCard({ product }: { product: WPProduct }) {
         {isNew && !product.on_sale && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-green-700 text-white text-[10px] font-bold rounded-full">Custom</span>
         )}
-        <button
-          className="absolute top-3 right-3 z-10 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
-          aria-label="Add to wishlist"
-        >
-          <Heart className="w-3.5 h-3.5 text-zinc-400 hover:text-red-500 transition-colors" />
-        </button>
         {image ? (
           <Image
             src={image}
@@ -184,15 +180,12 @@ function ProductCard({ product }: { product: WPProduct }) {
               </span>
             )}
           </div>
-          <Link
-            href={href}
-            className="px-3.5 py-2 bg-green-700 hover:bg-green-800 active:scale-95 rounded-xl text-white text-xs font-bold font-['Inter'] transition-all shadow-sm shadow-green-900/20"
-          >
+          <span className="px-3.5 py-2 bg-green-700 group-hover:bg-green-800 rounded-xl text-white text-xs font-bold font-['Inter'] transition-colors shadow-sm shadow-green-900/20">
             Shop
-          </Link>
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
