@@ -3,7 +3,7 @@
  * Plugin Name: ButtonInks Core
  * Description: Headless core functionality for ButtonInks Next.js integration.
  *              Registers all custom product meta fields and exposes them via REST API.
- * Version: 2.0.0
+ * Version: 2.1.0
  * Author: Avario Digitals
  */
 
@@ -26,41 +26,42 @@ class ButtonInks_Core {
     public function register_product_meta() {
 
         $fields = [
+            // Customisation flags — stored as '1'/'0' strings
+            '_bi_enable_designer'    => 'string',
+            '_bi_enable_upload'      => 'string',
+            '_bi_buy_as_is'          => 'string',
 
-            // ── Product Type Flags ─────────────────────────────────────────
-            '_bi_enable_designer'   => 'boolean', // Design Your Own
-            '_bi_enable_upload'     => 'boolean', // Upload Design
-            '_bi_buy_as_is'         => 'boolean', // Buy As Is (no customisation)
+            // Delivery speed
+            '_bi_enable_regular'     => 'string',
+            '_bi_enable_urgent'      => 'string',
+            '_bi_urgent_extra_cost'  => 'string',
+            '_bi_regular_days'       => 'string',
+            '_bi_urgent_days'        => 'string',
 
-            // ── Available Colors (comma-separated list) ────────────────────
-            '_bi_available_colors'  => 'string',  // e.g. "Black,Navy,White,Red"
+            // Bulk pricing
+            '_bi_enable_bulk'        => 'string',
+            '_bi_bulk_base_price'    => 'string',
+            '_bi_bulk_tiers'         => 'string',  // JSON string
 
-            // ── Production Options (JSON) ──────────────────────────────────
-            // [{"type":"regular","extra_cost":"0","delivery_days":"3-5"},
-            //  {"type":"urgent","extra_cost":"15","delivery_days":"1-2"}]
-            '_bi_production_options' => 'string',
+            // Artwork notes
+            '_bi_print_notes'        => 'string',
 
-            // ── Bulk Pricing Tiers (JSON) ──────────────────────────────────
-            // [{"min_qty":12,"discount_price":"18.00"},
-            //  {"min_qty":50,"discount_price":"15.00"}]
-            '_bi_bulk_pricing'      => 'string',
-
-            // ── Print / Artwork Notes shown on product page ────────────────
-            '_bi_print_notes'       => 'string',
+            // Downloadable templates — JSON string
+            '_bi_download_templates' => 'string',
         ];
 
         foreach ($fields as $key => $type) {
             register_post_meta('product', $key, [
-                'type'         => $type,
-                'single'       => true,
-                'show_in_rest' => true,
+                'type'          => $type,
+                'single'        => true,
+                'show_in_rest'  => true,
                 'auth_callback' => function() { return current_user_can('edit_posts'); },
             ]);
         }
     }
 
     // =========================================================================
-    // 2. META BOX — shown on the product edit screen in WP Admin
+    // 2. META BOX
     // =========================================================================
 
     public function add_product_meta_boxes() {
@@ -68,81 +69,78 @@ class ButtonInks_Core {
             'buttoninks_product_settings',
             'ButtonInks Product Settings by Avario Digitals',
             [$this, 'render_meta_box'],
-            'product',
-            'normal',
-            'high'
+            'product', 'normal', 'high'
         );
     }
 
     public function render_meta_box($post) {
-
         wp_nonce_field('buttoninks_save_meta', 'buttoninks_nonce');
 
         $enable_designer    = get_post_meta($post->ID, '_bi_enable_designer',    true);
         $enable_upload      = get_post_meta($post->ID, '_bi_enable_upload',      true);
         $buy_as_is          = get_post_meta($post->ID, '_bi_buy_as_is',          true);
-        $colors             = get_post_meta($post->ID, '_bi_available_colors',   true);
-        $production_options = get_post_meta($post->ID, '_bi_production_options', true);
-        $bulk_pricing       = get_post_meta($post->ID, '_bi_bulk_pricing',       true);
+
+        $enable_regular     = get_post_meta($post->ID, '_bi_enable_regular',     true);
+        $enable_urgent      = get_post_meta($post->ID, '_bi_enable_urgent',      true);
+        $urgent_cost        = get_post_meta($post->ID, '_bi_urgent_extra_cost',  true) ?: '15';
+        $regular_days       = get_post_meta($post->ID, '_bi_regular_days',       true) ?: '3-5';
+        $urgent_days        = get_post_meta($post->ID, '_bi_urgent_days',        true) ?: '1-2';
+
+        $enable_bulk        = get_post_meta($post->ID, '_bi_enable_bulk',        true);
+        $bulk_base          = get_post_meta($post->ID, '_bi_bulk_base_price',    true);
+        $bulk_tiers_raw     = get_post_meta($post->ID, '_bi_bulk_tiers',         true) ?: '[]';
+        $bulk_tiers         = json_decode($bulk_tiers_raw, true) ?: [];
+
         $print_notes        = get_post_meta($post->ID, '_bi_print_notes',        true);
+        $dl_templates_raw   = get_post_meta($post->ID, '_bi_download_templates', true) ?: '[]';
+        $dl_templates       = json_decode($dl_templates_raw, true) ?: [];
 
-        $production_placeholder = '[{"type":"regular","extra_cost":"0","delivery_days":"3-5"},{"type":"urgent","extra_cost":"15","delivery_days":"1-2"}]';
-        $bulk_placeholder       = '[{"min_qty":12,"discount_price":"18.00"},{"min_qty":50,"discount_price":"15.00"},{"min_qty":100,"discount_price":"13.00"}]';
-
-        $color_map = [
-            'black'        => '#111827', 'navy'         => '#1e3a5f',
-            'white'        => '#f9fafb', 'red'          => '#dc2626',
-            'forest green' => '#166534', 'royal blue'   => '#1d4ed8',
-            'grey'         => '#6b7280', 'gray'         => '#6b7280',
-            'maroon'       => '#7f1d1d', 'orange'       => '#ea580c',
-            'purple'       => '#7e22ce', 'yellow'       => '#ca8a04',
-            'pink'         => '#db2777', 'light blue'   => '#bfdbfe',
-            'heather grey' => '#d1d5db', 'ash'          => '#9ca3af',
-            'cardinal'     => '#9f1239', 'sport grey'   => '#e5e7eb',
-            'dark heather' => '#4b5563', 'sapphire'     => '#1d4ed8',
-            'irish green'  => '#15803d', 'charcoal'     => '#374151',
-            'gold'         => '#b45309', 'light pink'   => '#fbcfe8',
-            'sand'         => '#d6c9a0', 'mint'         => '#6ee7b7',
-        ];
+        // Ensure we always have 3 tier rows in the UI
+        while (count($bulk_tiers) < 3) {
+            $bulk_tiers[] = ['min_qty' => '', 'pct' => ''];
+        }
         ?>
 
         <style>
-            /* Scoped to our meta box only */
-            #buttoninks_product_settings .bi-wrap       { padding: 4px 0 8px; }
-            #buttoninks_product_settings .bi-section    { border-top: 1px solid #dcdcde; padding: 18px 0 4px; }
-            #buttoninks_product_settings .bi-section:first-child { border-top: none; padding-top: 4px; }
-            #buttoninks_product_settings .bi-label      { display: block; font-weight: 600; font-size: 12px;
-                                                          text-transform: uppercase; letter-spacing: .04em;
-                                                          color: #1d2327; margin-bottom: 10px; }
-            #buttoninks_product_settings .bi-option     { display: flex; align-items: flex-start; gap: 10px;
-                                                          margin-bottom: 10px; }
-            #buttoninks_product_settings .bi-option input[type=checkbox] { margin-top: 2px; flex-shrink: 0; }
-            #buttoninks_product_settings .bi-option-text span   { display: block; font-size: 13px; font-weight: 600;
-                                                                   color: #1d2327; line-height: 1.4; }
-            #buttoninks_product_settings .bi-option-text small  { display: block; font-size: 11px; color: #646970;
-                                                                   margin-top: 1px; }
-            #buttoninks_product_settings .bi-badge      { display: inline-block; padding: 1px 7px; border-radius: 3px;
-                                                          font-size: 10px; font-weight: 700; margin-left: 6px;
-                                                          vertical-align: middle; text-transform: uppercase;
-                                                          letter-spacing: .04em; }
-            #buttoninks_product_settings .bi-badge-green { background: #edfaef; color: #1a7c34; border: 1px solid #c3e6cb; }
-            #buttoninks_product_settings .bi-badge-blue  { background: #eef3fa; color: #2271b1; border: 1px solid #b8d4ef; }
-            #buttoninks_product_settings .bi-badge-amber { background: #fcf7e8; color: #7a5200; border: 1px solid #f2d675; }
+            #buttoninks_product_settings .bi-wrap      { padding:4px 0 8px; }
+            #buttoninks_product_settings .bi-section   { border-top:1px solid #dcdcde; padding:18px 0 4px; }
+            #buttoninks_product_settings .bi-section:first-child { border-top:none; padding-top:4px; }
+            #buttoninks_product_settings .bi-label     { display:block; font-weight:600; font-size:12px;
+                                                         text-transform:uppercase; letter-spacing:.04em;
+                                                         color:#1d2327; margin-bottom:10px; }
+            #buttoninks_product_settings .bi-option    { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+            #buttoninks_product_settings .bi-option input[type=checkbox] { margin-top:2px; flex-shrink:0; }
+            #buttoninks_product_settings .bi-option-text span  { display:block; font-size:13px; font-weight:600; color:#1d2327; line-height:1.4; }
+            #buttoninks_product_settings .bi-option-text small { display:block; font-size:11px; color:#646970; margin-top:1px; }
+            #buttoninks_product_settings .bi-badge     { display:inline-block; padding:1px 7px; border-radius:3px;
+                                                         font-size:10px; font-weight:700; margin-left:6px;
+                                                         vertical-align:middle; text-transform:uppercase; letter-spacing:.04em; }
+            #buttoninks_product_settings .bi-badge-green  { background:#edfaef; color:#1a7c34; border:1px solid #c3e6cb; }
+            #buttoninks_product_settings .bi-badge-blue   { background:#eef3fa; color:#2271b1; border:1px solid #b8d4ef; }
+            #buttoninks_product_settings .bi-badge-amber  { background:#fcf7e8; color:#7a5200; border:1px solid #f2d675; }
+            #buttoninks_product_settings .bi-badge-red    { background:#fce8e8; color:#a00; border:1px solid #f5c6c6; }
             #buttoninks_product_settings input[type=text],
-            #buttoninks_product_settings textarea        { width: 100%; font-size: 13px; }
-            #buttoninks_product_settings textarea        { min-height: 72px; font-family: Consolas, monospace;
-                                                           font-size: 12px; resize: vertical; }
-            #buttoninks_product_settings .bi-swatches    { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-            #buttoninks_product_settings .bi-swatch      { width: 22px; height: 22px; border-radius: 50%;
-                                                           border: 2px solid rgba(0,0,0,.12); cursor: default; }
-            #buttoninks_product_settings .bi-checklist   { margin: 16px 0 0; padding: 12px 14px;
-                                                           background: #f6f7f7; border: 1px solid #dcdcde;
-                                                           border-left: 3px solid #2271b1; }
-            #buttoninks_product_settings .bi-checklist p { margin: 0 0 6px; font-size: 11px; font-weight: 700;
-                                                           text-transform: uppercase; letter-spacing: .05em;
-                                                           color: #2271b1; }
-            #buttoninks_product_settings .bi-checklist ol { margin: 0; padding-left: 16px; }
-            #buttoninks_product_settings .bi-checklist li { font-size: 12px; color: #1d2327; line-height: 2; }
+            #buttoninks_product_settings input[type=number] { font-size:13px; }
+            #buttoninks_product_settings textarea       { width:100%; min-height:60px; font-family:Consolas,monospace;
+                                                          font-size:12px; resize:vertical; }
+            #buttoninks_product_settings .bi-indent     { margin-left:28px; margin-top:8px; padding:12px 14px;
+                                                          background:#f6f7f7; border:1px solid #e2e4e7; border-radius:4px; }
+            #buttoninks_product_settings .bi-row        { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+            #buttoninks_product_settings .bi-row label  { font-size:12px; color:#1d2327; font-weight:600; min-width:80px; }
+            #buttoninks_product_settings .bi-row input  { width:80px; }
+            #buttoninks_product_settings .bi-tier-row   { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:6px; align-items:center; }
+            #buttoninks_product_settings .bi-tier-row label { font-size:11px; color:#646970; }
+            #buttoninks_product_settings .bi-tier-row input { width:100%; }
+            #buttoninks_product_settings .bi-tpl-row   { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+            #buttoninks_product_settings .bi-tpl-row select { font-size:12px; }
+            #buttoninks_product_settings .bi-checklist { margin:16px 0 0; padding:12px 14px;
+                                                         background:#f6f7f7; border:1px solid #dcdcde; border-left:3px solid #2271b1; }
+            #buttoninks_product_settings .bi-checklist p  { margin:0 0 6px; font-size:11px; font-weight:700;
+                                                             text-transform:uppercase; letter-spacing:.05em; color:#2271b1; }
+            #buttoninks_product_settings .bi-checklist ol { margin:0; padding-left:16px; }
+            #buttoninks_product_settings .bi-checklist li { font-size:12px; color:#1d2327; line-height:2; }
+            #buttoninks_product_settings .bi-note      { font-size:11px; color:#646970; margin:5px 0 0; }
+            .bi-hidden { display:none !important; }
         </style>
 
         <div class="bi-wrap">
@@ -185,52 +183,106 @@ class ButtonInks_Core {
                 </div>
             </div>
 
-            <!-- SECTION: Colors -->
+            <!-- NOTE: Colors are now controlled by WooCommerce Attributes (Color attribute on the product) -->
             <div class="bi-section">
                 <span class="bi-label">Available Colors</span>
-                <input type="text" name="_bi_available_colors"
-                       value="<?php echo esc_attr($colors); ?>"
-                       placeholder="e.g. Black, Navy, White, Red, Forest Green" />
-                <p style="margin:5px 0 0;font-size:11px;color:#646970;">
-                    Separate each color with a comma. Match the colors listed on the reference site.
+                <p class="bi-note" style="color:#2271b1;font-size:12px;">
+                    ℹ️ Colors are now managed via the <strong>Attributes</strong> tab — add a &ldquo;Color&rdquo; attribute there.
+                    The frontend will automatically display swatches based on those values.
                 </p>
-                <?php if ($colors): ?>
-                    <div class="bi-swatches">
-                        <?php foreach (explode(',', $colors) as $c):
-                            $c   = trim(strtolower($c));
-                            $hex = $color_map[$c] ?? '#e5e7eb';
-                        ?>
-                            <div class="bi-swatch" style="background:<?php echo esc_attr($hex); ?>"
-                                 title="<?php echo esc_attr(ucwords($c)); ?>"></div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
             </div>
 
-            <!-- SECTION: Delivery Speed -->
+            <!-- SECTION: Delivery Speed Options -->
             <div class="bi-section">
                 <span class="bi-label">Delivery Speed Options</span>
-                <textarea name="_bi_production_options"
-                          placeholder="<?php echo esc_attr($production_placeholder); ?>"><?php
-                    echo esc_textarea($production_options);
-                ?></textarea>
-                <p style="margin:5px 0 0;font-size:11px;color:#646970;">
-                    Leave blank to use the defaults (Standard 3-5 days / Urgent 1-2 days +$15).
-                    Only edit if this product has different delivery times.
-                </p>
+                <p class="bi-note">Enable the speed options available for this product. Defaults are shown — only change if this product is different.</p>
+
+                <div class="bi-option" style="margin-top:10px;">
+                    <input type="checkbox" name="_bi_enable_regular" value="1" id="bi_regular"
+                           <?php checked($enable_regular, '1'); ?> onchange="biToggle('bi_regular_opts',this.checked)" />
+                    <div class="bi-option-text">
+                        <label for="bi_regular">
+                            <span>Standard / Regular <em class="bi-badge bi-badge-green">Free</em></span>
+                            <small>Default: 3–5 business days, no extra cost.</small>
+                        </label>
+                    </div>
+                </div>
+                <div id="bi_regular_opts" class="bi-indent <?php echo ($enable_regular === '1') ? '' : 'bi-hidden'; ?>">
+                    <div class="bi-row">
+                        <label>Delivery days</label>
+                        <input type="text" name="_bi_regular_days" value="<?php echo esc_attr($regular_days); ?>" placeholder="3-5" style="width:70px;" />
+                        <span class="bi-note" style="margin:0;">business days</span>
+                    </div>
+                </div>
+
+                <div class="bi-option" style="margin-top:8px;">
+                    <input type="checkbox" name="_bi_enable_urgent" value="1" id="bi_urgent"
+                           <?php checked($enable_urgent, '1'); ?> onchange="biToggle('bi_urgent_opts',this.checked)" />
+                    <div class="bi-option-text">
+                        <label for="bi_urgent">
+                            <span>Urgent / Express <em class="bi-badge bi-badge-red">Paid</em></span>
+                            <small>Default: 1–2 business days, +$15.</small>
+                        </label>
+                    </div>
+                </div>
+                <div id="bi_urgent_opts" class="bi-indent <?php echo ($enable_urgent === '1') ? '' : 'bi-hidden'; ?>">
+                    <div class="bi-row">
+                        <label>Extra cost ($)</label>
+                        <input type="number" name="_bi_urgent_extra_cost" value="<?php echo esc_attr($urgent_cost); ?>" placeholder="15" min="0" step="0.01" />
+                    </div>
+                    <div class="bi-row">
+                        <label>Delivery days</label>
+                        <input type="text" name="_bi_urgent_days" value="<?php echo esc_attr($urgent_days); ?>" placeholder="1-2" style="width:70px;" />
+                        <span class="bi-note" style="margin:0;">business days</span>
+                    </div>
+                </div>
             </div>
 
             <!-- SECTION: Bulk Pricing -->
             <div class="bi-section">
                 <span class="bi-label">Bulk Pricing</span>
-                <textarea name="_bi_bulk_pricing"
-                          placeholder="<?php echo esc_attr($bulk_placeholder); ?>"><?php
-                    echo esc_textarea($bulk_pricing);
-                ?></textarea>
-                <p style="margin:5px 0 0;font-size:11px;color:#646970;">
-                    Leave blank if this product has no quantity discounts.
-                    Each line sets a minimum quantity and the price per unit at that quantity.
-                </p>
+
+                <div class="bi-option">
+                    <input type="checkbox" name="_bi_enable_bulk" value="1" id="bi_bulk"
+                           <?php checked($enable_bulk, '1'); ?> onchange="biToggle('bi_bulk_opts',this.checked)" />
+                    <div class="bi-option-text">
+                        <label for="bi_bulk">
+                            <span>Enable Bulk / Quantity Discounts</span>
+                            <small>Show tiered pricing based on quantity ordered.</small>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="bi_bulk_opts" class="bi-indent <?php echo ($enable_bulk === '1') ? '' : 'bi-hidden'; ?>">
+                    <div class="bi-row" style="margin-bottom:12px;">
+                        <label>Base price ($)</label>
+                        <input type="number" name="_bi_bulk_base_price" id="bi_bulk_base"
+                               value="<?php echo esc_attr($bulk_base); ?>" placeholder="e.g. 20.00" min="0" step="0.01" />
+                        <span class="bi-note" style="margin:0;">Used to calculate tier prices</span>
+                    </div>
+
+                    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1d2327;margin:0 0 8px;">
+                        Discount Tiers — enter % off at each quantity break
+                    </p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:6px;">
+                        <span style="font-size:11px;font-weight:700;color:#646970;">Min Qty</span>
+                        <span style="font-size:11px;font-weight:700;color:#646970;">Discount %</span>
+                    </div>
+                    <?php foreach ($bulk_tiers as $i => $tier): ?>
+                    <div class="bi-tier-row">
+                        <input type="number" name="_bi_bulk_tier_qty[]"
+                               value="<?php echo esc_attr($tier['min_qty'] ?? ''); ?>"
+                               placeholder="e.g. 12" min="1" step="1" />
+                        <input type="number" name="_bi_bulk_tier_pct[]"
+                               value="<?php echo esc_attr($tier['pct'] ?? ''); ?>"
+                               placeholder="e.g. 10" min="0" max="100" step="0.5" />
+                    </div>
+                    <?php endforeach; ?>
+                    <p class="bi-note">
+                        Example: Qty 12 at 10% off a $20 base → <strong>$18.00</strong> per unit.
+                        Leave empty rows blank — they will be ignored.
+                    </p>
+                </div>
             </div>
 
             <!-- SECTION: Artwork Notes -->
@@ -240,9 +292,42 @@ class ButtonInks_Core {
                           placeholder="e.g. Minimum 300 DPI. Bleed: 0.125 inches. Safe zone: 0.25 inches."><?php
                     echo esc_textarea($print_notes);
                 ?></textarea>
-                <p style="margin:5px 0 0;font-size:11px;color:#646970;">
-                    Shown to the customer on the product page. Keep it short and clear.
+                <p class="bi-note">Shown to the customer on the product page. Keep it short and clear.</p>
+            </div>
+
+            <!-- SECTION: Downloadable Templates -->
+            <div class="bi-section">
+                <span class="bi-label">Downloadable Print Templates</span>
+                <p class="bi-note" style="margin-bottom:10px;">
+                    Upload template files so customers can download them before submitting their artwork.
+                    Pick the format — the frontend button will show the correct icon (PDF / AI).
                 </p>
+
+                <div id="bi_tpl_list">
+                <?php if (empty($dl_templates)): ?>
+                    <p id="bi_tpl_empty" style="font-size:12px;color:#646970;margin:0 0 8px;">No templates added yet.</p>
+                <?php else: ?>
+                    <p id="bi_tpl_empty" style="font-size:12px;color:#646970;margin:0 0 8px;display:none;"></p>
+                <?php endif; ?>
+
+                <?php foreach ($dl_templates as $i => $tpl): ?>
+                    <div class="bi-tpl-row" data-index="<?php echo $i; ?>">
+                        <select name="_bi_tpl_format[]" style="width:80px;">
+                            <?php foreach (['PDF','AI','PSD','EPS','PNG','SVG'] as $fmt): ?>
+                                <option value="<?php echo $fmt; ?>" <?php selected($tpl['label'], $fmt); ?>><?php echo $fmt; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="url" name="_bi_tpl_url[]" value="<?php echo esc_attr($tpl['url']); ?>"
+                               placeholder="https://..." style="flex:1;min-width:200px;" />
+                        <button type="button" class="button bi-upload-tpl" data-index="<?php echo $i; ?>">📁 Browse Media</button>
+                        <button type="button" class="button bi-remove-tpl" onclick="biRemoveTpl(this)" style="color:#a00;">✕ Remove</button>
+                    </div>
+                <?php endforeach; ?>
+                </div>
+
+                <button type="button" class="button button-secondary" onclick="biAddTpl()" style="margin-top:8px;">
+                    + Add Template File
+                </button>
             </div>
 
             <!-- CHECKLIST -->
@@ -250,19 +335,83 @@ class ButtonInks_Core {
                 <p>Before publishing — make sure you have:</p>
                 <ol>
                     <li>Ticked the correct Customisation Option above</li>
-                    <li>Added the colors that match the reference site</li>
+                    <li>Added Colors via the <strong>Attributes</strong> tab (Color attribute)</li>
                     <li>Added sizes in the <strong>Attributes</strong> tab: S, M, L, XL, XXL, 3XL</li>
+                    <li>Enabled the delivery speed options that apply to this product</li>
                     <li>Set the price to match the reference site</li>
-                    <li>Selected the correct <strong>Category</strong> (parent and child) in the right panel</li>
+                    <li>Selected the correct <strong>Category</strong> in the right panel</li>
                     <li>Uploaded at least one product image</li>
+                    <li>Uploaded downloadable templates if applicable</li>
                 </ol>
             </div>
 
-        </div><?php
+        </div>
+
+        <script>
+        // Toggle show/hide for indent sections
+        function biToggle(id, show) {
+            document.getElementById(id).classList.toggle('bi-hidden', !show);
+        }
+
+        // Template rows — add / remove
+        var biTplIndex = <?php echo count($dl_templates); ?>;
+
+        function biAddTpl() {
+            var list = document.getElementById('bi_tpl_list');
+            var empty = document.getElementById('bi_tpl_empty');
+            if (empty) empty.style.display = 'none';
+
+            var formats = ['PDF','AI','PSD','EPS','PNG','SVG'];
+            var opts = formats.map(f => '<option value="'+f+'">'+f+'</option>').join('');
+
+            var row = document.createElement('div');
+            row.className = 'bi-tpl-row';
+            row.setAttribute('data-index', biTplIndex);
+            row.innerHTML = '<select name="_bi_tpl_format[]" style="width:80px;">'+opts+'</select>'
+                + '<input type="url" name="_bi_tpl_url[]" placeholder="https://..." style="flex:1;min-width:200px;" />'
+                + '<button type="button" class="button bi-upload-tpl" data-index="'+biTplIndex+'">📁 Browse Media</button>'
+                + '<button type="button" class="button bi-remove-tpl" onclick="biRemoveTpl(this)" style="color:#a00;">✕ Remove</button>';
+            list.appendChild(row);
+            biTplIndex++;
+            biBindMediaBtn(row.querySelector('.bi-upload-tpl'));
+        }
+
+        function biRemoveTpl(btn) {
+            var row = btn.closest('.bi-tpl-row');
+            if (row) row.remove();
+            var remaining = document.querySelectorAll('.bi-tpl-row');
+            var empty = document.getElementById('bi_tpl_empty');
+            if (empty) empty.style.display = remaining.length === 0 ? '' : 'none';
+        }
+
+        // WP Media Uploader integration
+        function biBindMediaBtn(btn) {
+            btn.addEventListener('click', function() {
+                var row   = btn.closest('.bi-tpl-row');
+                var input = row.querySelector('input[name="_bi_tpl_url[]"]');
+                var frame = wp.media({
+                    title: 'Select Template File',
+                    button: { text: 'Use this file' },
+                    multiple: false
+                });
+                frame.on('select', function() {
+                    var att = frame.state().get('selection').first().toJSON();
+                    input.value = att.url;
+                });
+                frame.open();
+            });
+        }
+
+        // Bind existing media buttons on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.bi-upload-tpl').forEach(biBindMediaBtn);
+        });
+        </script>
+        <?php
     }
 
     // =========================================================================
-    // 3. SAVE META WHEN PRODUCT IS PUBLISHED / UPDATED
+    // 3. SAVE META
     // =========================================================================
 
     public function save_product_meta($post_id) {
@@ -271,103 +420,166 @@ class ButtonInks_Core {
             !wp_verify_nonce($_POST['buttoninks_nonce'], 'buttoninks_save_meta')) {
             return;
         }
-
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 
-        // Checkboxes — save '1' or '0'
-        $checkboxes = ['_bi_enable_designer', '_bi_enable_upload', '_bi_buy_as_is'];
+        // Checkboxes
+        $checkboxes = [
+            '_bi_enable_designer', '_bi_enable_upload', '_bi_buy_as_is',
+            '_bi_enable_regular',  '_bi_enable_urgent', '_bi_enable_bulk',
+        ];
         foreach ($checkboxes as $key) {
             update_post_meta($post_id, $key, isset($_POST[$key]) ? '1' : '0');
         }
 
-        // Text / JSON fields
-        $text_fields = ['_bi_available_colors', '_bi_production_options', '_bi_bulk_pricing', '_bi_print_notes'];
-        foreach ($text_fields as $key) {
+        // Delivery speed plain fields
+        foreach (['_bi_urgent_extra_cost', '_bi_regular_days', '_bi_urgent_days'] as $key) {
             if (isset($_POST[$key])) {
-                update_post_meta($post_id, $key, sanitize_textarea_field(wp_unslash($_POST[$key])));
+                update_post_meta($post_id, $key, sanitize_text_field(wp_unslash($_POST[$key])));
             }
         }
+
+        // Bulk pricing — base price
+        $bulk_base_price = '';
+        if (isset($_POST['_bi_bulk_base_price'])) {
+            $bulk_base_price = sanitize_text_field(wp_unslash($_POST['_bi_bulk_base_price']));
+            update_post_meta($post_id, '_bi_bulk_base_price', $bulk_base_price);
+        }
+
+        // Bulk pricing — tiers: build JSON from parallel arrays
+        // Only process tiers when bulk is enabled
+        $tiers = [];
+        if (isset($_POST['_bi_enable_bulk'])) {
+            $tier_qtys  = isset($_POST['_bi_bulk_tier_qty']) ? (array) $_POST['_bi_bulk_tier_qty'] : [];
+            $tier_pcts  = isset($_POST['_bi_bulk_tier_pct']) ? (array) $_POST['_bi_bulk_tier_pct'] : [];
+            $base_price = floatval($bulk_base_price);
+
+            if ($base_price > 0) {
+                foreach ($tier_qtys as $i => $qty) {
+                    $qty = intval($qty);
+                    $pct = floatval($tier_pcts[$i] ?? 0);
+                    if ($qty > 0 && $pct > 0) {
+                        $discount_price = round($base_price * (1 - $pct / 100), 2);
+                        $tiers[] = [
+                            'min_qty'        => $qty,
+                            'pct'            => $pct,
+                            'discount_price' => number_format($discount_price, 2, '.', ''),
+                        ];
+                    }
+                }
+            }
+            // Sort ascending by min_qty
+            usort($tiers, function($a, $b) { return $a['min_qty'] - $b['min_qty']; });
+        }
+        update_post_meta($post_id, '_bi_bulk_tiers', wp_json_encode($tiers));
+
+        // Artwork notes
+        if (isset($_POST['_bi_print_notes'])) {
+            update_post_meta($post_id, '_bi_print_notes',
+                sanitize_textarea_field(wp_unslash($_POST['_bi_print_notes'])));
+        }
+
+        // Downloadable templates — build JSON from parallel url/format arrays
+        $allowed_formats = ['PDF', 'AI', 'PSD', 'EPS', 'PNG', 'SVG'];
+        $tpl_urls    = isset($_POST['_bi_tpl_url'])    ? (array) $_POST['_bi_tpl_url']    : [];
+        $tpl_formats = isset($_POST['_bi_tpl_format']) ? (array) $_POST['_bi_tpl_format'] : [];
+        $templates   = [];
+        foreach ($tpl_urls as $i => $url) {
+            $url    = esc_url_raw(trim(wp_unslash($url)));
+            $label  = sanitize_text_field($tpl_formats[$i] ?? 'PDF');
+            $label  = in_array(strtoupper($label), $allowed_formats, true) ? strtoupper($label) : 'PDF';
+            if (!empty($url) && strlen($url) > 10) {
+                $templates[] = ['url' => $url, 'label' => $label];
+            }
+        }
+        update_post_meta($post_id, '_bi_download_templates', wp_json_encode($templates));
     }
 
     // =========================================================================
-    // 4. APPEND FIELDS TO WOOCOMMERCE REST API RESPONSE
-    //    → This is what the Next.js frontend reads as product.acf
+    // 4. APPEND TO REST API RESPONSE
     // =========================================================================
 
     public function append_acf_to_rest($response, $product, $request) {
 
         $id = $product->get_id();
 
-        $colors_raw         = get_post_meta($id, '_bi_available_colors',   true);
-        $production_raw     = get_post_meta($id, '_bi_production_options', true);
-        $bulk_raw           = get_post_meta($id, '_bi_bulk_pricing',       true);
-
-        // Parse colors into array
-        $colors = [];
-        if ($colors_raw) {
-            $colors = array_map('trim', explode(',', $colors_raw));
-        }
-
-        // Parse JSON fields safely
+        // Delivery speed — build production_options from checkbox fields
         $production_options = [];
-        if ($production_raw) {
-            $decoded = json_decode($production_raw, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $production_options = $decoded;
-            }
+        if (get_post_meta($id, '_bi_enable_regular', true) === '1') {
+            $production_options[] = [
+                'type'          => 'regular',
+                'extra_cost'    => '0',
+                'delivery_days' => get_post_meta($id, '_bi_regular_days', true) ?: '3-5',
+            ];
+        }
+        if (get_post_meta($id, '_bi_enable_urgent', true) === '1') {
+            $production_options[] = [
+                'type'          => 'urgent',
+                'extra_cost'    => get_post_meta($id, '_bi_urgent_extra_cost', true) ?: '15',
+                'delivery_days' => get_post_meta($id, '_bi_urgent_days', true) ?: '1-2',
+            ];
         }
 
+        // Bulk pricing — expose tiers with discount_price already calculated
         $bulk_pricing = [];
-        if ($bulk_raw) {
-            $decoded = json_decode($bulk_raw, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $bulk_pricing = $decoded;
+        if (get_post_meta($id, '_bi_enable_bulk', true) === '1') {
+            $raw = get_post_meta($id, '_bi_bulk_tiers', true);
+            if ($raw) {
+                $decoded = json_decode($raw, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $bulk_pricing = $decoded;
+                }
             }
         }
 
-        // Attach as acf object (matches WPProduct interface in wordpress.ts)
+        // Downloadable templates
+        $dl_templates = [];
+        $tpl_raw = get_post_meta($id, '_bi_download_templates', true);
+        if ($tpl_raw) {
+            $decoded = json_decode($tpl_raw, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $dl_templates = $decoded;
+            }
+        }
+
         $response->data['acf'] = [
-            'enable_designer'    => get_post_meta($id, '_bi_enable_designer', true) === '1',
-            'enable_upload'      => get_post_meta($id, '_bi_enable_upload',   true) === '1',
-            'buy_as_is'          => get_post_meta($id, '_bi_buy_as_is',       true) === '1',
-            'available_colors'   => $colors,
-            'production_options' => $production_options,
-            'bulk_pricing'       => $bulk_pricing,
-            'print_notes'        => get_post_meta($id, '_bi_print_notes', true) ?: '',
+            'enable_designer'      => get_post_meta($id, '_bi_enable_designer', true) === '1',
+            'enable_upload'        => get_post_meta($id, '_bi_enable_upload',   true) === '1',
+            'buy_as_is'            => get_post_meta($id, '_bi_buy_as_is',       true) === '1',
+            'available_colors'     => [],  // Deprecated — use WC Color attribute
+            'production_options'   => $production_options,
+            'bulk_pricing'         => $bulk_pricing,
+            'print_notes'          => get_post_meta($id, '_bi_print_notes', true) ?: '',
+            'download_templates'   => $dl_templates,
         ];
 
         return $response;
     }
 
     // =========================================================================
-    // 5. CUSTOM REST ENDPOINTS (Registration, Wishlist)
+    // 5. REST ENDPOINTS (Registration + Wishlist) — unchanged
     // =========================================================================
 
     public function register_endpoints() {
 
-        // User Registration
         register_rest_route('buttoninks/v1', '/register', [
             'methods'             => 'POST',
             'callback'            => [$this, 'register_user'],
             'permission_callback' => '__return_true',
         ]);
 
-        // Wishlist — GET
         register_rest_route('buttoninks/v1', '/wishlist', [
             'methods'             => 'GET',
             'callback'            => [$this, 'get_wishlist'],
             'permission_callback' => [$this, 'is_user_logged_in'],
         ]);
 
-        // Wishlist — ADD
         register_rest_route('buttoninks/v1', '/wishlist/add', [
             'methods'             => 'POST',
             'callback'            => [$this, 'add_to_wishlist'],
             'permission_callback' => [$this, 'is_user_logged_in'],
         ]);
 
-        // Wishlist — REMOVE
         register_rest_route('buttoninks/v1', '/wishlist/remove', [
             'methods'             => 'POST',
             'callback'            => [$this, 'remove_from_wishlist'],
@@ -385,15 +597,12 @@ class ButtonInks_Core {
         $username = sanitize_user($params['username']);
         $password = $params['password'];
 
-        if (empty($email) || empty($password) || empty($username)) {
+        if (empty($email) || empty($password) || empty($username))
             return new WP_Error('missing_fields', 'Required fields are missing', ['status' => 400]);
-        }
-        if (email_exists($email)) {
+        if (email_exists($email))
             return new WP_Error('email_exists', 'Email already registered', ['status' => 400]);
-        }
-        if (username_exists($username)) {
+        if (username_exists($username))
             return new WP_Error('user_exists', 'Username already taken', ['status' => 400]);
-        }
 
         $user_id = wp_create_user($username, $password, $email);
         if (is_wp_error($user_id)) return $user_id;
@@ -413,7 +622,6 @@ class ButtonInks_Core {
         $user_id    = get_current_user_id();
         $product_id = intval($request->get_json_params()['product_id']);
         $wishlist   = get_user_meta($user_id, '_buttoninks_wishlist', true) ?: [];
-
         if (!in_array($product_id, $wishlist)) {
             $wishlist[] = $product_id;
             update_user_meta($user_id, '_buttoninks_wishlist', $wishlist);
@@ -426,7 +634,6 @@ class ButtonInks_Core {
         $product_id = intval($request->get_json_params()['product_id']);
         $wishlist   = get_user_meta($user_id, '_buttoninks_wishlist', true) ?: [];
         $key        = array_search($product_id, $wishlist);
-
         if ($key !== false) {
             unset($wishlist[$key]);
             update_user_meta($user_id, '_buttoninks_wishlist', array_values($wishlist));

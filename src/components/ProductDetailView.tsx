@@ -41,7 +41,7 @@ export default function ProductDetailView({
   const [activeTab,          setActiveTab]          = useState('Description');
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [selectedProduction, setSelectedProduction] = useState<string>(
-    product.acf?.production_options?.[0]?.type || 'regular'
+    product.acf?.production_options?.[0]?.type ?? ''
   );
 
   // ── Color name → hex map ─────────────────────────────────────────────────
@@ -79,8 +79,9 @@ export default function ProductDetailView({
     return COLOR_MAP[name.toLowerCase().trim()] ?? null;
   }
 
-  // ── Available colors from ACF (plugin field) or WC attribute ─────────────
-  const acfColors = product.acf?.available_colors ?? [];
+  // Colors always come from WC attributes now (available_colors is deprecated)
+  // acfColors kept for backwards compatibility but will always be []
+  const acfColors: string[] = [];
 
 
   const enableDesigner = product.acf?.enable_designer === true;
@@ -130,11 +131,12 @@ export default function ProductDetailView({
       showNotification({ title: 'Selection Required', message: `Please choose a ${missing.name}.`, type: 'error' });
       return;
     }
-    const attrStr   = Object.entries(selectedAttributes).map(([k, v]) => `${k}: ${v}`).join(', ');
-    const speedLabel = selectedProduction === 'urgent' ? 'Urgent' : 'Standard';
+    const attrStr    = Object.entries(selectedAttributes).map(([k, v]) => `${k}: ${v}`).join(', ');
+    const speedLabel = selectedProduction === 'urgent' ? 'Urgent' : selectedProduction === 'regular' ? 'Standard' : '';
+    const extras     = [attrStr, speedLabel].filter(Boolean).join(', ');
     addToCart({
       id:       product.id,
-      name:     `${product.name}${attrStr ? ` (${attrStr}, ${speedLabel})` : ''}`,
+      name:     `${product.name}${extras ? ` (${extras})` : ''}`,
       price:    unitPrice,
       quantity,
       image:    uniqueImages[0]?.src || '',
@@ -195,13 +197,36 @@ export default function ProductDetailView({
         return (
           <div className="flex flex-col gap-6 text-slate-600 text-base font-['Inter']">
             <p>Download our design templates to set up your artwork correctly:</p>
-            <div className="flex flex-wrap gap-4">
-              {['PDF', 'AI'].map(t => (
-                <button key={t} className="px-6 py-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 flex items-center gap-2 font-bold text-sm">
-                  <FileDown className="w-4 h-4" /> Download {t} Template
-                </button>
-              ))}
-            </div>
+            {product.acf?.download_templates && product.acf.download_templates.length > 0 ? (
+              <div className="flex flex-wrap gap-4">
+                {product.acf.download_templates.map((tpl, i) => {
+                  const formatMeta: Record<string, { color: string; emoji: string }> = {
+                    PDF: { color: 'text-red-600 border-red-200 bg-red-50',         emoji: '📄' },
+                    AI:  { color: 'text-orange-500 border-orange-200 bg-orange-50', emoji: '✏️' },
+                    PSD: { color: 'text-blue-600 border-blue-200 bg-blue-50',       emoji: '🖼️' },
+                    EPS: { color: 'text-purple-600 border-purple-200 bg-purple-50', emoji: '🎨' },
+                    PNG: { color: 'text-green-600 border-green-200 bg-green-50',    emoji: '🖼️' },
+                    SVG: { color: 'text-teal-600 border-teal-200 bg-teal-50',       emoji: '🔷' },
+                  };
+                  const meta = formatMeta[tpl.label?.toUpperCase()] ?? { color: 'text-gray-600 border-gray-200 bg-gray-50', emoji: '📁' };
+                  return (
+                    <a
+                      key={i}
+                      href={tpl.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className={`px-5 py-3 border rounded-xl hover:opacity-80 flex items-center gap-2 font-bold text-sm transition-all ${meta.color}`}
+                    >
+                      <FileDown className="w-4 h-4" />
+                      {meta.emoji} Download {tpl.label} Template
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">No downloadable templates have been added for this product yet.</p>
+            )}
           </div>
         );
       case 'Reviews':

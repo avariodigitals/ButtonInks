@@ -62,16 +62,21 @@ export interface WPProduct {
     enable_designer?:    boolean;      // Design Your Own — opens designer tool
     enable_upload?:      boolean;      // Upload Design — customer uploads artwork
     buy_as_is?:          boolean;      // Retail / no customisation
-    available_colors?:   string[];     // e.g. ['Black', 'Navy', 'White']
+    available_colors?:   string[];     // Deprecated — use WC Color attribute
     print_notes?:        string;       // Artwork / print guidelines
     bulk_pricing?: {
       min_qty:        number;
+      pct?:           number;          // discount % (new)
       discount_price: string;
     }[];
     production_options?: {
       type:          'regular' | 'urgent';
       extra_cost:    string;
       delivery_days: string;
+    }[];
+    download_templates?: {
+      url:   string;                   // Direct download URL
+      label: string;                   // Format: 'PDF' | 'AI' | 'PSD' | 'EPS' | 'PNG' | 'SVG'
     }[];
   };
 }
