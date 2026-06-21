@@ -83,6 +83,8 @@ function DesignContent() {
   const [wpProducts, setWpProducts] = useState<WPProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<WPProduct | null>(null);
   const [recentUploads, setRecentUploads] = useState<{ source_url: string; id: number }[]>([]);
+  const [uploadsPage, setUploadsPage] = useState(0);
+  const UPLOADS_PER_PAGE = 30;
   const [isUploading, setIsUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
@@ -283,7 +285,7 @@ function DesignContent() {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         fetch('/api/media', { headers })
           .then(r => r.json())
-          .then(d => setRecentUploads(Array.isArray(d) ? d : []))
+          .then(d => { setRecentUploads(Array.isArray(d) ? d : []); setUploadsPage(0); })
           .catch(() => {});
       } else throw new Error(result.error);
     } catch (err: unknown) {
@@ -555,34 +557,77 @@ function DesignContent() {
             )}
 
             {/* ── Uploads Panel ── */}
-            {activeTool === 'uploads' && (
-              <div className="flex flex-col gap-6">
-                <div onClick={() => fileInputRef.current?.click()} className="px-8 py-8 bg-green-50 rounded-2xl border-2 border-dashed border-green-700/30 hover:border-green-700 flex flex-col justify-center items-center gap-4 cursor-pointer transition-all">
-                  {isUploading ? <Loader2 className="w-8 h-8 text-green-700 animate-spin" /> : <UploadCloud className="w-8 h-8 text-green-700" />}
-                  <div className="text-center">
-                    <p className="text-gray-900 font-bold">Upload Design</p>
-                    <p className="text-gray-500 text-[10px] mt-1 uppercase tracking-widest">Browse Files</p>
-                  </div>
-                  <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} accept="image/*" />
-                </div>
-                {recentUploads.length > 0 && (
-                  <div className="flex flex-col gap-3">
-                    <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Recent uploads</h3>
-                    <div className="grid grid-cols-4 gap-2">
-                      {recentUploads.map((img) => (
-                        <div key={img.id} onClick={() => {
-                          const newId = Date.now().toString();
-                          setElements(prev => [...prev, { id: newId, type: 'image', content: img.source_url, x: 200, y: 200, width: 150, height: 150, rotation: 0, opacity: 1, side }]);
-                          setSelectedId(newId);
-                        }} className="relative aspect-square bg-white rounded-lg border border-black/5 overflow-hidden cursor-pointer hover:border-green-500 transition-all hover:scale-105">
-                          <Image src={img.source_url} fill className="object-cover" sizes="80px" alt="upload" />
-                        </div>
-                      ))}
+            {activeTool === 'uploads' && (() => {
+              const totalUploadPages = Math.ceil(recentUploads.length / UPLOADS_PER_PAGE);
+              const pagedUploads = recentUploads.slice(
+                uploadsPage * UPLOADS_PER_PAGE,
+                (uploadsPage + 1) * UPLOADS_PER_PAGE
+              );
+              return (
+                <div className="flex flex-col gap-6">
+                  <div onClick={() => fileInputRef.current?.click()} className="px-8 py-8 bg-green-50 rounded-2xl border-2 border-dashed border-green-700/30 hover:border-green-700 flex flex-col justify-center items-center gap-4 cursor-pointer transition-all">
+                    {isUploading ? <Loader2 className="w-8 h-8 text-green-700 animate-spin" /> : <UploadCloud className="w-8 h-8 text-green-700" />}
+                    <div className="text-center">
+                      <p className="text-gray-900 font-bold">Upload Design</p>
+                      <p className="text-gray-500 text-[10px] mt-1 uppercase tracking-widest">Browse Files</p>
                     </div>
+                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} accept="image/*" />
                   </div>
-                )}
-              </div>
-            )}
+
+                  {recentUploads.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
+                          Recent uploads
+                        </h3>
+                        <span className="text-zinc-400 text-[10px]">
+                          {recentUploads.length} file{recentUploads.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2">
+                        {pagedUploads.map((img) => (
+                          <div
+                            key={img.id}
+                            onClick={() => {
+                              const newId = Date.now().toString();
+                              setElements(prev => [...prev, { id: newId, type: 'image', content: img.source_url, x: 200, y: 200, width: 150, height: 150, rotation: 0, opacity: 1, side }]);
+                              setSelectedId(newId);
+                            }}
+                            className="relative aspect-square bg-white rounded-lg border border-black/5 overflow-hidden cursor-pointer hover:border-green-500 transition-all hover:scale-105"
+                          >
+                            <Image src={img.source_url} fill className="object-cover" sizes="80px" alt="upload" />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pagination — only shown when there are more than 30 uploads */}
+                      {totalUploadPages > 1 && (
+                        <div className="flex items-center justify-between pt-1">
+                          <button
+                            onClick={() => setUploadsPage(p => Math.max(0, p - 1))}
+                            disabled={uploadsPage === 0}
+                            className="flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-zinc-600 hover:border-green-700 hover:text-green-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                          </button>
+                          <span className="text-xs text-zinc-400 font-medium">
+                            {uploadsPage + 1} / {totalUploadPages}
+                          </span>
+                          <button
+                            onClick={() => setUploadsPage(p => Math.min(totalUploadPages - 1, p + 1))}
+                            disabled={uploadsPage >= totalUploadPages - 1}
+                            className="flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-zinc-600 hover:border-green-700 hover:text-green-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                          >
+                            Next <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* ── Graphics Panel ── */}
             {activeTool === 'graphics' && (
