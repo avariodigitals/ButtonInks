@@ -4,7 +4,8 @@ import React, { useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Star, Heart, Loader2 } from "lucide-react";
+import { Star, Heart, Loader2, ShoppingCart, Check } from "lucide-react";
+import { useCart } from "@/context/CartContext";
 
 export interface ProductCardProps {
   category: string;
@@ -16,7 +17,8 @@ export interface ProductCardProps {
   minQty: string;
   image: string;
   href: string;
-  productId?: number;   // WP product ID — used for wishlist
+  productId?: number;   // WP product ID — used for cart & wishlist
+  rawPrice?: number;    // numeric price for cart
 }
 
 function getToken(): string | null {
@@ -34,10 +36,23 @@ export default function ProductCard({
   image,
   href,
   productId,
+  rawPrice = 0,
 }: ProductCardProps) {
   const router = useRouter();
-  const [wishlisted,     setWishlisted]     = useState(false);
+  const { addToCart, cart, cartSyncing } = useCart();
+
+  const [wishlisted,      setWishlisted]      = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [addingToCart,    setAddingToCart]    = useState(false);
+  // guestAdded: true while showing "Added to Cart" for non-logged-in users (resets after 3s)
+  const [guestAdded,      setGuestAdded]      = useState(false);
+
+  // For logged-in users, derive "added" state from the live cart
+  const isLoggedIn     = Boolean(getToken());
+  const isInCart       = isLoggedIn && productId
+    ? cart.some(item => item.id === productId)
+    : false;
+  const showAdded      = isInCart || guestAdded;
 
   const handleWishlist = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();   // don't navigate
@@ -64,6 +79,25 @@ export default function ProductCard({
       setWishlistLoading(false);
     }
   }, [wishlisted, productId, href, router]);
+
+  const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!productId || addingToCart || cartSyncing) return;
+
+    setAddingToCart(true);
+    try {
+      await addToCart({ id: productId, name, price: rawPrice, quantity: 1, image });
+      if (!isLoggedIn) {
+        // Guest: show "Added" temporarily
+        setGuestAdded(true);
+        setTimeout(() => setGuestAdded(false), 3000);
+      }
+      // Logged-in: isInCart from cart context will flip to true automatically
+    } finally {
+      setAddingToCart(false);
+    }
+  }, [productId, addingToCart, cartSyncing, addToCart, name, rawPrice, image, isLoggedIn]);
 
   return (
     <Link
@@ -123,22 +157,46 @@ export default function ProductCard({
           </span>
         </div>
 
-        <div className="flex justify-between items-center">
-          <div className="flex flex-wrap items-baseline gap-1">
-            <span
-              className="text-slate-900 text-base font-semibold leading-6 [&_del]:text-gray-400 [&_del]:text-xs [&_del]:font-normal [&_del]:mr-1 [&_ins]:no-underline font-['Outfit']"
-              dangerouslySetInnerHTML={{ __html: price }}
-            />
-            {minQty && (
-              <span className="text-gray-400 text-xs font-normal leading-4 font-['Inter']">
-                · {minQty}
-              </span>
-            )}
-          </div>
-          <span className="px-3 py-2 bg-green-700 group-hover:bg-green-800 rounded-lg text-white text-xs font-semibold leading-4 font-['Inter'] transition-colors shrink-0">
-            Shop
-          </span>
+        {/* Price row */}
+        <div className="flex flex-wrap items-baseline gap-1">
+          <span
+            className="text-slate-900 text-base font-semibold leading-6 [&_del]:text-gray-400 [&_del]:text-xs [&_del]:font-normal [&_del]:mr-1 [&_ins]:no-underline font-['Outfit']"
+            dangerouslySetInnerHTML={{ __html: price }}
+          />
+          {minQty && (
+            <span className="text-gray-400 text-xs font-normal leading-4 font-['Inter']">
+              · {minQty}
+            </span>
+          )}
         </div>
+
+        {/* Add to Cart button */}
+        <button
+          onClick={handleAddToCart}
+          disabled={addingToCart}
+          aria-label={showAdded ? "Added to cart" : "Add to cart"}
+          className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold font-['Inter'] transition-all duration-200 active:scale-95
+            ${showAdded
+              ? "bg-green-50 text-green-700 border border-green-200"
+              : "bg-green-700 hover:bg-green-800 text-white"
+            }
+            ${addingToCart ? "opacity-70 cursor-not-allowed" : ""}
+          `}
+        >
+          {addingToCart ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : showAdded ? (
+            <>
+              <Check className="w-3.5 h-3.5" />
+              Added to Cart
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="w-3.5 h-3.5" />
+              Add to Cart
+            </>
+          )}
+        </button>
       </div>
     </Link>
   );

@@ -11,6 +11,7 @@ export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [wishlistCount, setWishlistCount] = useState<number>(0);
 
   const fetchProfile = useCallback(async () => {
     const token = localStorage.getItem('bi_token');
@@ -18,19 +19,33 @@ export default function AccountPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${WP_API}/wp/v2/users/me?context=edit`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      });
-      if (res.status === 401) { router.push('/login'); return; }
-      if (!res.ok) throw new Error('Could not load profile');
+      // Fetch profile and wishlist count in parallel
+      const [profileRes, wishlistRes] = await Promise.all([
+        fetch(`${WP_API}/wp/v2/users/me?context=edit`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        }),
+        fetch('/api/wishlist', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        }),
+      ]);
 
-      const data = await res.json();
+      if (profileRes.status === 401) { router.push('/login'); return; }
+      if (!profileRes.ok) throw new Error('Could not load profile');
+
+      const data = await profileRes.json();
       const name = `${data.first_name ?? ''} ${data.last_name ?? ''}`.trim() || data.name || 'User';
       setUser({ name, email: data.email ?? '', username: data.username ?? '' });
-      // keep token-adjacent cache fresh
       localStorage.setItem('bi_user_name',  name);
       localStorage.setItem('bi_user_email', data.email ?? '');
+
+      // Parse wishlist count — API may return { items: [...] } or an array
+      if (wishlistRes.ok) {
+        const wlData = await wishlistRes.json();
+        const items  = Array.isArray(wlData) ? wlData : (wlData?.items ?? []);
+        setWishlistCount(items.length);
+      }
     } catch {
       // fallback to cached values if WP is unreachable
       const name  = localStorage.getItem('bi_user_name')  ?? 'User';
@@ -110,7 +125,7 @@ export default function AccountPage() {
         {/* Navigation Grid */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <AccountCard title="My Orders"        desc="Track, return or buy things again"    icon={Package} href="/account/orders"   />
-          <AccountCard title="My Wishlist"       desc="Items you've saved for later"         icon={Heart}   href="/wishlist"         badge="0" />
+          <AccountCard title="My Wishlist"       desc="Items you've saved for later"         icon={Heart}   href="/wishlist"         badge={wishlistCount > 0 ? String(wishlistCount) : undefined} />
           <AccountCard title="Saved Designs"     desc="Continue editing your creations"      icon={Layout}  href="/account/designs"  />
           <AccountCard title="Account Settings"  desc="Edit name, email and password"        icon={Settings} href="/account/settings" />
         </div>

@@ -46,6 +46,7 @@ const FeaturedSellingSection = ({ products }: FeaturedSellingSectionProps) => {
               image={p.images[0]?.src || "https://placehold.co/310x220"}
               href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
               productId={p.id}
+              rawPrice={parseFloat(p.price || '0')}
             />
           ))}
         </div>
