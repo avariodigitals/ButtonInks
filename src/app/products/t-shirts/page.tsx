@@ -283,9 +283,9 @@ export default function TshirtsPage() {
                   <img
                     src={subCatImage(sub)}
                     alt={sub.name}
-                    className="w-[160px] sm:w-[200px] lg:w-[220px] aspect-[4/5] object-cover rounded-2xl border-2 border-transparent group-hover:border-green-500 group-focus:border-green-500 transition-all shadow-sm group-hover:shadow-md"
+                    className="w-[200px] sm:w-[200px] lg:w-[220px] aspect-[4/5] object-cover rounded-2xl border-2 border-transparent group-hover:border-green-500 group-focus:border-green-500 transition-all shadow-sm group-hover:shadow-md"
                   />
-                  <span className="text-xs sm:text-sm font-medium font-['Outfit'] text-neutral-800 group-hover:text-green-700 transition-colors text-center max-w-[160px] sm:max-w-[200px] leading-tight">
+                  <span className="text-xs sm:text-sm font-medium font-['Outfit'] text-neutral-800 group-hover:text-green-700 transition-colors text-center max-w-[200px] sm:max-w-[200px] leading-tight">
                     {sub.name}
                   </span>
                 </Link>
@@ -296,7 +296,7 @@ export default function TshirtsPage() {
       </div>
 
       {/* ── Mobile sticky toolbar ── */}
-      <div className="lg:hidden w-full sticky top-[64px] z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-2.5 flex items-center gap-2 shadow-sm">
+      <div className="lg:hidden w-full sticky top-[64px] z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 pt-4 pb-3 flex items-center gap-2 shadow-sm mt-2">
         <button
           onClick={() => setFilterOpen(true)}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-700 text-white rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
