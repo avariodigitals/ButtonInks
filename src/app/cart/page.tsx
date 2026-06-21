@@ -56,7 +56,7 @@ export default function CartPage() {
           {/* Cart Items List */}
           <div className="flex-1 p-4 md:p-8 bg-white rounded-[10px] border border-gray-200 flex flex-col gap-6">
             {cart.map((item, index) => (
-              <React.Fragment key={item.id}>
+              <React.Fragment key={item.key}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div className="flex items-center gap-5">
                     <div className="w-32 h-28 relative bg-stone-50 rounded-2xl overflow-hidden shrink-0">
@@ -79,21 +79,21 @@ export default function CartPage() {
                   <div className="flex items-center gap-7 self-end md:self-auto">
                     <div className="px-4 py-2 bg-stone-50 rounded-3xl border border-zinc-200 flex items-center gap-7">
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.key, item.quantity - 1)}
                         className="text-zinc-500 hover:text-green-700 transition-colors"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
                       <span className="text-green-700 text-base font-medium min-w-[20px] text-center">{item.quantity}</span>
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.key, item.quantity + 1)}
                         className="text-green-700 hover:text-green-800 transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
                     <button
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.key)}
                       className="text-zinc-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-6 h-6" />

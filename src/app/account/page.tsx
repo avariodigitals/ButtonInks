@@ -1,27 +1,47 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { User, Package, Heart, LogOut, ChevronRight, Settings, Layout } from 'lucide-react';
+import { User, Package, Heart, LogOut, ChevronRight, Settings, Layout, Loader2, RefreshCw } from 'lucide-react';
+
+const WP_API = process.env.NEXT_PUBLIC_WP_API_URL || 'https://central.buttoninks.com/wp-json';
 
 export default function AccountPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchProfile = useCallback(async () => {
     const token = localStorage.getItem('bi_token');
-    const name = localStorage.getItem('bi_user_name');
-    const email = localStorage.getItem('bi_user_email');
+    if (!token) { router.push('/login'); return; }
 
-    if (!token) {
-      router.push('/login');
-    } else {
-      setUser({ name: name || 'User', email: email || '' });
+    setLoading(true);
+    try {
+      const res = await fetch(`${WP_API}/wp/v2/users/me?context=edit`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      if (res.status === 401) { router.push('/login'); return; }
+      if (!res.ok) throw new Error('Could not load profile');
+
+      const data = await res.json();
+      const name = `${data.first_name ?? ''} ${data.last_name ?? ''}`.trim() || data.name || 'User';
+      setUser({ name, email: data.email ?? '', username: data.username ?? '' });
+      // keep token-adjacent cache fresh
+      localStorage.setItem('bi_user_name',  name);
+      localStorage.setItem('bi_user_email', data.email ?? '');
+    } catch {
+      // fallback to cached values if WP is unreachable
+      const name  = localStorage.getItem('bi_user_name')  ?? 'User';
+      const email = localStorage.getItem('bi_user_email') ?? '';
+      setUser({ name, email, username: '' });
+    } finally {
       setLoading(false);
     }
   }, [router]);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const handleLogout = () => {
     localStorage.removeItem('bi_token');
@@ -31,7 +51,24 @@ export default function AccountPage() {
     router.refresh();
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-50">
+        <div className="w-full bg-green-700 pt-16 pb-32 px-6">
+          <div className="max-w-[1280px] mx-auto flex items-center gap-6 animate-pulse">
+            <div className="w-24 h-24 bg-white/20 rounded-full" />
+            <div className="flex flex-col gap-3">
+              <div className="w-40 h-5 bg-white/20 rounded-lg" />
+              <div className="w-56 h-3.5 bg-white/10 rounded-lg" />
+            </div>
+          </div>
+        </div>
+        <div className="max-w-[1280px] mx-auto px-6 -mt-16 flex items-center justify-center pt-20">
+          <Loader2 className="w-8 h-8 text-green-700 animate-spin" />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
@@ -44,15 +81,27 @@ export default function AccountPage() {
             <div className="flex flex-col">
               <h1 className="text-3xl font-bold text-white font-['Outfit']">{user?.name}</h1>
               <p className="text-white/70 font-['Inter']">{user?.email}</p>
+              {user?.username && (
+                <p className="text-white/40 text-xs mt-0.5 font-['Inter']">@{user.username}</p>
+              )}
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold flex items-center gap-2 transition-all backdrop-blur-md"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchProfile}
+              className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              title="Refresh from WordPress"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold flex items-center gap-2 transition-all backdrop-blur-md"
+            >
+              <LogOut className="w-5 h-5" />
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
 
@@ -60,31 +109,10 @@ export default function AccountPage() {
 
         {/* Navigation Grid */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <AccountCard
-            title="My Orders"
-            desc="Track, return or buy things again"
-            icon={Package}
-            href="/account/orders"
-          />
-          <AccountCard
-            title="My Wishlist"
-            desc="Items you've saved for later"
-            icon={Heart}
-            href="/wishlist"
-            badge="0"
-          />
-          <AccountCard
-            title="Saved Designs"
-            desc="Continue editing your creations"
-            icon={Layout}
-            href="/account/designs"
-          />
-          <AccountCard
-            title="Account Settings"
-            desc="Edit name, email and password"
-            icon={Settings}
-            href="/account/settings"
-          />
+          <AccountCard title="My Orders"        desc="Track, return or buy things again"    icon={Package} href="/account/orders"   />
+          <AccountCard title="My Wishlist"       desc="Items you've saved for later"         icon={Heart}   href="/wishlist"         badge="0" />
+          <AccountCard title="Saved Designs"     desc="Continue editing your creations"      icon={Layout}  href="/account/designs"  />
+          <AccountCard title="Account Settings"  desc="Edit name, email and password"        icon={Settings} href="/account/settings" />
         </div>
 
         {/* Support Sidebar */}
@@ -92,10 +120,7 @@ export default function AccountPage() {
           <div className="p-8 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-6">
             <h2 className="text-xl font-bold text-slate-900 font-['Outfit']">Need Help?</h2>
             <p className="text-slate-500 text-sm font-['Inter']">Our support team is available 24/7 to help you with your orders and designs.</p>
-            <Link
-              href="/contact"
-              className="w-full py-4 bg-green-50 text-green-700 rounded-xl font-bold text-center hover:bg-green-100 transition-all"
-            >
+            <Link href="/contact" className="w-full py-4 bg-green-50 text-green-700 rounded-xl font-bold text-center hover:bg-green-100 transition-all">
               Contact Support
             </Link>
           </div>
@@ -105,7 +130,7 @@ export default function AccountPage() {
   );
 }
 
-function AccountCard({ title, desc, icon: Icon, href, badge }: { title: string; desc: string; icon: any; href: string; badge?: string }) {
+function AccountCard({ title, desc, icon: Icon, href, badge }: { title: string; desc: string; icon: React.ElementType; href: string; badge?: string }) {
   return (
     <Link href={href} className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between group hover:border-green-700 transition-all">
       <div className="flex items-center gap-5">

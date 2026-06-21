@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { WP_URL } from "@/lib/wordpress";
+import SearchModal from "@/components/SearchModal";
 
 const categories = [
   { label: "All Categories", href: "/categories" },
@@ -21,7 +22,8 @@ const categories = [
 ];
 
 export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen]     = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { itemCount } = useCart();
 
   // Lock body scroll when menu is open
@@ -55,12 +57,16 @@ export default function Navbar() {
 
         {/* ── Search (Desktop) ── */}
         <div className="hidden lg:flex flex-1 max-w-[608px] mx-8">
-          <div className="w-full h-9 px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-gray-300 flex justify-between items-center gap-3 cursor-text hover:outline-gray-400 transition-all">
-            <span className="text-gray-400 text-sm font-normal leading-5 select-none font-['Inter']">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full h-9 px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-gray-300 flex justify-between items-center gap-3 hover:outline-green-500 hover:shadow-sm transition-all group"
+            aria-label="Open search"
+          >
+            <span className="text-gray-400 text-sm font-normal leading-5 select-none font-['Inter'] group-hover:text-gray-500">
               Search for any product...
             </span>
-            <Search className="w-5 h-5 text-slate-500 shrink-0" />
-          </div>
+            <Search className="w-5 h-5 text-slate-400 group-hover:text-green-600 shrink-0 transition-colors" />
+          </button>
         </div>
 
         {/* ── Right icons ── */}
@@ -77,7 +83,11 @@ export default function Navbar() {
           </div>
 
           {/* Search Icon (Mobile) */}
-          <button className="lg:hidden p-2 text-neutral-700 hover:text-green-700 transition-colors">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="lg:hidden p-2 text-neutral-700 hover:text-green-700 transition-colors"
+            aria-label="Open search"
+          >
             <Search className="w-5 h-5" />
           </button>
 
@@ -202,6 +212,8 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+      {/* ── Search Modal ── */}
+      <SearchModal open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }

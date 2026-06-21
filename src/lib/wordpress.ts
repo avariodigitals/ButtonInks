@@ -323,3 +323,55 @@ export async function getRecentMedia(perPage = 12): Promise<{ source_url: string
 
   return wpFetch<any[]>("/wp/v2/media", { per_page: String(perPage) }, false);
 }
+
+// ── ButtonInks Plugin API (buttoninks/v1) ─────────────────────────────────────
+
+/**
+ * Get the current user's wishlist product IDs.
+ * Requires a user JWT token passed from the client.
+ */
+export async function getWishlist(userToken: string): Promise<number[]> {
+  const res = await fetch(`${WP_BASE_URL}/buttoninks/v1/wishlist`, {
+    headers: {
+      Authorization: `Bearer ${userToken}`,
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  // Plugin returns array of product IDs or { wishlist: [...] }
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.wishlist)) return data.wishlist;
+  return [];
+}
+
+export async function addToWishlist(userToken: string, productId: number): Promise<boolean> {
+  const res = await fetch(`${WP_BASE_URL}/buttoninks/v1/wishlist/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${userToken}`,
+    },
+    body: JSON.stringify({ product_id: productId }),
+  });
+  return res.ok;
+}
+
+export async function removeFromWishlist(userToken: string, productId: number): Promise<boolean> {
+  const res = await fetch(`${WP_BASE_URL}/buttoninks/v1/wishlist/remove`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${userToken}`,
+    },
+    body: JSON.stringify({ product_id: productId }),
+  });
+  return res.ok;
+}
+
+// ── WooCommerce Store API cart (wc/store/v1) ─────────────────────────────────
+// These are called client-side with a Nonce or from API routes.
+// The Store API uses cookie-based sessions for guests and logged-in users alike.
+
+export const WC_STORE_URL = `${WP_BASE_URL}/wc/store/v1`;

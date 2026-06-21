@@ -89,6 +89,23 @@ function DesignContent() {
   const [isApproved, setIsApproved] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [designSaved, setDesignSaved] = useState(false);
+
+  // ── Save design to localStorage ──────────────────────────────────────────
+  const saveDesign = useCallback(() => {
+    const snapshot = {
+      id: `design-${Date.now()}`,
+      savedAt: new Date().toISOString(),
+      productName: selectedProduct?.name ?? 'Custom Design',
+      productImage: selectedProduct?.images[0]?.src ?? null,
+      elements,
+    };
+    const existing = JSON.parse(localStorage.getItem('bi_saved_designs') ?? '[]');
+    localStorage.setItem('bi_saved_designs', JSON.stringify([snapshot, ...existing].slice(0, 20)));
+    setDesignSaved(true);
+    showNotification({ title: 'Design Saved', message: 'Saved to your account designs.', type: 'success' });
+    setTimeout(() => setDesignSaved(false), 3000);
+  }, [elements, selectedProduct, showNotification]);
 
   // ── Mobile inline text editing ───────────────────────────────────────────
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
@@ -1241,6 +1258,14 @@ function DesignContent() {
               </div>
 
               <div className="flex flex-col gap-6 mt-10">
+                <button
+                  type="button"
+                  onClick={saveDesign}
+                  className="w-full py-3.5 rounded-[20px] font-bold text-xs uppercase tracking-widest border-2 border-green-700 text-green-700 hover:bg-green-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {designSaved ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {designSaved ? 'Design Saved!' : 'Save Design'}
+                </button>
                 <label className="flex items-center gap-4 cursor-pointer group p-5 bg-gray-50 rounded-[28px] border border-transparent hover:border-green-200 transition-all"
                   onClick={() => setIsApproved(v => !v)}>
                   <div className={`w-7 h-7 rounded-xl border-2 transition-all flex items-center justify-center shrink-0 ${isApproved ? 'bg-green-700 border-green-700 shadow-lg' : 'bg-white border-gray-200 group-hover:border-green-400'}`}>
@@ -1252,6 +1277,7 @@ function DesignContent() {
                   disabled={!isApproved || addingToCart}
                   onClick={() => {
                     setAddingToCart(true);
+                    saveDesign();
                     addToCart({
                       id: selectedProduct?.id || 999,
                       name: `${selectedProduct?.name || 'Custom Design'} (Personalized)`,

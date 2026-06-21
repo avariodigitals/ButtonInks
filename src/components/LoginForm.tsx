@@ -34,8 +34,26 @@ export default function LoginForm() {
 
       if (res.ok) {
         localStorage.setItem('bi_token', data.token);
-        localStorage.setItem('bi_user_name', data.user_display_name);
-        localStorage.setItem('bi_user_email', data.user_email);
+        // Fetch full profile from WP to ensure data is fresh
+        try {
+          const wpBaseUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://central.buttoninks.com/wp-json';
+          const profileRes = await fetch(`${wpBaseUrl}/wp/v2/users/me?context=edit`, {
+            headers: { Authorization: `Bearer ${data.token}` },
+          });
+          if (profileRes.ok) {
+            const profile = await profileRes.json();
+            const fullName = `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || profile.name || data.user_display_name;
+            localStorage.setItem('bi_user_name',  fullName);
+            localStorage.setItem('bi_user_email', profile.email ?? data.user_email);
+          } else {
+            // fallback to JWT payload values
+            localStorage.setItem('bi_user_name',  data.user_display_name);
+            localStorage.setItem('bi_user_email', data.user_email);
+          }
+        } catch {
+          localStorage.setItem('bi_user_name',  data.user_display_name);
+          localStorage.setItem('bi_user_email', data.user_email);
+        }
         router.push('/account');
         router.refresh();
       } else {
