@@ -1,10 +1,9 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ChevronRight, CloudUpload, CheckCircle2, Loader2, FileText, ImageIcon, X, AlertCircle, ShoppingCart, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CloudUpload, CheckCircle2, Loader2, FileText, ImageIcon, X, AlertCircle, ShoppingCart } from 'lucide-react';
 import { WPProduct } from '@/lib/wordpress';
 import { useNotification } from '@/context/NotificationContext';
 import { useCart } from '@/context/CartContext';
@@ -36,118 +35,85 @@ function UploadContent() {
           setProduct(data);
         })
         .catch(err => {
-          console.error("Error fetching product:", err);
-          showNotification({
-            title: 'Error',
-            message: 'Failed to load product details.',
-            type: 'error'
-          });
+          console.error('Error fetching product:', err);
+          showNotification({ title: 'Error', message: 'Failed to load product details.', type: 'error' });
         })
         .finally(() => setLoading(false));
     }
   }, [productId, showNotification]);
 
-  // Handle preview URLs for the review step
   useEffect(() => {
-    const urls = files.filter(f => f.type.includes('image')).map(f => URL.createObjectURL(f));
+    const urls = files.filter(f => f.type.startsWith('image/')).map(f => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => urls.forEach(url => URL.revokeObjectURL(url));
   }, [files]);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => { setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(Array.from(e.dataTransfer.files));
-    }
+    if (e.dataTransfer.files?.length) handleFiles(Array.from(e.dataTransfer.files));
   };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(Array.from(e.target.files));
-    }
+    if (e.target.files?.length) handleFiles(Array.from(e.target.files));
   };
 
   const handleFiles = (newFiles: File[]) => {
-    const validFiles = newFiles.filter(f => f.size <= 50 * 1024 * 1024);
-    if (validFiles.length < newFiles.length) {
-      showNotification({
-        title: 'File Too Large',
-        message: 'Some files were skipped because they exceed the 50MB limit.',
-        type: 'error'
-      });
+    // Images only
+    const imageFiles = newFiles.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length < newFiles.length) {
+      showNotification({ title: 'Images Only', message: 'Only image files (PNG, JPG, WEBP) are accepted.', type: 'error' });
     }
 
-    setFiles(prev => [...prev, ...validFiles]);
-    if (validFiles.length > 0) {
-      showNotification({
-        title: 'Files Added',
-        message: `${validFiles.length} file(s) ready for review.`,
-        type: 'success'
-      });
+    // Max 50MB
+    const sizeOk = imageFiles.filter(f => f.size <= 50 * 1024 * 1024);
+    if (sizeOk.length < imageFiles.length) {
+      showNotification({ title: 'File Too Large', message: 'Some files exceed the 50MB limit and were skipped.', type: 'error' });
+    }
+
+    // Max 2 files (front + back)
+    setFiles(prev => {
+      const combined = [...prev, ...sizeOk];
+      if (combined.length > 2) {
+        showNotification({ title: 'Max 2 Files', message: 'Upload 1 image for front and 1 for back.', type: 'error' });
+        return combined.slice(0, 2);
+      }
+      return combined;
+    });
+
+    if (sizeOk.length > 0) {
+      showNotification({ title: 'Files Added', message: `${sizeOk.length} image${sizeOk.length > 1 ? 's' : ''} ready for review.`, type: 'success' });
     }
   };
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
+  const removeFile = (index: number) => setFiles(prev => prev.filter((_, i) => i !== index));
 
   const handleConfirmAndProceed = async () => {
     if (!product || files.length === 0) return;
     if (!isApproved) {
-      showNotification({
-        title: 'Approval Required',
-        message: 'Please review and approve your design before adding to cart.',
-        type: 'info'
-      });
+      showNotification({ title: 'Approval Required', message: 'Please approve your design before adding to cart.', type: 'info' });
       return;
     }
-
     setUploading(true);
-
     try {
-      // Upload each file to WP Media
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
         if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
       }
-
-      // Add to cart
       addToCart({
         id: product.id,
         name: `${product.name} (Custom Design)`,
-        price: parseFloat(product.price || "0"),
+        price: parseFloat(product.price || '0'),
         quantity: 1,
-        image: product.images[0]?.src || ""
+        image: product.images[0]?.src || '',
       });
-
-      showNotification({
-        title: 'Success',
-        message: 'Design uploaded and product added to cart!',
-        type: 'success'
-      });
-
-      setTimeout(() => {
-        router.push('/cart');
-      }, 1500);
-
-    } catch (error: any) {
-      showNotification({
-        title: 'Upload Error',
-        message: error.message || 'Something went wrong during the upload process.',
-        type: 'error'
-      });
+      showNotification({ title: 'Success', message: 'Design uploaded and added to cart!', type: 'success' });
+      setTimeout(() => router.push('/cart'), 1500);
+    } catch (error: unknown) {
+      showNotification({ title: 'Upload Error', message: error instanceof Error ? error.message : 'Something went wrong.', type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -162,159 +128,161 @@ function UploadContent() {
     );
   }
 
-  // ── Review Step ─────────────────────────────────────────────────────────────
+  // ── Review Step ──────────────────────────────────────────────────────────────
   if (showReview) {
     return (
-      <main className="w-full min-h-screen bg-white flex flex-col items-center font-['Inter']">
-        {/* Breadcrumbs */}
-        <div className="self-stretch px-4 md:px-20 py-4 bg-white border-b border-gray-200">
-           <div className="max-w-[1280px] mx-auto flex items-center gap-2">
-             <button onClick={() => setShowReview(false)} className="text-emerald-500 text-sm font-medium hover:underline">← Back to Upload</button>
-           </div>
-        </div>
+      <div className="fixed inset-0 z-[9999] bg-[#6b6b6b] flex flex-col overflow-hidden font-['Inter']">
 
-        <div className="w-full max-w-[1440px] flex flex-col lg:flex-row bg-white overflow-hidden flex-1">
-          {/* Left: Preview Section */}
-          <div className="flex-1 bg-zinc-100 flex flex-col items-center justify-center p-8 min-h-[400px]">
-             <div className="relative w-full max-w-[500px] aspect-[4/5] bg-white shadow-2xl rounded-3xl overflow-hidden flex items-center justify-center group border border-gray-200">
-                {previewUrls.length > 0 ? (
-                  <img src={previewUrls[0]} alt="Preview" className="max-w-full max-h-full object-contain" />
-                ) : (
-                  <div className="flex flex-col items-center gap-4 text-gray-400">
-                    <ImageIcon className="w-16 h-16 opacity-20" />
-                    <span className="text-sm font-bold uppercase tracking-widest">No Preview Available</span>
-                  </div>
-                )}
-                {/* Overlay badge */}
-                <div className="absolute top-6 left-6 px-4 py-1.5 bg-green-700 text-white text-[10px] font-black rounded-full shadow-xl">PRINT PREVIEW</div>
-             </div>
-             {previewUrls.length > 1 && (
-                <div className="flex gap-2 mt-6">
-                  {previewUrls.map((url, i) => (
-                    <div key={i} className="w-12 h-12 rounded-lg border-2 border-white shadow-sm overflow-hidden">
-                       <img src={url} className="w-full h-full object-cover" />
-                    </div>
-                  ))}
+        {/* Fixed back button */}
+        <button
+          onClick={() => setShowReview(false)}
+          className="fixed top-4 left-4 z-50 flex items-center gap-1.5 px-3 py-2 bg-white/90 hover:bg-white text-gray-700 hover:text-gray-900 text-sm font-semibold rounded-lg shadow transition-all"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="hidden md:inline">Back</span>
+        </button>
+
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* Left: canvas — desktop only */}
+          <div className="hidden md:flex flex-1 bg-[#c8c8c8] items-center justify-center overflow-hidden gap-6 px-8">
+            {previewUrls.length === 0 && (
+              <div className="flex flex-col items-center gap-3 text-gray-400">
+                <ImageIcon className="w-14 h-14" />
+                <span className="text-xs font-bold uppercase tracking-widest">No Preview</span>
+              </div>
+            )}
+            {previewUrls.map((url, i) => (
+              <div key={i} className="flex flex-col items-center gap-3">
+                <div
+                  className="relative bg-white shadow-xl overflow-hidden flex items-center justify-center"
+                  style={{ width: previewUrls.length === 2 ? '190px' : '420px', height: previewUrls.length === 2 ? '240px' : '500px' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={i === 0 ? 'Front' : 'Back'} className="max-w-full max-h-full object-contain" />
                 </div>
-             )}
+                <span className="text-xs font-bold text-white/80 uppercase tracking-widest">{i === 0 ? 'Front' : 'Back'}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Right: Review Details */}
-          <div className="w-full lg:w-[537px] p-8 md:p-12 bg-white flex flex-col justify-between border-l border-gray-100">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-3">
-                <h2 className="text-gray-900 text-2xl md:text-3xl font-bold font-['Outfit'] leading-tight">Review your Design</h2>
-                <p className="text-gray-500 text-sm font-medium leading-relaxed">Double-check the following details before you continue.</p>
-              </div>
+          {/* Right panel */}
+          <div className="w-full md:w-[380px] bg-white flex flex-col overflow-y-auto">
 
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-700">
-                      <CheckCircle2 className="w-4 h-4" />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-xs font-bold text-gray-900">Resolution</span>
-                      <span className="text-[10px] text-gray-500 font-medium">300 DPI — Good</span>
-                   </div>
+            {/* Mobile canvas */}
+            <div className="md:hidden bg-[#c8c8c8] flex items-center justify-center gap-4 px-4" style={{ height: '260px' }}>
+              {previewUrls.length === 0 && (
+                <div className="flex flex-col items-center gap-2 text-gray-400">
+                  <ImageIcon className="w-10 h-10" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">No Preview</span>
                 </div>
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-700">
-                      <CheckCircle2 className="w-4 h-4" />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-xs font-bold text-gray-900">Color mode</span>
-                      <span className="text-[10px] text-gray-500 font-medium">RGB (auto-convert to CMYK)</span>
-                   </div>
+              )}
+              {previewUrls.map((url, i) => (
+                <div key={i} className="flex flex-col items-center gap-2">
+                  <div
+                    className="bg-white shadow-md overflow-hidden flex items-center justify-center"
+                    style={{ width: previewUrls.length === 2 ? '130px' : '200px', height: previewUrls.length === 2 ? '160px' : '220px' }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={i === 0 ? 'Front' : 'Back'} className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest">{i === 0 ? 'Front' : 'Back'}</span>
                 </div>
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-700">
-                      <CheckCircle2 className="w-4 h-4" />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-xs font-bold text-gray-900">Dimensions</span>
-                      <span className="text-[10px] text-gray-500 font-medium">Fits designated print area</span>
-                   </div>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700">
-                      <Info className="w-4 h-4" />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-xs font-bold text-gray-900">Bleed area</span>
-                      <span className="text-[10px] text-gray-500 font-medium">0.125" — extended for safety</span>
-                   </div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div className="flex flex-col gap-6 mt-16">
-              <label
-                className="flex items-center gap-4 cursor-pointer group p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-green-200 transition-all"
-                onClick={() => setIsApproved(!isApproved)}
-              >
-                <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${isApproved ? 'bg-green-700 border-green-700 shadow-lg' : 'bg-white border-gray-300'}`}>
-                  {isApproved && <CheckCircle2 className="w-4 h-4 text-white" strokeWidth={4} />}
+            <div className="flex flex-col flex-1 p-6 md:p-8">
+
+              <div className="mb-5">
+                <h1 className="text-lg font-bold text-gray-900">Review your Design</h1>
+                <p className="text-gray-500 text-sm mt-0.5">Double-check the following details before you continue.</p>
+              </div>
+
+              <ul className="flex flex-col gap-2.5 mb-6">
+                {['Text is clear and easy to read', 'Spellings are correct', 'Images are not blurry', 'Correct images are uploaded'].map(item => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              {files.length > 0 && (
+                <div className="mb-6 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    {files.length} file{files.length > 1 ? 's' : ''} ready
+                  </p>
+                  {files.map((file, i) => (
+                    <p key={i} className="text-xs text-gray-700 truncate">{file.name}</p>
+                  ))}
                 </div>
-                <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">I have reviewed and approve my design.</span>
+              )}
+
+              <div className="flex-1" />
+
+              <label className="flex items-center gap-2.5 cursor-pointer mb-4 select-none" onClick={() => setIsApproved(v => !v)}>
+                <div className={`w-4 h-4 border rounded flex items-center justify-center shrink-0 transition-colors ${isApproved ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'}`}>
+                  {isApproved && (
+                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-sm text-gray-700">I have reviewed and approve my design.</span>
               </label>
 
               <button
                 disabled={!isApproved || uploading}
                 onClick={handleConfirmAndProceed}
-                className={`
-                  w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-sm transition-all shadow-2xl flex items-center justify-center gap-3
-                  ${!isApproved || uploading ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none' : 'bg-green-700 text-white hover:bg-green-800 scale-[1.02]'}
-                `}
+                className={`w-full py-3.5 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 mb-2.5 ${isApproved ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-600/40 text-white/70 cursor-not-allowed'}`}
               >
-                {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
                 {uploading ? 'Processing...' : 'Add to cart'}
+              </button>
+
+              <button onClick={() => setShowReview(false)} className="w-full py-3.5 rounded-lg font-semibold text-sm border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all">
+                Continue Editing
               </button>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
-  // ── Initial Upload Step ─────────────────────────────────────────────────────
+  // ── Upload Form ──────────────────────────────────────────────────────────────
   return (
     <main className="w-full min-h-screen bg-white flex flex-col items-center overflow-hidden font-['Inter']">
 
-      {/* ── Breadcrumbs ── */}
+      {/* Breadcrumbs */}
       <section className="self-stretch px-4 md:px-20 py-4 bg-white border-b border-gray-200">
-        <div className="max-w-[1280px] mx-auto flex items-center gap-2">
+        <div className="max-w-[1280px] mx-auto flex items-center gap-2 flex-wrap">
           <Link href="/" className="text-emerald-500 text-sm font-medium hover:underline">Home</Link>
           <ChevronRight className="w-3 h-3 text-gray-400" />
           <Link href="/categories" className="text-emerald-500 text-sm font-medium hover:underline">Shop</Link>
           <ChevronRight className="w-3 h-3 text-gray-400" />
-          <span className="text-gray-600 text-sm font-normal truncate max-w-[100px] md:max-w-none">
-            {product?.name || 'Classic Tshirt'}
-          </span>
+          <span className="text-gray-600 text-sm font-normal truncate max-w-[120px] md:max-w-none">{product?.name || 'Product'}</span>
           <ChevronRight className="w-3 h-3 text-gray-400" />
           <span className="text-zinc-500 text-sm font-normal">Upload Design</span>
         </div>
       </section>
 
-      {/* ── Title Section ── */}
+      {/* Title */}
       <section className="self-stretch px-4 md:px-20 py-8 bg-emerald-50 border-b border-gray-200">
         <div className="max-w-[1280px] mx-auto flex flex-col gap-2">
           <h1 className="text-green-700 text-3xl md:text-4xl font-bold font-['Outfit'] leading-10">Upload Your Design</h1>
-          <p className="text-slate-500 text-base md:text-lg font-normal leading-7">Upload your print-ready files. We accept all common formats.</p>
+          <p className="text-slate-500 text-base md:text-lg font-normal leading-7">Upload your print-ready files. We accept all common image formats.</p>
         </div>
       </section>
 
-      {/* ── Main Upload Area ── */}
+      {/* Drop zone */}
       <section className="self-stretch px-4 md:px-20 py-10 md:py-20 bg-gray-50 flex flex-col items-center gap-8 md:gap-10 min-h-[600px]">
-
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`
-            w-full max-w-[832px] p-8 md:p-16 bg-white rounded-3xl border-4 border-dashed transition-all cursor-pointer flex flex-col justify-center items-center gap-6 shadow-sm
-            ${isDragging ? 'border-green-700 bg-green-50 scale-[0.99]' : 'border-gray-200 hover:border-green-400 hover:shadow-md'}
-          `}
+          className={`w-full max-w-[832px] p-8 md:p-16 bg-white rounded-3xl border-4 border-dashed transition-all cursor-pointer flex flex-col justify-center items-center gap-6 shadow-sm ${isDragging ? 'border-green-700 bg-green-50 scale-[0.99]' : 'border-gray-200 hover:border-green-400 hover:shadow-md'}`}
         >
           <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${isDragging ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
             <CloudUpload className="w-8 h-8" />
@@ -337,47 +305,45 @@ function UploadContent() {
             className="hidden"
             multiple
             onChange={handleFileChange}
-            accept=".png,.jpg,.jpeg,.pdf,.ai,.svg,.psd,.eps"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
           />
 
-          <div className="flex flex-col gap-3 w-full border-t border-gray-50 pt-6 text-center">
+          <div className="flex flex-col gap-3 w-full border-t border-gray-100 pt-6 text-center">
             <p className="text-gray-500 text-xs md:text-sm font-medium">
-              Accepted formats: PNG, JPG, PDF, AI, SVG, PSD, EPS • Max 50MB per file
+              Accepted: PNG, JPG, WEBP only — Max 50MB per file
             </p>
             <div className="flex items-center justify-center gap-2 text-green-700 font-bold text-xs md:text-sm">
-               <AlertCircle className="w-4 h-4" />
-               <span>300DPI Minimum Resolution • 12x16” Print Area</span>
+              <AlertCircle className="w-4 h-4" />
+              <span>Max 2 images — 1 for front, 1 for back — 300DPI minimum</span>
             </div>
           </div>
         </div>
 
-        {/* ── File List (if any) ── */}
+        {/* File list */}
         {files.length > 0 && (
-          <div className="w-full max-w-[832px] bg-white rounded-[32px] border border-gray-100 p-6 md:p-10 flex flex-col gap-6 shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <div className="w-full max-w-[832px] bg-white rounded-[32px] border border-gray-100 p-6 md:p-10 flex flex-col gap-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-               <h3 className="text-gray-900 text-lg font-bold flex items-center gap-2 font-['Outfit']">
-                 <CheckCircle2 className="w-6 h-6 text-green-600" />
-                 Ready for Review ({files.length})
-               </h3>
-               <button onClick={() => setFiles([])} className="text-xs font-bold text-red-500 hover:underline">Clear All</button>
+              <h3 className="text-gray-900 text-lg font-bold flex items-center gap-2 font-['Outfit']">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+                Ready for Review ({files.length} / 2)
+              </h3>
+              <button onClick={() => setFiles([])} className="text-xs font-bold text-red-500 hover:underline">Clear All</button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {files.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group">
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
                   <div className="flex items-center gap-3 overflow-hidden">
                     <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-green-700 border border-gray-200 shrink-0">
-                      {file.type.includes('image') ? <ImageIcon className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
+                      {file.type.startsWith('image/') ? <ImageIcon className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
                     </div>
                     <div className="flex flex-col overflow-hidden">
+                      <span className="text-xs text-gray-400 font-bold uppercase tracking-wide">{index === 0 ? 'Front' : 'Back'}</span>
                       <span className="text-sm font-bold text-gray-900 truncate">{file.name}</span>
-                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                      <span className="text-[10px] text-gray-400">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeFile(index); }}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                  >
+                  <button onClick={(e) => { e.stopPropagation(); removeFile(index); }} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>

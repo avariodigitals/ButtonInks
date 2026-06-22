@@ -7,13 +7,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Type, UploadCloud, Sticker, LayoutTemplate, Package, X, Trash2,
   ChevronDown, Plus, ChevronLeft, ChevronRight, Layers, Palette,
-  Settings2, Copy, CheckCircle2, Loader2, Move, ShoppingCart,
-  Minus, RefreshCw, Eye, ArrowLeft, AlignLeft, AlignCenter, AlignRight,
+  Settings2, Copy, Loader2, Move, Minus,
+  RefreshCw, Eye, ArrowLeft, AlignLeft, AlignCenter, AlignRight,
   ImageIcon, Circle, Search
 } from 'lucide-react';
 import { WPProduct, WP_URL } from '@/lib/wordpress';
 import { useNotification } from '@/context/NotificationContext';
-import { useCart } from '@/context/CartContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -69,7 +68,6 @@ function DesignContent() {
   const router = useRouter();
   const initialProductId = searchParams.get('product');
   const { showNotification } = useNotification();
-  const { addToCart } = useCart();
 
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [side, setSide] = useState<'front' | 'back'>('front');
@@ -86,28 +84,19 @@ function DesignContent() {
   const [uploadsPage, setUploadsPage] = useState(0);
   const UPLOADS_PER_PAGE = 30;
   const [isUploading, setIsUploading] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
-  const [isApproved, setIsApproved] = useState(false);
-  const [addingToCart, setAddingToCart] = useState(false);
-  const [quantity, setQuantity] = useState(1);
-  const [designSaved, setDesignSaved] = useState(false);
 
-  // ── Save design to localStorage ──────────────────────────────────────────
-  const saveDesign = useCallback(() => {
+  // ── Save design to review localStorage ───────────────────────────────────
+  const goToReview = useCallback(() => {
     const snapshot = {
-      id: `design-${Date.now()}`,
-      savedAt: new Date().toISOString(),
+      productId: selectedProduct?.id ?? null,
       productName: selectedProduct?.name ?? 'Custom Design',
       productImage: selectedProduct?.images[0]?.src ?? null,
+      productPrice: selectedProduct?.price ?? '23.95',
       elements,
     };
-    const existing = JSON.parse(localStorage.getItem('bi_saved_designs') ?? '[]');
-    localStorage.setItem('bi_saved_designs', JSON.stringify([snapshot, ...existing].slice(0, 20)));
-    setDesignSaved(true);
-    showNotification({ title: 'Design Saved', message: 'Saved to your account designs.', type: 'success' });
-    setTimeout(() => setDesignSaved(false), 3000);
-  }, [elements, selectedProduct, showNotification]);
+    localStorage.setItem('bi_review_design', JSON.stringify(snapshot));
+    router.push('/design/review');
+  }, [elements, selectedProduct, router]);
 
   // ── Mobile inline text editing ───────────────────────────────────────────
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
@@ -278,6 +267,7 @@ function DesignContent() {
           rotation: 0, opacity: 1, side
         }]);
         setSelectedId(newId);
+        setActiveTool(null);
 
         // Refresh the media list so it reflects the new upload scoped to this user
         const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
@@ -332,19 +322,16 @@ function DesignContent() {
     e.stopPropagation();
 
     const el = elements.find(item => item.id === id);
-    const now = nowRef.current();
 
-    // Double-tap detection: two taps on same element within 300ms → inline edit
-    if (
-      el?.type === 'text' &&
-      lastTapRef.current?.id === id &&
-      now - lastTapRef.current.time < 300
-    ) {
-      // Double tap — open inline editor, do NOT start drag
+    // Single tap on a text element → immediately open inline editor & keyboard
+    if (el?.type === 'text') {
       lastTapRef.current = null;
       setSelectedId(id);
       setInlineEditId(id);
-      setTimeout(() => inlineInputRef.current?.focus(), 50);
+      // requestAnimationFrame gives the DOM time to render the textarea before focusing
+      requestAnimationFrame(() => {
+        inlineInputRef.current?.focus();
+      });
       return;
     }
 
@@ -388,7 +375,7 @@ function DesignContent() {
         </Link>
         <span className="text-sm font-black text-zinc-900 font-['Outfit'] tracking-tight">Design Studio</span>
         <button
-          onClick={() => { setPreviewSide('front'); setShowPreview(true); }}
+          onClick={goToReview}
           className="px-4 py-1.5 bg-green-700 hover:bg-green-800 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
         >
           <Eye className="w-3.5 h-3.5" /> Review
@@ -593,6 +580,7 @@ function DesignContent() {
                               const newId = Date.now().toString();
                               setElements(prev => [...prev, { id: newId, type: 'image', content: img.source_url, x: 200, y: 200, width: 150, height: 150, rotation: 0, opacity: 1, side }]);
                               setSelectedId(newId);
+                              setActiveTool(null);
                             }}
                             className="relative aspect-square bg-white rounded-lg border border-black/5 overflow-hidden cursor-pointer hover:border-green-500 transition-all hover:scale-105"
                           >
@@ -1196,7 +1184,7 @@ function DesignContent() {
 
           {/* Review Action */}
           <div className="p-6 border-t border-gray-100 bg-stone-50 shrink-0">
-            <button onClick={() => { setPreviewSide('front'); setShowPreview(true); }}
+            <button onClick={goToReview}
               className="w-full py-5 bg-green-700 hover:bg-green-800 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-2">
               <Eye className="w-4 h-4" /> Review Design
             </button>
@@ -1206,156 +1194,6 @@ function DesignContent() {
       </div>{/* end editor body */}
 
       {/* ── Preview Modal ── */}
-      {showPreview && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 md:p-10 bg-black/90 backdrop-blur-xl">
-          <div className="bg-white w-full max-w-6xl max-h-[95vh] rounded-[48px] overflow-hidden flex flex-col md:flex-row relative shadow-2xl">
-            <button onClick={() => setShowPreview(false)}
-              className="absolute top-8 right-8 z-20 p-3 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
-              <X className="w-6 h-6 text-gray-900" />
-            </button>
-
-            {/* Preview Canvas */}
-            <div className="flex-1 bg-zinc-50 flex flex-col items-center justify-center p-4 md:p-8 min-h-[300px] border-r border-gray-100 gap-4">
-
-              {/* Front / Back toggle — only shown when both sides have elements */}
-              {(() => {
-                const hasFront = elements.some(el => el.side === 'front');
-                const hasBack  = elements.some(el => el.side === 'back');
-                if (!hasFront || !hasBack) return null;
-                return (
-                  <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl">
-                    <button
-                      onClick={() => setPreviewSide('front')}
-                      className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${previewSide === 'front' ? 'bg-white text-gray-900 shadow-sm' : 'text-zinc-500 hover:text-gray-900'}`}
-                    >
-                      Front
-                    </button>
-                    <button
-                      onClick={() => setPreviewSide('back')}
-                      className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${previewSide === 'back' ? 'bg-white text-gray-900 shadow-sm' : 'text-zinc-500 hover:text-gray-900'}`}
-                    >
-                      Back
-                    </button>
-                  </div>
-                );
-              })()}
-
-              <div className="relative bg-white shadow-2xl rounded-[40px] border border-gray-100 overflow-hidden flex items-center justify-center"
-                style={{ width: '420px', height: '525px' }}>
-                <div className="absolute inset-0 flex items-center justify-center p-8 bg-white">
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
-                      fill
-                      className="object-contain opacity-60"
-                      sizes="420px"
-                      alt="Product Base"
-                    />
-                  </div>
-                </div>
-                <div className="absolute inset-0 pointer-events-none" style={{ transform: 'scale(0.7)', width: '600px', height: '750px' }}>
-                  {elements.filter(el => el.side === previewSide).map((el) => (
-                    <div key={el.id} className="absolute flex items-center justify-center"
-                      style={{ left: `${el.x}px`, top: `${el.y}px`, width: `${el.width}px`, height: `${el.height}px`, transform: `rotate(${el.rotation}deg)`, opacity: el.opacity }}>
-                      {el.type === 'text' ? (
-                        <div className="w-full h-full flex items-center justify-center font-bold text-center leading-tight"
-                          style={{ color: el.color, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily, fontWeight: el.fontWeight }}>
-                          {el.content}
-                        </div>
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={el.content} className="w-full h-full object-contain" alt="Custom Graphic" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="absolute top-6 left-6 px-4 py-1.5 bg-green-700 text-white text-[10px] font-black rounded-full shadow-xl z-20 uppercase tracking-widest">
-                  {previewSide} · Production Preview
-                </div>
-
-                {/* Empty side indicator */}
-                {elements.filter(el => el.side === previewSide).length === 0 && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10">
-                    <p className="text-zinc-300 text-sm font-bold">No design on {previewSide} side</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Preview Details */}
-            <div className="w-full md:w-[480px] p-8 md:p-16 flex flex-col justify-between bg-white overflow-y-auto">
-              <div className="flex flex-col gap-8">
-                <div className="flex flex-col gap-3">
-                  <h2 className="text-3xl md:text-5xl font-black font-['Outfit'] text-gray-900 leading-tight">Review Your Art</h2>
-                  <p className="text-gray-400 font-medium">Verify your design before we start production.</p>
-                </div>
-                <ul className="flex flex-col gap-5">
-                  {["Vibrant CMYK Colors","High Resolution Result","Correct Safe-Area Layout","Premium Product Quality"].map((item) => (
-                    <li key={item} className="flex items-center gap-4 text-base font-bold text-zinc-600">
-                      <CheckCircle2 className="w-6 h-6 text-green-700 shrink-0" strokeWidth={3} />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Quantity selector */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Quantity</label>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                      className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-green-700 transition-colors">
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="text-xl font-black text-zinc-900 min-w-[32px] text-center">{quantity}</span>
-                    <button onClick={() => setQuantity(q => q + 1)}
-                      className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-green-700 transition-colors">
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-6 mt-10">
-                <button
-                  type="button"
-                  onClick={saveDesign}
-                  className="w-full py-3.5 rounded-[20px] font-bold text-xs uppercase tracking-widest border-2 border-green-700 text-green-700 hover:bg-green-50 transition-all flex items-center justify-center gap-2"
-                >
-                  {designSaved ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {designSaved ? 'Design Saved!' : 'Save Design'}
-                </button>
-                <label className="flex items-center gap-4 cursor-pointer group p-5 bg-gray-50 rounded-[28px] border border-transparent hover:border-green-200 transition-all"
-                  onClick={() => setIsApproved(v => !v)}>
-                  <div className={`w-7 h-7 rounded-xl border-2 transition-all flex items-center justify-center shrink-0 ${isApproved ? 'bg-green-700 border-green-700 shadow-lg' : 'bg-white border-gray-200 group-hover:border-green-400'}`}>
-                    {isApproved && <CheckCircle2 className="w-5 h-5 text-white" strokeWidth={4} />}
-                  </div>
-                  <span className="text-sm font-black text-gray-700 uppercase tracking-wider">Approve Production</span>
-                </label>
-                <button
-                  disabled={!isApproved || addingToCart}
-                  onClick={() => {
-                    setAddingToCart(true);
-                    saveDesign();
-                    addToCart({
-                      id: selectedProduct?.id || 999,
-                      name: `${selectedProduct?.name || 'Custom Design'} (Personalized)`,
-                      price: parseFloat(selectedProduct?.price || "23.95"),
-                      quantity,
-                      image: selectedProduct?.images[0]?.src || ""
-                    });
-                    showNotification({ title: 'Success', message: 'Added to your shopping bag!', type: 'cart' });
-                    setTimeout(() => router.push('/cart'), 1000);
-                  }}
-                  className={`w-full py-6 rounded-[28px] font-black uppercase tracking-[0.3em] text-xs transition-all shadow-2xl flex items-center justify-center gap-3 ${isApproved ? 'bg-green-700 text-white hover:bg-green-800 scale-[1.02]' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                >
-                  {addingToCart ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
-                  {addingToCart ? 'Adding...' : 'Add to Cart'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
     </main>
   );

@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Outfit, Inter } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import ShellWrapper from "@/components/ShellWrapper";
 import { CartProvider } from "@/context/CartContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -62,18 +61,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-white touch-pan-y" suppressHydrationWarning>
         <NotificationProvider>
           <CartProvider>
-            {/* ── Global header (Announcement + Navbar + CategoryNav) ── */}
-            <Header />
-
-            {/* ── Page content ── */}
-            <div className="flex-1">
+            <ShellWrapper>
               {children}
-            </div>
-
-            {/* ── Global footer ── */}
-            <Footer />
-
-            {/* ── Scroll to Top ── */}
+            </ShellWrapper>
             <ScrollToTop />
           </CartProvider>
         </NotificationProvider>
