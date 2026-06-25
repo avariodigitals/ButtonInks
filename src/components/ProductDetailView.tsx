@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   ChevronRight, Star, Minus, Plus, Upload, Maximize2,
-  FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, LayoutGrid,
+  FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, LayoutGrid, Send,
 } from 'lucide-react';
 import { WPProduct, WPProductReview, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
@@ -43,6 +43,211 @@ function RatingBar({ stars, count, total }: { stars: number; count: number; tota
         <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${pct}%` }} />
       </div>
       <span className="w-12 text-right text-zinc-500 text-xs font-inter">{count.toLocaleString()}</span>
+    </div>
+  );
+}
+
+// ── Write-a-Review modal ─────────────────────────────────────────────────────
+function ReviewFormModal({
+  productId,
+  productName,
+  onClose,
+  onSuccess,
+}: {
+  productId:   number;
+  productName: string;
+  onClose:     () => void;
+  onSuccess:   (review: WPProductReview) => void;
+}) {
+  const [name,    setName]    = useState('');
+  const [email,   setEmail]   = useState('');
+  const [body,    setBody]    = useState('');
+  const [rating,  setRating]  = useState(0);
+  const [hovered, setHovered] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+
+  // Lock scroll
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', esc);
+    };
+  }, [onClose]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!rating) { setError('Please select a star rating.'); return; }
+    if (!name.trim())  { setError('Your name is required.'); return; }
+    if (!email.trim()) { setError('Your email is required.'); return; }
+    if (!body.trim())  { setError('Please write your review.'); return; }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/products/${productId}/reviews`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          reviewer:       name.trim(),
+          reviewer_email: email.trim(),
+          review:         body.trim(),
+          rating,
+        }),
+      });
+      const data: unknown = await res.json();
+      if (!res.ok) {
+        setError((data as { error?: string }).error ?? 'Something went wrong. Please try again.');
+        return;
+      }
+      onSuccess(data as WPProductReview);
+      onClose();
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-lg max-h-[92dvh] overflow-y-auto no-scrollbar rounded-t-3xl sm:rounded-2xl shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
+
+        <div className="p-5 sm:p-8 flex flex-col gap-5">
+          {/* Header */}
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-slate-900 text-xl font-bold font-outfit">Write a Review</h2>
+              <p className="text-gray-500 text-sm font-inter mt-0.5 line-clamp-1">{decodeHTMLEntities(productName)}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+            {/* Star picker */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-bold font-inter text-gray-700">Your Rating <span className="text-red-500">*</span></label>
+              <div className="flex gap-1" role="radiogroup" aria-label="Star rating">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setRating(s)}
+                    onMouseEnter={() => setHovered(s)}
+                    onMouseLeave={() => setHovered(0)}
+                    aria-label={`${s} star${s > 1 ? 's' : ''}`}
+                    aria-pressed={rating === s}
+                    className="p-0.5 transition-transform hover:scale-110 active:scale-95"
+                  >
+                    <Star
+                      className={`w-8 h-8 transition-colors ${
+                        s <= (hovered || rating)
+                          ? 'text-amber-400 fill-amber-400'
+                          : 'text-gray-200 fill-gray-200'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rv-name" className="text-sm font-bold font-inter text-gray-700">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="rv-name"
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-inter text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-green-600 transition-colors"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rv-email" className="text-sm font-bold font-inter text-gray-700">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="rv-email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@email.com"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-inter text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-green-600 transition-colors"
+              />
+              <p className="text-xs text-gray-400 font-inter">Not displayed publicly.</p>
+            </div>
+
+            {/* Review body */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rv-body" className="text-sm font-bold font-inter text-gray-700">
+                Review <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="rv-body"
+                rows={4}
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder="Share your experience with this product…"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-inter text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-green-600 transition-colors resize-none"
+              />
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p className="text-red-600 text-sm font-inter bg-red-50 px-3 py-2 rounded-lg border border-red-100">
+                {error}
+              </p>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-green-700 hover:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-bold font-inter rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Submitting…
+                </span>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Submit Review
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
@@ -160,6 +365,7 @@ export default function ProductDetailView({
   const [relatedProducts, setRelatedProducts] = useState<WPProduct[]>([]);
   const [reviewsLoading,  setReviewsLoading]  = useState(true);
   const [relatedLoading,  setRelatedLoading]  = useState(true);
+  const [reviewFormOpen,  setReviewFormOpen]  = useState(false);
 
   useEffect(() => {
     // Fetch reviews
@@ -264,6 +470,11 @@ export default function ProductDetailView({
     });
   };
 
+  const handleReviewSuccess = useCallback((newReview: WPProductReview) => {
+    setReviews(prev => [newReview, ...prev]);
+    showNotification({ title: 'Review Submitted', message: 'Thanks for your review!', type: 'cart' });
+  }, [showNotification]);
+
   // ── Rating breakdown from actual review data ──────────────────────────────
   const avgRating   = parseFloat(product.average_rating || '0');
   const ratingCount = product.rating_count || 0;
@@ -361,6 +572,16 @@ export default function ProductDetailView({
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="w-full flex flex-col items-center bg-white">
+
+      {/* Review form modal */}
+      {reviewFormOpen && (
+        <ReviewFormModal
+          productId={product.id}
+          productName={product.name}
+          onClose={() => setReviewFormOpen(false)}
+          onSuccess={handleReviewSuccess}
+        />
+      )}
 
       {/* Lightbox */}
       {lightboxOpen && mainImage && (
@@ -680,7 +901,10 @@ export default function ProductDetailView({
             {/* Customer reviews header */}
             <div className="flex justify-between items-center border-t border-gray-100 pt-5">
               <h3 className="text-slate-800 text-base sm:text-lg font-semibold font-inter">Customer Reviews</h3>
-              <button className="px-4 py-2 bg-green-700 hover:bg-green-800 rounded-[10px] text-white text-sm font-semibold font-inter transition-all active:scale-95">
+              <button
+                onClick={() => setReviewFormOpen(true)}
+                className="px-4 py-2 bg-green-700 hover:bg-green-800 rounded-[10px] text-white text-sm font-semibold font-inter transition-all active:scale-95"
+              >
                 Write a Review
               </button>
             </div>

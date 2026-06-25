@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight, Sparkles } from "lucide-react";
+import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { WP_URL } from "@/lib/wordpress";
 import SearchModal from "@/components/SearchModal";
@@ -179,24 +179,22 @@ export default function Navbar() {
                     <span className="text-xs font-bold font-inter">Wishlist</span>
                  </Link>
                </div>
-
-               {/* Ready-Made Designs highlight CTA */}
-               <Link
-                 href="/designs"
-                 onClick={() => setIsMenuOpen(false)}
-                 className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-700 to-green-600 rounded-2xl text-white active:scale-[0.98] transition-transform"
-               >
-                 <Sparkles className="w-5 h-5 shrink-0" />
-                 <div className="flex flex-col">
-                   <span className="text-xs opacity-80 font-inter">No design? No problem</span>
-                   <span className="font-bold text-sm font-inter">Browse Ready-Made Designs</span>
-                 </div>
-               </Link>
             </div>
 
             {/* Categories List */}
             <div className="flex flex-col py-4">
               <span className="px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 font-['Inter']">Shop Categories</span>
+              {/* Ready-Made Designs — plain row, same style as category links */}
+              <Link
+                href="/designs"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-6 py-4 flex justify-between items-center hover:bg-green-50 group border-b border-gray-50"
+              >
+                <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700 transition-colors font-inter">
+                  Ready-Made Designs
+                </span>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-green-500" />
+              </Link>
               {categories.map((cat) => (
                 <Link
                   key={cat.label}
@@ -218,9 +216,8 @@ export default function Navbar() {
             <Link
               href="/designs"
               onClick={() => setIsMenuOpen(false)}
-              className="w-full py-3.5 bg-green-700 hover:bg-green-800 text-white rounded-xl font-bold text-center flex items-center justify-center gap-2 active:scale-95 transition-all font-inter"
+              className="w-full py-3.5 bg-green-700 hover:bg-green-800 text-white rounded-xl font-bold text-center flex items-center justify-center active:scale-95 transition-all font-inter"
             >
-              <Sparkles className="w-4 h-4" />
               Browse Ready-Made Designs
             </Link>
             <Link
