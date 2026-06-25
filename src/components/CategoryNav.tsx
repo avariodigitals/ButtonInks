@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 /**
  * Mapping the requested frontend labels to the new logical WordPress slugs
@@ -48,10 +48,9 @@ export default function CategoryNav() {
         {/* ── Ready-Made Designs CTA ── */}
         <Link
           href="/designs"
-          className="ml-2 px-3 py-1.5 bg-green-700 hover:bg-green-800 rounded-lg flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+          className="px-3 py-2 rounded-md flex items-center gap-1 hover:bg-gray-50 group transition-colors shrink-0"
         >
-          <Sparkles className="w-3.5 h-3.5 text-white" />
-          <span className="text-white text-sm font-semibold leading-5 whitespace-nowrap font-inter">
+          <span className="text-gray-700 text-sm font-medium leading-5 whitespace-nowrap group-hover:text-green-700 transition-colors font-inter">
             Ready-Made Designs
           </span>
         </Link>
