@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 // Routes where the global header/footer should NOT appear
-const NO_SHELL_ROUTES = ["/design/review"];
+const NO_SHELL_ROUTES = ["/design"];
 
 export default function ShellWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

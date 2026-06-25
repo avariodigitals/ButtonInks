@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight } from "lucide-react";
+import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight, Sparkles } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { WP_URL } from "@/lib/wordpress";
 import SearchModal from "@/components/SearchModal";
@@ -170,15 +170,28 @@ export default function Navbar() {
                </div>
 
                <div className="grid grid-cols-2 gap-3">
-                 <Link href="/account" onClick={() => setIsMenuOpen(false)} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700">
+                 <Link href="/account" onClick={() => setIsMenuOpen(false)} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors">
                     <User className="w-5 h-5" />
-                    <span className="text-xs font-bold font-['Inter']">Account</span>
+                    <span className="text-xs font-bold font-inter">Account</span>
                  </Link>
-                 <Link href="/wishlist" onClick={() => setIsMenuOpen(false)} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700">
+                 <Link href="/wishlist" onClick={() => setIsMenuOpen(false)} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors">
                     <Heart className="w-5 h-5" />
-                    <span className="text-xs font-bold font-['Inter']">Wishlist</span>
+                    <span className="text-xs font-bold font-inter">Wishlist</span>
                  </Link>
                </div>
+
+               {/* Ready-Made Designs highlight CTA */}
+               <Link
+                 href="/designs"
+                 onClick={() => setIsMenuOpen(false)}
+                 className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-700 to-green-600 rounded-2xl text-white active:scale-[0.98] transition-transform"
+               >
+                 <Sparkles className="w-5 h-5 shrink-0" />
+                 <div className="flex flex-col">
+                   <span className="text-xs opacity-80 font-inter">No design? No problem</span>
+                   <span className="font-bold text-sm font-inter">Browse Ready-Made Designs</span>
+                 </div>
+               </Link>
             </div>
 
             {/* Categories List */}
@@ -201,11 +214,19 @@ export default function Navbar() {
           </div>
 
           {/* Footer CTA */}
-          <div className="p-6 bg-green-700">
+          <div className="p-6 flex flex-col gap-3 border-t border-gray-100">
+            <Link
+              href="/designs"
+              onClick={() => setIsMenuOpen(false)}
+              className="w-full py-3.5 bg-green-700 hover:bg-green-800 text-white rounded-xl font-bold text-center flex items-center justify-center gap-2 active:scale-95 transition-all font-inter"
+            >
+              <Sparkles className="w-4 h-4" />
+              Browse Ready-Made Designs
+            </Link>
             <Link
               href="/design"
               onClick={() => setIsMenuOpen(false)}
-              className="w-full py-4 bg-white text-green-700 rounded-xl font-bold text-center block shadow-lg active:scale-95 transition-transform font-['Inter']"
+              className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold text-center block active:scale-95 transition-transform font-inter"
             >
               Start Designing Free
             </Link>

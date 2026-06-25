@@ -1,25 +1,135 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   ChevronRight, Star, Minus, Plus, Upload, Maximize2,
-  FileDown, ShoppingCart, SlidersHorizontal, Palette, X
+  FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, LayoutGrid,
 } from 'lucide-react';
-import { WPProduct, decodeHTMLEntities } from '@/lib/wordpress';
+import { WPProduct, WPProductReview, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
 
-// ── Light color detection (for checkmark contrast) ───────────────────────────
+// ── Utility ───────────────────────────────────────────────────────────────────
 function isLightColor(hex: string): boolean {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  // Perceived luminance formula
   return (r * 299 + g * 587 + b * 114) / 1000 > 160;
 }
 
+function StarRow({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' | 'lg' }) {
+  const cls = size === 'lg' ? 'w-5 h-5' : size === 'md' ? 'w-4 h-4' : 'w-3 h-3';
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map(s => (
+        <Star key={s} className={`${cls} ${s <= Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}`} />
+      ))}
+    </div>
+  );
+}
+
+function RatingBar({ stars, count, total }: { stars: number; count: number; total: number }) {
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  return (
+    <div className="flex items-center gap-3 w-full">
+      <div className="flex gap-0.5 shrink-0">
+        {[1, 2, 3, 4, 5].map(s => (
+          <div key={s} className={`w-3 h-3 rounded-[1px] ${s <= stars ? 'bg-yellow-500' : 'bg-gray-200'}`} />
+        ))}
+      </div>
+      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-12 text-right text-zinc-500 text-xs font-inter">{count.toLocaleString()}</span>
+    </div>
+  );
+}
+
+// ── Color map ─────────────────────────────────────────────────────────────────
+const COLOR_MAP: Record<string, string> = {
+  'black': '#111827', 'white': '#F9FAFB', 'grey': '#9CA3AF', 'gray': '#9CA3AF',
+  'charcoal': '#374151', 'dark heather': '#4B5563', 'heather grey': '#D1D5DB',
+  'sport grey': '#E5E7EB', 'ash': '#9CA3AF', 'silver': '#C0C0C0', 'natural': '#FAF5EB',
+  'navy': '#1E3A5F', 'royal blue': '#1D4ED8', 'sapphire': '#0F52BA',
+  'light blue': '#BFDBFE', 'sky blue': '#38BDF8', 'columbia blue': '#9EC8E8',
+  'carolina blue': '#56A0D3', 'powder blue': '#B0E0E6', 'tour blue': '#0369A1',
+  'forest green': '#166534', 'irish green': '#15803D', 'kelly green': '#22C55E',
+  'military green': '#4B5320', 'olive': '#6B7280', 'lime': '#84CC16',
+  'red': '#DC2626', 'cardinal': '#9F1239', 'maroon': '#7F1D1D', 'burgundy': '#800020',
+  'cranberry': '#9B1B30', 'cherry red': '#DC143C', 'hot pink': '#EC4899',
+  'light pink': '#FBD5E4', 'pink': '#F9A8D4', 'coral': '#F87171',
+  'orange': '#EA580C', 'gold': '#D97706', 'yellow': '#FBBF24', 'sand': '#D6C9A0',
+  'daisy': '#FDE047', 'purple': '#7C3AED', 'violet': '#8B5CF6', 'plum': '#9D174D',
+  'lavender': '#C4B5FD', 'brown': '#92400E', 'chocolate': '#3B1F0A', 'tan': '#D2B48C',
+  'mint': '#6EE7B7', 'teal': '#0D9488', 'cyan': '#06B6D4',
+};
+
+// ── Related product card (live WP data) ───────────────────────────────────────
+function RelatedCard({ product }: { product: WPProduct }) {
+  const categorySlug = product.categories?.[0]?.slug ?? 'all';
+  const href  = `/products/${categorySlug}/${product.slug}`;
+  const image = product.images?.[0]?.src;
+  const price = product.price ? `from $${parseFloat(product.price).toFixed(2)}` : 'Get a quote';
+  const rating = parseFloat(product.average_rating || '0');
+  const badge = product.on_sale ? { label: 'Sale', color: 'bg-red-500' }
+    : product.acf?.enable_designer ? { label: 'Custom', color: 'bg-green-700' }
+    : null;
+
+  return (
+    <Link
+      href={href}
+      className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.04)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group hover:shadow-md transition-all active:scale-[0.98]"
+    >
+      <div className="relative h-48 sm:h-56 overflow-hidden bg-gray-50/30">
+        {badge && (
+          <span className={`absolute top-3 left-3 z-10 px-2 py-0.5 ${badge.color} rounded-full text-white text-[10px] font-bold font-inter leading-4`}>
+            {badge.label}
+          </span>
+        )}
+        {image ? (
+          <Image src={image} alt={decodeHTMLEntities(product.name)} fill
+            className="object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Package className="w-10 h-10 text-gray-200" />
+          </div>
+        )}
+      </div>
+      <div className="p-4 bg-white border-t border-zinc-500/30 flex flex-col gap-2.5">
+        <span className="text-gray-400 text-xs font-semibold font-inter uppercase leading-4 tracking-wide">
+          {product.categories?.[0]?.name ?? ''}
+        </span>
+        <h3 className="text-slate-900 text-sm sm:text-base font-medium font-outfit leading-5 line-clamp-2">
+          {decodeHTMLEntities(product.name)}
+        </h3>
+        {rating > 0 && (
+          <div className="flex items-center gap-1.5">
+            <StarRow rating={rating} size="sm" />
+            <span className="text-slate-500 text-xs font-inter leading-4">
+              {product.average_rating} ({product.rating_count.toLocaleString()})
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between items-center">
+          <div>
+            <span className="text-slate-900 text-sm sm:text-base font-semibold font-outfit leading-6">{price}</span>
+            {product.acf?.bulk_pricing?.[0] && (
+              <span className="text-gray-400 text-xs font-inter leading-4"> · min {product.acf.bulk_pricing[0].min_qty}</span>
+            )}
+          </div>
+          <span className="px-3 py-1.5 bg-green-700 rounded-lg text-white text-xs font-bold font-inter leading-4 group-hover:bg-green-800 transition-colors">
+            Shop
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function ProductDetailView({
   product,
   categorySlug,
@@ -27,154 +137,173 @@ export default function ProductDetailView({
   product: WPProduct;
   categorySlug: string;
 }) {
-  const { addToCart }        = useCart();
+  const { addToCart } = useCart();
   const { showNotification } = useNotification();
 
-  // De-duplicate images by id so the same WP media ID never appears twice
   const uniqueImages = product.images.filter(
     (img, idx, arr) => arr.findIndex(x => x.id === img.id) === idx
   );
 
-  const [mainImage,          setMainImage]          = useState(uniqueImages[0]?.src || 'https://placehold.co/589x480');
+  const [mainImage,          setMainImage]          = useState(uniqueImages[0]?.src || '');
   const [lightboxOpen,       setLightboxOpen]       = useState(false);
   const [quantity,           setQuantity]           = useState(1);
   const [activeTab,          setActiveTab]          = useState('Description');
-  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string[]>>({});
   const [selectedProduction, setSelectedProduction] = useState<string>(
-    product.acf?.production_options?.[0]?.type ?? ''
+    product.acf?.production_options?.[0]?.type ?? 'regular'
   );
+  const [selectedPrintArea, setSelectedPrintArea] = useState<string>('Front');
+  const [selectedMaterial,  setSelectedMaterial]  = useState<string>('');
 
-  // ── Color name → hex map ─────────────────────────────────────────────────
-  const COLOR_MAP: Record<string, string> = {
-    // Neutrals
-    'black':          '#111827', 'white':         '#F9FAFB', 'grey':           '#9CA3AF',
-    'gray':           '#9CA3AF', 'charcoal':      '#374151', 'dark heather':   '#4B5563',
-    'heather grey':   '#D1D5DB', 'sport grey':    '#E5E7EB', 'ash':            '#9CA3AF',
-    'silver':         '#C0C0C0', 'natural':       '#FAF5EB',
-    // Blues
-    'navy':           '#1E3A5F', 'royal blue':    '#1D4ED8', 'sapphire':       '#0F52BA',
-    'light blue':     '#BFDBFE', 'sky blue':      '#38BDF8', 'columbia blue':  '#9EC8E8',
-    'carolina blue':  '#56A0D3', 'powder blue':   '#B0E0E6', 'tour blue':      '#0369A1',
-    // Greens
-    'forest green':   '#166534', 'irish green':   '#15803D', 'kelly green':    '#22C55E',
-    'military green': '#4B5320', 'olive':         '#6B7280', 'lime':           '#84CC16',
-    // Reds & Pinks
-    'red':            '#DC2626', 'cardinal':      '#9F1239', 'maroon':         '#7F1D1D',
-    'burgundy':       '#800020', 'cranberry':     '#9B1B30', 'cherry red':     '#DC143C',
-    'hot pink':       '#EC4899', 'light pink':    '#FBD5E4', 'pink':           '#F9A8D4',
-    'coral':          '#F87171',
-    // Oranges & Yellows
-    'orange':         '#EA580C', 'gold':          '#D97706', 'yellow':         '#FBBF24',
-    'sand':           '#D6C9A0', 'daisy':         '#FDE047',
-    // Purples
-    'purple':         '#7C3AED', 'violet':        '#8B5CF6', 'plum':           '#9D174D',
-    'lavender':       '#C4B5FD',
-    // Browns
-    'brown':          '#92400E', 'chocolate':     '#3B1F0A', 'tan':            '#D2B48C',
-    // Other
-    'mint':           '#6EE7B7', 'teal':          '#0D9488', 'cyan':           '#06B6D4',
-  };
+  // ── Live data from WP ────────────────────────────────────────────────────
+  const [reviews,        setReviews]        = useState<WPProductReview[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<WPProduct[]>([]);
+  const [reviewsLoading,  setReviewsLoading]  = useState(true);
+  const [relatedLoading,  setRelatedLoading]  = useState(true);
 
-  function getColorHex(name: string): string | null {
-    return COLOR_MAP[name.toLowerCase().trim()] ?? null;
-  }
+  useEffect(() => {
+    // Fetch reviews
+    fetch(`/api/products/${product.id}/reviews`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: WPProductReview[]) => setReviews(Array.isArray(data) ? data : []))
+      .catch(() => setReviews([]))
+      .finally(() => setReviewsLoading(false));
+  }, [product.id]);
 
-  // Colors always come from WC attributes now (available_colors is deprecated)
-  // acfColors kept for backwards compatibility but will always be []
-  const acfColors: string[] = [];
+  useEffect(() => {
+    if (!product.related_ids?.length) { setRelatedLoading(false); return; }
+    // Fetch up to 8 related products via the products-list API
+    const ids = product.related_ids.slice(0, 8).join(',');
+    fetch(`/api/products-list?include=${ids}&per_page=8`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: WPProduct[]) => setRelatedProducts(Array.isArray(data) ? data : []))
+      .catch(() => setRelatedProducts([]))
+      .finally(() => setRelatedLoading(false));
+  }, [product.related_ids]);
 
+  // ── Materials ─────────────────────────────────────────────────────────────
+  const materialAttr = product.attributes.find(a =>
+    a.name.toLowerCase().includes('material') || a.name.toLowerCase().includes('fabric')
+  );
+  const materials = materialAttr?.options ?? [];
+  useEffect(() => {
+    if (!selectedMaterial && materials.length > 0) setSelectedMaterial(materials[0]);
+  }, [materials, selectedMaterial]);
 
-  const enableDesigner = product.acf?.enable_designer === true;
-  const enableUpload   = product.acf?.enable_upload   === true;
-  const buyAsIs        = product.acf?.buy_as_is       === true;
-  // If none are set yet (plugin not run on this product), show upload by default
-  const showUploadBtn  = enableUpload || (!enableDesigner && !buyAsIs);
-  const showDesignBtn  = enableDesigner;
+  const printAreas = ['Front', 'Back', 'Front and Back'];
 
   // ── Price ─────────────────────────────────────────────────────────────────
-  const getUnitPrice = () => {
+  const getBasePrice = () => {
     let price = parseFloat(product.price || '0');
     if (product.acf?.bulk_pricing) {
       const sorted = [...product.acf.bulk_pricing].sort((a, b) => b.min_qty - a.min_qty);
-      const tier   = sorted.find(b => quantity >= b.min_qty);
+      const tier = sorted.find(t => quantity >= t.min_qty);
       if (tier) price = parseFloat(tier.discount_price);
     }
     return price;
   };
 
-  const getFinalUnitPrice = () => {
-    let price    = getUnitPrice();
-    const option = product.acf?.production_options?.find(o => o.type === selectedProduction);
-    if (option) price += parseFloat(option.extra_cost || '0');
-    return price;
-  };
+  const unitPrice = (() => {
+    let p = getBasePrice();
+    const opt = product.acf?.production_options?.find(o => o.type === selectedProduction);
+    if (opt) p += parseFloat(opt.extra_cost || '0');
+    return p;
+  })();
 
-  const unitPrice        = getFinalUnitPrice();
   const regularUnitPrice = parseFloat(product.regular_price || '0');
   const currentPrice     = parseFloat(product.price || '0');
-  // Only show strikethrough if WP explicitly marks it on sale AND regular > current
-  const isActuallyOnSale = product.on_sale === true
-    && regularUnitPrice > 0
-    && currentPrice > 0
-    && regularUnitPrice > currentPrice;
+  const isOnSale = product.on_sale === true && regularUnitPrice > 0 && currentPrice > 0 && regularUnitPrice > currentPrice;
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleAttributeSelect = (name: string, option: string) =>
-    setSelectedAttributes(prev => ({ ...prev, [name]: option }));
+  // ── Flags ─────────────────────────────────────────────────────────────────
+  const enableDesigner = product.acf?.enable_designer === true;
+  const enableUpload   = product.acf?.enable_upload   === true;
+  const buyAsIs        = product.acf?.buy_as_is       === true;
+  const showUploadBtn  = enableUpload || (!enableDesigner && !buyAsIs);
+  const showDesignBtn  = enableDesigner;
 
-  const handleAddToCart = () => {
-    const missing = product.attributes.find(a => !selectedAttributes[a.name]);
-    if (missing) {
-      showNotification({ title: 'Selection Required', message: `Please choose a ${missing.name}.`, type: 'error' });
-      return;
-    }
-    const attrStr    = Object.entries(selectedAttributes).map(([k, v]) => `${k}: ${v}`).join(', ');
-    const speedLabel = selectedProduction === 'urgent' ? 'Urgent' : selectedProduction === 'regular' ? 'Standard' : '';
-    const extras     = [attrStr, speedLabel].filter(Boolean).join(', ');
-    addToCart({
-      id:       product.id,
-      name:     `${product.name}${extras ? ` (${extras})` : ''}`,
-      price:    unitPrice,
-      quantity,
-      image:    uniqueImages[0]?.src || '',
+  // ── Attribute toggles ─────────────────────────────────────────────────────
+  const toggleAttr = (name: string, val: string, multi: boolean) => {
+    setSelectedAttributes(prev => {
+      const cur = prev[name] ?? [];
+      if (multi) {
+        return { ...prev, [name]: cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val] };
+      }
+      return { ...prev, [name]: [val] };
     });
-    showNotification({ title: 'Added to Cart', message: `${product.name} added to your bag.`, type: 'cart' });
   };
 
+  // ── Add to cart ───────────────────────────────────────────────────────────
+  const handleAddToCart = () => {
+    const attrParts = product.attributes
+      .filter(a => !a.name.toLowerCase().includes('material') && !a.name.toLowerCase().includes('fabric'))
+      .flatMap(a => {
+        const vals = selectedAttributes[a.name] ?? [];
+        return vals.length ? [`${a.name}: ${vals.join(', ')}`] : [];
+      });
+
+    const extras = [
+      ...attrParts,
+      `Print Area: ${selectedPrintArea}`,
+      selectedMaterial ? `Material: ${selectedMaterial}` : null,
+      selectedProduction === 'urgent' ? 'Urgent Production' : 'Standard Production',
+    ].filter(Boolean).join(' · ');
+
+    addToCart({
+      id:    product.id,
+      name:  `${decodeHTMLEntities(product.name)}${extras ? ` (${extras})` : ''}`,
+      price: unitPrice,
+      quantity,
+      image: uniqueImages[0]?.src || '',
+    });
+    showNotification({
+      title:   'Added to Cart',
+      message: `${decodeHTMLEntities(product.name)} added to your bag.`,
+      type:    'cart',
+    });
+  };
+
+  // ── Rating breakdown from actual review data ──────────────────────────────
+  const avgRating   = parseFloat(product.average_rating || '0');
+  const ratingCount = product.rating_count || 0;
+  const breakdown = [5, 4, 3, 2, 1].map(stars => ({
+    stars,
+    count: reviews.filter(r => r.rating === stars).length ||
+      // fallback proportional estimate when reviews haven't loaded yet
+      (ratingCount > 0 ? Math.round(ratingCount * [0.787, 0.149, 0.040, 0.015, 0.010][5 - stars]) : 0),
+  }));
+
   // ── Tabs ──────────────────────────────────────────────────────────────────
-  const tabs = ['Description', 'Print Guideline', 'Ordering information', 'File Setup', 'Template', 'Reviews'];
+  const TABS = ['Description', 'Print Guidelines', 'Ordering information', 'File Setup', 'Template'];
 
   const tabContent = () => {
     switch (activeTab) {
       case 'Description':
         return (
           <div
-            className="prose max-w-none text-slate-600 text-base leading-relaxed font-['Inter']"
+            className="prose prose-sm sm:prose max-w-none text-slate-600 font-inter leading-relaxed"
             dangerouslySetInnerHTML={{ __html: product.description || product.short_description }}
           />
         );
-      case 'Print Guideline':
+      case 'Print Guidelines':
         return (
-          <div className="flex flex-col gap-4 text-slate-600 text-base font-['Inter'] leading-7">
-            {product.acf?.print_notes
-              ? <p>{product.acf.print_notes}</p>
-              : (
-                <ul className="list-disc pl-5 flex flex-col gap-2">
-                  <li>Use high-resolution images (300 DPI minimum).</li>
-                  <li>Keep important text within the safe zone.</li>
-                  <li>Convert all text to outlines if using custom fonts.</li>
-                  <li>Ensure colors are in CMYK mode for accurate reproduction.</li>
-                </ul>
-              )
-            }
+          <div className="flex flex-col gap-4 text-slate-600 text-sm sm:text-base font-inter leading-7">
+            {product.acf?.print_notes ? (
+              <p>{product.acf.print_notes}</p>
+            ) : (
+              <ul className="list-disc pl-5 flex flex-col gap-2">
+                <li>Use high-resolution images (300 DPI minimum).</li>
+                <li>Keep important text within the safe zone.</li>
+                <li>Convert all text to outlines if using custom fonts.</li>
+                <li>Ensure colors are in CMYK mode for accurate reproduction.</li>
+              </ul>
+            )}
           </div>
         );
       case 'Ordering information':
         return (
-          <div className="flex flex-col gap-4 text-slate-600 text-base font-['Inter'] leading-7">
+          <div className="flex flex-col gap-4 text-slate-600 text-sm sm:text-base font-inter leading-7">
             <ul className="list-disc pl-5 flex flex-col gap-2">
               <li>Standard Production: 3–5 business days.</li>
               <li>Express Production: 1–2 business days (additional fee).</li>
@@ -184,191 +313,109 @@ export default function ProductDetailView({
         );
       case 'File Setup':
         return (
-          <div className="flex flex-col gap-4 text-slate-600 text-base font-['Inter'] leading-7">
+          <div className="flex flex-col gap-4 text-slate-600 text-sm sm:text-base font-inter leading-7">
             <p>Accepted file formats:</p>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {['PDF', 'AI', 'PSD', 'PNG', 'JPG', 'EPS'].map(ext => (
-                <div key={ext} className="p-3 bg-gray-50 rounded-lg text-center font-bold border border-gray-100">{ext}</div>
+                <div key={ext} className="p-3 bg-gray-50 rounded-lg text-center font-bold border border-gray-100 text-sm font-inter">
+                  {ext}
+                </div>
               ))}
             </div>
           </div>
         );
       case 'Template':
         return (
-          <div className="flex flex-col gap-6 text-slate-600 text-base font-['Inter']">
+          <div className="flex flex-col gap-6 text-slate-600 text-sm sm:text-base font-inter">
             <p>Download our design templates to set up your artwork correctly:</p>
             {product.acf?.download_templates && product.acf.download_templates.length > 0 ? (
               <div className="flex flex-wrap gap-4">
                 {product.acf.download_templates.map((tpl, i) => {
-                  const formatMeta: Record<string, { color: string; emoji: string }> = {
-                    PDF: { color: 'text-red-600 border-red-200 bg-red-50',         emoji: '📄' },
+                  const meta: Record<string, { color: string; emoji: string }> = {
+                    PDF: { color: 'text-red-600 border-red-200 bg-red-50',          emoji: '📄' },
                     AI:  { color: 'text-orange-500 border-orange-200 bg-orange-50', emoji: '✏️' },
                     PSD: { color: 'text-blue-600 border-blue-200 bg-blue-50',       emoji: '🖼️' },
                     EPS: { color: 'text-purple-600 border-purple-200 bg-purple-50', emoji: '🎨' },
                     PNG: { color: 'text-green-600 border-green-200 bg-green-50',    emoji: '🖼️' },
                     SVG: { color: 'text-teal-600 border-teal-200 bg-teal-50',       emoji: '🔷' },
                   };
-                  const meta = formatMeta[tpl.label?.toUpperCase()] ?? { color: 'text-gray-600 border-gray-200 bg-gray-50', emoji: '📁' };
+                  const m = meta[tpl.label?.toUpperCase()] ?? { color: 'text-gray-600 border-gray-200 bg-gray-50', emoji: '📁' };
                   return (
-                    <a
-                      key={i}
-                      href={tpl.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className={`px-5 py-3 border rounded-xl hover:opacity-80 flex items-center gap-2 font-bold text-sm transition-all ${meta.color}`}
-                    >
+                    <a key={i} href={tpl.url} target="_blank" rel="noopener noreferrer" download
+                      className={`px-4 py-3 border rounded-xl hover:opacity-80 flex items-center gap-2 font-bold text-sm transition-all font-inter ${m.color}`}>
                       <FileDown className="w-4 h-4" />
-                      {meta.emoji} Download {tpl.label} Template
+                      {m.emoji} Download {tpl.label} Template
                     </a>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 italic">No downloadable templates have been added for this product yet.</p>
+              <p className="text-sm text-gray-400 italic font-inter">No templates available for this product yet.</p>
             )}
-          </div>
-        );
-      case 'Reviews':
-        return (
-          <div className="flex flex-col gap-10 w-full">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-10">
-              <div className="w-full md:w-64 h-40 p-6 bg-green-50 rounded-2xl flex flex-col justify-center items-center gap-2">
-                <span className="text-green-700 text-6xl font-bold font-['Inter'] tracking-tight leading-[60px]">
-                  {product.average_rating || '4.7'}
-                </span>
-                <div className="flex gap-1 py-1">
-                  {[1,2,3,4,5].map(s => (
-                    <div key={s} className={`w-5 h-5 rounded-sm ${s <= Math.round(Number(product.average_rating || 4.7)) ? 'bg-yellow-500' : 'bg-gray-200'}`} />
-                  ))}
-                </div>
-                <span className="text-zinc-500 text-sm font-normal font-['Inter']">
-                  Based on {product.rating_count || '2,341'} reviews
-                </span>
-              </div>
-              <div className="flex-1 w-full max-w-[574px] flex flex-col gap-2">
-                {[{stars:5,count:'1,842',w:'80%'},{stars:4,count:'348',w:'15%'},{stars:3,count:'93',w:'4%'},{stars:2,count:'35',w:'1.5%'},{stars:1,count:'23',w:'1%'}].map(row => (
-                  <div key={row.stars} className="flex items-center gap-3 w-full">
-                    <div className="flex gap-0.5 shrink-0">
-                      {[1,2,3,4,5].map(s => <div key={s} className={`w-3 h-3 rounded-[1px] ${s <= row.stars ? 'bg-yellow-500' : 'bg-gray-200'}`} />)}
-                    </div>
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-yellow-500 rounded-full" style={{ width: row.w }} />
-                    </div>
-                    <span className="w-12 text-right text-zinc-500 text-xs font-normal font-['Inter']">{row.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-between items-center pt-4">
-              <h3 className="text-slate-800 text-lg font-semibold font-['Inter']">Customer Reviews</h3>
-              <button className="px-4 py-2 bg-green-700 hover:bg-green-800 rounded-[10px] text-white text-sm font-semibold transition-all">
-                Write a Review
-              </button>
-            </div>
-            <div className="flex flex-col gap-4">
-              {[1,2,3].map(i => (
-                <div key={i} className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col gap-3 shadow-sm">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">JM</div>
-                      <div className="flex flex-col">
-                        <span className="text-slate-800 text-sm font-semibold font-['Inter']">Jessica M.</span>
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-0.5">{[1,2,3,4,5].map(s => <div key={s} className="w-3 h-3 bg-yellow-500 rounded-[1px]" />)}</div>
-                          <span className="text-green-700 text-[10px] font-semibold bg-green-50 border border-green-100 px-2 py-0.5 rounded-full">✓ Verified</span>
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-zinc-500 text-xs">May 28, 2026</span>
-                  </div>
-                  <h4 className="text-slate-800 text-sm font-semibold font-['Inter'] mt-1">Exceptional quality for our corporate event</h4>
-                  <p className="text-zinc-500 text-sm font-normal leading-6">
-                    Ordered 200 shirts for our annual conference. Colors were vibrant, fabric felt premium, and everything arrived on time.
-                  </p>
-                </div>
-              ))}
-            </div>
           </div>
         );
       default: return null;
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex flex-col items-center bg-white">
 
-      {/* ── Lightbox ── */}
-      {lightboxOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setLightboxOpen(false)}
-        >
-          <button className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
+      {/* Lightbox */}
+      {lightboxOpen && mainImage && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxOpen(false)}>
+          <button className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white">
             <X className="w-5 h-5" />
           </button>
           <div className="relative w-full max-w-3xl aspect-square" onClick={e => e.stopPropagation()}>
-            <Image src={mainImage} alt={product.name} fill className="object-contain" sizes="800px" />
+            <Image src={mainImage} alt={decodeHTMLEntities(product.name)} fill className="object-contain" sizes="90vw" />
           </div>
         </div>
       )}
 
-      {/* ── Breadcrumbs ── */}
-      <section className="w-full px-4 md:px-20 py-4 border-b border-gray-200">
-        <div className="max-w-[1280px] mx-auto flex items-center gap-2 text-sm flex-wrap">
-          <Link href="/" className="text-emerald-500 hover:underline">Home</Link>
+      {/* Breadcrumbs */}
+      <section className="w-full px-4 md:px-20 py-3 bg-white border-b border-gray-200">
+        <div className="max-w-[1280px] mx-auto flex items-center gap-1.5 text-sm flex-wrap">
+          <Link href="/" className="text-emerald-500 hover:underline font-inter">Home</Link>
           <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-          <Link href={`/products/${categorySlug}`} className="text-emerald-500 hover:underline capitalize">
+          <Link href={`/products/${categorySlug}`} className="text-emerald-500 hover:underline capitalize font-inter">
             {decodeHTMLEntities(categorySlug.replace(/-/g, ' '))}
           </Link>
           <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-          <span className="text-gray-600 line-clamp-1">{decodeHTMLEntities(product.name)}</span>
+          <span className="text-gray-600 font-inter line-clamp-1">{decodeHTMLEntities(product.name)}</span>
         </div>
       </section>
 
-      {/* ── Main Product Section ── */}
-      <section className="w-full max-w-[1280px] px-4 md:px-20 py-10 lg:py-14">
-        <div className="flex flex-col lg:flex-row gap-10 xl:gap-16 items-start">
+      {/* ── Main product section ── */}
+      <section className="w-full px-4 md:px-20 py-8 md:py-12">
+        <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-8 xl:gap-14 items-start">
 
           {/* LEFT — Images */}
-          <div className="w-full lg:w-[480px] xl:w-[540px] shrink-0 flex flex-col gap-4">
-
-            {/* Main image */}
-            <div className="relative w-full aspect-square bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden group">
-              <Image
-                src={mainImage}
-                alt={decodeHTMLEntities(product.name)}
-                fill
-                className="object-contain p-4"
-                sizes="(max-width: 1024px) 100vw, 540px"
-                priority
-              />
-              <button
-                onClick={() => setLightboxOpen(true)}
-                className="absolute top-3 right-3 w-9 h-9 bg-white/90 hover:bg-white rounded-xl flex items-center justify-center shadow-sm border border-gray-100 transition-colors"
-              >
+          <div className="w-full lg:w-[540px] shrink-0 flex flex-col gap-3">
+            <div className="relative w-full aspect-[589/480] bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(15,81,50,0.06)] border border-green-900/5 overflow-hidden">
+              {mainImage ? (
+                <Image src={mainImage} alt={decodeHTMLEntities(product.name)} fill
+                  className="object-contain p-4" sizes="(max-width:1024px) 100vw,540px" priority />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Package className="w-16 h-16 text-gray-200" />
+                </div>
+              )}
+              <button onClick={() => setLightboxOpen(true)}
+                className="absolute top-3 right-3 w-9 h-9 bg-white/90 hover:bg-white rounded-2xl flex items-center justify-center shadow-sm"
+                aria-label="View full size">
                 <Maximize2 className="w-4 h-4 text-neutral-700" />
               </button>
             </div>
-
-            {/* Thumbnails */}
             {uniqueImages.length > 1 && (
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 {uniqueImages.map((img, idx) => (
-                  <button
-                    key={`${img.id}-${idx}`}
-                    onClick={() => setMainImage(img.src)}
-                    className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                  <button key={`${img.id}-${idx}`} onClick={() => setMainImage(img.src)}
+                    className={`relative w-16 h-16 shrink-0 rounded-[10px] overflow-hidden border-2 transition-all ${
                       mainImage === img.src ? 'border-green-700' : 'border-gray-100 hover:border-gray-300'
-                    }`}
-                  >
-                    <Image
-                      src={img.src}
-                      alt={img.alt || product.name}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
-                    />
+                    }`}>
+                    <Image src={img.src} alt={img.alt || product.name} fill className="object-cover" sizes="64px" />
                   </button>
                 ))}
               </div>
@@ -376,253 +423,223 @@ export default function ProductDetailView({
           </div>
 
           {/* RIGHT — Info & Config */}
-          <div className="flex-1 min-w-0 flex flex-col gap-6">
+          <div className="flex-1 min-w-0 flex flex-col gap-5">
 
-            {/* Title + Rating */}
-            <div className="flex flex-col gap-3">
-              <h1 className="text-slate-900 text-3xl xl:text-4xl font-semibold font-['Outfit'] leading-tight">
+            {/* Title + rating */}
+            <div className="flex flex-col gap-2">
+              <h1 className="text-slate-900 text-2xl sm:text-3xl xl:text-4xl font-semibold font-outfit leading-tight">
                 {decodeHTMLEntities(product.name)}
               </h1>
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex gap-0.5">
-                  {[1,2,3,4,5].map(s => (
-                    <Star key={s} className={`w-4 h-4 ${s <= Number(product.average_rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
-                  ))}
+              {avgRating > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <StarRow rating={avgRating} size="md" />
+                  <span className="text-neutral-900 text-sm font-semibold font-inter">{avgRating.toFixed(1)}</span>
+                  <span className="text-gray-500 text-xs font-inter">
+                    ({ratingCount.toLocaleString()} reviews)
+                  </span>
                 </div>
-                <span className="text-neutral-900 text-sm font-semibold font-['Inter']">{product.average_rating || '0.0'}</span>
-                <span className="text-gray-500 text-xs font-normal font-['Inter']">({product.rating_count} reviews)</span>
-              </div>
-              <div
-                className="text-gray-600 text-sm font-normal font-['Inter'] leading-6"
-                dangerouslySetInnerHTML={{ __html: product.short_description }}
-              />
+              )}
+              <div className="text-gray-600 text-sm font-inter leading-6"
+                dangerouslySetInnerHTML={{ __html: product.short_description }} />
             </div>
 
-            {/* Attributes (Color, Size etc) */}
-            {product.attributes.map((attr, idx) => {
-              const isColor = attr.name.toLowerCase() === 'color';
-              // For color: merge WC attribute options with ACF available_colors (ACF wins if present)
-              const colorOptions = isColor && acfColors.length > 0 ? acfColors : attr.options;
-              const displayOptions = isColor ? colorOptions : attr.options;
-
-              return (
-                <div key={`${attr.name}-${idx}`} className="flex flex-col gap-3">
-                  <span className="text-slate-900 text-sm font-bold font-['Inter'] uppercase tracking-wide">
-                    {attr.name}
-                    {selectedAttributes[attr.name] && (
-                      <span className="ml-2 text-green-700 normal-case font-semibold">— {selectedAttributes[attr.name]}</span>
-                    )}
-                  </span>
-
-                  <div className="flex flex-wrap gap-2.5">
-                    {displayOptions.map(option => {
-                      const isSelected = selectedAttributes[attr.name] === option;
-
-                      if (isColor) {
-                        const hex = getColorHex(option);
-                        const isLight = hex ? isLightColor(hex) : false;
-
-                        return hex ? (
-                          // ── Circular color swatch ──
-                          <button
-                            key={option}
-                            title={option}
-                            onClick={() => handleAttributeSelect(attr.name, option)}
-                            className={`relative w-9 h-9 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
-                              isSelected
-                                ? 'border-green-700 scale-110 shadow-md'
-                                : 'border-transparent hover:scale-105 hover:border-gray-300'
-                            }`}
-                            style={{ backgroundColor: hex }}
-                            aria-label={option}
-                            aria-pressed={isSelected}
-                          >
-                            {isSelected && (
-                              <span className={`absolute inset-0 flex items-center justify-center text-xs font-black ${isLight ? 'text-gray-800' : 'text-white'}`}>
-                                ✓
-                              </span>
-                            )}
-                            {/* White border ring for white/very-light swatches */}
-                            {isLight && (
-                              <span className="absolute inset-0 rounded-full ring-1 ring-gray-200" />
-                            )}
-                          </button>
-                        ) : (
-                          // ── Fallback pill for unknown color names ──
-                          <button
-                            key={option}
-                            onClick={() => handleAttributeSelect(attr.name, option)}
-                            className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
-                              isSelected
-                                ? 'border-green-700 bg-green-50 text-green-700 ring-2 ring-green-700/20'
-                                : 'border-gray-200 hover:border-green-700 text-gray-700 bg-white'
-                            }`}
-                          >
-                            {option}
+            {/* Attributes */}
+            {product.attributes
+              .filter(a => !a.name.toLowerCase().includes('material') && !a.name.toLowerCase().includes('fabric'))
+              .map((attr, idx) => {
+                const isColor  = attr.name.toLowerCase() === 'color';
+                const selected = selectedAttributes[attr.name] ?? [];
+                return (
+                  <div key={`${attr.name}-${idx}`} className="flex flex-col gap-2.5">
+                    <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">
+                      {isColor
+                        ? <>Choose Color <span className="text-slate-500 text-sm sm:text-base font-normal">(Select Multiple)</span></>
+                        : `Choose ${attr.name}`}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {attr.options.map(opt => {
+                        const isSel = selected.includes(opt);
+                        if (isColor) {
+                          const hex   = COLOR_MAP[opt.toLowerCase().trim()] ?? null;
+                          const light = hex ? isLightColor(hex) : false;
+                          return hex ? (
+                            <button key={opt} title={opt} onClick={() => toggleAttr(attr.name, opt, true)}
+                              aria-label={opt} aria-pressed={isSel}
+                              className={`relative w-6 h-6 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
+                                isSel ? 'border-transparent ring-[3.5px] ring-green-500 scale-110' : 'border-gray-200 hover:scale-110'
+                              }`}
+                              style={{ backgroundColor: hex }}>
+                              {isSel && <span className={`absolute inset-0 flex items-center justify-center text-[8px] font-black ${light ? 'text-gray-800' : 'text-white'}`}>✓</span>}
+                              {light && <span className="absolute inset-0 rounded-full ring-1 ring-gray-200" />}
+                            </button>
+                          ) : (
+                            <button key={opt} onClick={() => toggleAttr(attr.name, opt, true)}
+                              className={`px-3 py-1.5 rounded-lg border text-sm font-inter font-medium transition-all ${isSel ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:border-green-700'}`}>
+                              {opt}
+                            </button>
+                          );
+                        }
+                        return (
+                          <button key={opt} onClick={() => toggleAttr(attr.name, opt, false)}
+                            className={`flex-1 min-w-[44px] h-11 px-2 sm:px-3 rounded-[10px] font-bold font-inter text-sm sm:text-base border-[1.31px] transition-all ${
+                              isSel ? 'bg-green-700 text-white border-green-700' : 'bg-white text-gray-700 border-gray-300 hover:border-green-700'
+                            }`}>
+                            {opt}
                           </button>
                         );
-                      }
-
-                      // ── Non-color attribute pill ──
-                      return (
-                        <button
-                          key={option}
-                          onClick={() => handleAttributeSelect(attr.name, option)}
-                          className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
-                            isSelected
-                              ? 'border-green-700 bg-green-50 text-green-700 ring-2 ring-green-700/20'
-                              : 'border-gray-200 hover:border-green-700 text-gray-700 bg-white'
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      );
-                    })}
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {/* Production Speed */}
-            {product.acf?.production_options && product.acf.production_options.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <span className="text-slate-900 text-sm font-bold font-['Inter'] uppercase tracking-wide">Production Speed</span>
-                <div className="flex flex-col gap-2">
-                  {product.acf.production_options.map(option => (
-                    <button
-                      key={option.type}
-                      onClick={() => setSelectedProduction(option.type)}
-                      className={`p-4 rounded-xl border-2 transition-all flex justify-between items-center ${
-                        selectedProduction === option.type
-                          ? 'border-green-700 bg-green-50'
-                          : 'border-gray-100 hover:border-gray-200 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedProduction === option.type ? 'border-green-700' : 'border-gray-300'}`}>
-                          {selectedProduction === option.type && <div className="w-2 h-2 rounded-full bg-green-700" />}
-                        </div>
-                        <div className="text-left">
-                          <span className="font-bold text-gray-900 text-sm capitalize block">{option.type}</span>
-                          <span className="text-xs text-gray-500">{option.delivery_days} business days</span>
-                        </div>
-                      </div>
-                      {parseFloat(option.extra_cost) > 0 && (
-                        <span className="text-green-700 font-bold text-sm">+{fmt(parseFloat(option.extra_cost))}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+            {/* Quantity */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-neutral-900 text-sm font-bold font-inter">Quantity:</span>
+                <span className="text-gray-500 text-xs font-inter">Min. 1</span>
               </div>
-            )}
+              <div className="w-36 sm:w-40 h-11 sm:h-12 bg-white rounded-lg border border-green-900/10 flex items-center overflow-hidden">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-10 h-full flex items-center justify-center hover:bg-gray-50 border-r border-gray-100" aria-label="Decrease">
+                  <Minus className="w-4 h-4 text-neutral-700" />
+                </button>
+                <div className="flex-1 text-center text-neutral-900 text-base font-bold font-inter">{quantity}</div>
+                <button onClick={() => setQuantity(quantity + 1)}
+                  className="w-10 h-full flex items-center justify-center hover:bg-gray-50 border-l border-gray-100" aria-label="Increase">
+                  <Plus className="w-4 h-4 text-neutral-700" />
+                </button>
+              </div>
+            </div>
 
-            {/* Bulk Pricing */}
+            {/* Price */}
+            <div className="flex flex-col gap-2">
+              <div className="px-4 sm:px-5 py-4 bg-green-50/50 rounded-xl flex flex-wrap items-baseline gap-2 sm:gap-3">
+                <span className="text-green-700 text-2xl sm:text-3xl font-extrabold font-outfit">{fmt(unitPrice)}</span>
+                <span className="text-zinc-500 text-xs sm:text-sm font-inter leading-5">
+                  per unit (With your Logo) · Total:{' '}
+                  <span className="text-green-700 font-bold">{fmt(unitPrice * quantity)}</span>
+                </span>
+                {isOnSale && <span className="text-gray-400 text-sm line-through font-inter">{fmt(regularUnitPrice)}</span>}
+              </div>
+              <p className="text-green-700 text-xs sm:text-sm font-inter leading-5">
+                Shipping and final pricing is calculated at checkout
+              </p>
+            </div>
+
+            {/* Bulk pricing */}
             {product.acf?.bulk_pricing && product.acf.bulk_pricing.length > 0 && (
-              <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-                <h4 className="text-gray-900 font-bold mb-3 flex items-center gap-2 text-sm">
-                  <SlidersHorizontal className="w-4 h-4 text-green-700" />
-                  Bulk Pricing
+              <div className="bg-gray-50 rounded-2xl p-4 sm:p-5 border border-gray-100">
+                <h4 className="text-gray-900 font-bold mb-3 flex items-center gap-2 text-sm font-inter">
+                  <SlidersHorizontal className="w-4 h-4 text-green-700" /> Bulk Pricing
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {product.acf.bulk_pricing.map((tier, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-xl border transition-all ${
-                        quantity >= tier.min_qty
-                          ? 'bg-white border-green-700 shadow-sm'
-                          : 'bg-transparent border-gray-200 opacity-60'
-                      }`}
-                    >
-                      <span className="text-[10px] uppercase font-bold text-gray-400 block">{tier.min_qty}+ units</span>
-                      <span className="text-lg font-black text-green-700">{fmt(parseFloat(tier.discount_price))}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                  {product.acf.bulk_pricing.map((tier, i) => (
+                    <div key={i} className={`p-3 rounded-xl border transition-all ${quantity >= tier.min_qty ? 'bg-white border-green-700 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block font-inter">{tier.min_qty}+ units</span>
+                      <span className="text-base sm:text-lg font-black text-green-700 font-outfit">{fmt(parseFloat(tier.discount_price))}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Quantity + Price row */}
-            <div className="flex items-center gap-6 flex-wrap">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Quantity</span>
-                <div className="w-36 h-11 bg-white rounded-lg border border-gray-200 flex items-center overflow-hidden">
-                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-full flex items-center justify-center hover:bg-gray-50 transition-colors border-r border-gray-200">
-                    <Minus className="w-4 h-4 text-neutral-700" />
+            {/* Print Area */}
+            <div className="flex flex-col gap-2.5">
+              <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">Print Area</span>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {printAreas.map(area => (
+                  <button key={area} onClick={() => setSelectedPrintArea(area)}
+                    className={`px-2 sm:px-4 py-3 rounded-[10px] border-[1.31px] text-xs sm:text-base font-bold font-inter leading-tight text-center transition-all ${
+                      selectedPrintArea === area ? 'border-green-700 text-green-700 bg-white' : 'border-gray-300 text-gray-700 bg-white hover:border-green-700'
+                    }`}>
+                    {area}
                   </button>
-                  <div className="flex-1 text-center text-neutral-900 text-base font-bold font-['Inter']">{quantity}</div>
-                  <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-full flex items-center justify-center hover:bg-gray-50 transition-colors border-l border-gray-200">
-                    <Plus className="w-4 h-4 text-neutral-700" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total</span>
-                <div className="flex items-baseline gap-2">
-                  {isActuallyOnSale && (
-                    <span className="text-gray-400 text-base font-normal line-through">{fmt(regularUnitPrice * quantity)}</span>
-                  )}
-                  <span className="text-green-700 text-3xl font-extrabold font-['Outfit']">{fmt(unitPrice * quantity)}</span>
-                </div>
-                {quantity > 1 && (
-                  <span className="text-green-700/60 text-xs font-medium font-['Inter']">{fmt(unitPrice)} per unit</span>
-                )}
+                ))}
               </div>
             </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col gap-3 pt-2">
-              <button
-                onClick={handleAddToCart}
-                className="w-full bg-white border-2 border-green-700 text-green-700 hover:bg-green-50 font-bold font-['Inter'] py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Add to Cart
-              </button>
+            {/* Production Time */}
+            <div className="flex flex-col gap-2.5">
+              <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">Production Time</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                {(product.acf?.production_options?.length
+                  ? product.acf.production_options.map(opt => ({
+                      key:      opt.type,
+                      label:    opt.type === 'urgent' ? 'Urgent Production' : 'Regular Production',
+                      subtitle: `${opt.delivery_days} Days${opt.type === 'regular' ? ' - Standard turnaround' : ' - Priority Manufacturing'}`,
+                    }))
+                  : [
+                      { key: 'regular', label: 'Regular Production', subtitle: '2-5 Days - Standard turnaround' },
+                      { key: 'urgent',  label: 'Urgent Production',  subtitle: '2 days - Priority Manufacturing' },
+                    ]
+                ).map(opt => (
+                  <button key={opt.key} onClick={() => setSelectedProduction(opt.key)}
+                    className={`px-4 py-3 rounded-[10px] border-[1.31px] flex flex-col items-center gap-0.5 transition-all ${
+                      selectedProduction === opt.key ? 'border-green-700 text-green-700 bg-white' : 'border-gray-300 text-gray-700 bg-white hover:border-green-700'
+                    }`}>
+                    <span className="text-sm sm:text-base font-bold font-inter">{opt.label}</span>
+                    <span className={`text-xs font-inter leading-4 ${selectedProduction === opt.key ? 'text-green-700' : 'text-gray-500'}`}>{opt.subtitle}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-              {showDesignBtn && (
-                <Link
-                  href={`/design?product=${product.id}`}
-                  className="w-full bg-green-700 hover:bg-green-800 text-white font-bold font-['Inter'] py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                >
-                  <Palette className="w-5 h-5" />
-                  Design Your Own
+            {/* Material — only show when there are options */}
+            {materials.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-neutral-900 text-sm font-bold font-inter">Material:</span>
+                <div className="p-2.5 bg-white rounded-lg border border-green-900/10">
+                  <div className="relative">
+                    <select value={selectedMaterial} onChange={e => setSelectedMaterial(e.target.value)}
+                      className="w-full px-3 py-2 pr-8 appearance-none bg-transparent text-gray-700 text-sm font-inter leading-5 focus:outline-none cursor-pointer"
+                      aria-label="Select material">
+                      {materials.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-700 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CTAs */}
+            <div className="flex flex-col gap-3 pt-1">
+              {buyAsIs && (
+                <Link href={`/products/${categorySlug}/${product.slug}/designs`}
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                  <LayoutGrid className="w-5 h-5" /> Choose a Ready-Made Design
                 </Link>
               )}
-
               {showUploadBtn && (
-                <Link
-                  href={`/upload?product=${product.id}`}
-                  className={`w-full font-bold font-['Inter'] py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-                    showDesignBtn
-                      ? 'bg-white border-2 border-gray-300 text-gray-700 hover:border-green-700 hover:text-green-700'
-                      : 'bg-green-700 hover:bg-green-800 text-white'
-                  }`}
-                >
-                  <Upload className="w-5 h-5" />
-                  Upload Design & Order
+                <Link href={`/upload?product=${product.id}`}
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                  <Upload className="w-5 h-5" /> Upload your Design
                 </Link>
               )}
+              {showDesignBtn && (
+                <Link href={`/design?product=${product.id}`}
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                  <Upload className="w-5 h-5" /> Design Your Own
+                </Link>
+              )}
+              <button onClick={handleAddToCart}
+                className="w-full bg-white border-2 border-green-700 text-green-700 hover:bg-green-50 font-bold font-inter py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                <ShoppingCart className="w-5 h-5" /> Add to Cart
+              </button>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* ── Tabs Section ── */}
-      <section className="w-full max-w-[1280px] px-4 md:px-20 pb-16">
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 md:p-8 flex flex-col gap-8 shadow-sm">
-          <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar">
-            {tabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 md:px-6 py-4 text-base md:text-lg font-medium font-['Outfit'] transition-all border-b-2 whitespace-nowrap ${
-                  activeTab === tab
-                    ? 'text-green-700 border-green-700'
-                    : 'text-zinc-500 border-transparent hover:text-green-700'
-                }`}
-              >
+      {/* ── Tabs ── */}
+      <section className="w-full px-4 md:px-20 py-8 md:py-10">
+        <div className="max-w-[1280px] mx-auto bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 flex flex-col gap-6 shadow-sm">
+          <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar -mx-1">
+            {TABS.map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className={`shrink-0 px-3 sm:px-4 pt-3 pb-3 text-base sm:text-xl font-medium font-outfit transition-all border-b-2 whitespace-nowrap ${
+                  activeTab === tab ? 'text-green-700 border-green-700' : 'text-zinc-500 border-transparent hover:text-green-700'
+                }`}>
                 {tab}
               </button>
             ))}
@@ -630,6 +647,141 @@ export default function ProductDetailView({
           <div className="w-full">{tabContent()}</div>
         </div>
       </section>
+
+      {/* ── Reviews ── */}
+      <section className="w-full px-4 md:px-20 py-8 md:py-10">
+        <div className="max-w-[1280px] mx-auto flex flex-col gap-6">
+          <h2 className="text-slate-900 text-2xl sm:text-4xl font-semibold font-outfit leading-tight">Reviews</h2>
+
+          <div className="bg-white flex flex-col gap-6">
+
+            {/* Rating summary — only shown when product has ratings */}
+            {ratingCount > 0 && (
+              <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
+                {/* Score card */}
+                <div className="w-full sm:w-56 p-6 bg-green-50 rounded-2xl flex flex-col justify-center items-center gap-2 shrink-0">
+                  <span className="text-green-700 text-5xl sm:text-6xl font-bold font-inter tracking-tight leading-none">
+                    {avgRating.toFixed(1)}
+                  </span>
+                  <div className="py-1"><StarRow rating={avgRating} size="lg" /></div>
+                  <span className="text-zinc-500 text-xs sm:text-sm font-inter text-center">
+                    Based on {ratingCount.toLocaleString()} reviews
+                  </span>
+                </div>
+                {/* Breakdown bars */}
+                <div className="flex-1 w-full flex flex-col gap-2">
+                  {breakdown.map(row => (
+                    <RatingBar key={row.stars} stars={row.stars} count={row.count} total={ratingCount} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Customer reviews header */}
+            <div className="flex justify-between items-center border-t border-gray-100 pt-5">
+              <h3 className="text-slate-800 text-base sm:text-lg font-semibold font-inter">Customer Reviews</h3>
+              <button className="px-4 py-2 bg-green-700 hover:bg-green-800 rounded-[10px] text-white text-sm font-semibold font-inter transition-all active:scale-95">
+                Write a Review
+              </button>
+            </div>
+
+            {/* Review list — live from WC */}
+            {reviewsLoading ? (
+              <div className="flex flex-col gap-3">
+                {[1, 2].map(i => (
+                  <div key={i} className="p-5 rounded-2xl border border-gray-100 animate-pulse flex flex-col gap-3">
+                    <div className="flex gap-3 items-center">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full shrink-0" />
+                      <div className="flex flex-col gap-1.5 flex-1">
+                        <div className="h-3 bg-gray-200 rounded w-1/4" />
+                        <div className="h-2 bg-gray-100 rounded w-1/3" />
+                      </div>
+                    </div>
+                    <div className="h-3 bg-gray-200 rounded w-2/3" />
+                    <div className="h-2 bg-gray-100 rounded w-full" />
+                    <div className="h-2 bg-gray-100 rounded w-4/5" />
+                  </div>
+                ))}
+              </div>
+            ) : reviews.length === 0 ? (
+              <p className="text-gray-400 text-sm font-inter italic py-4">
+                No reviews yet — be the first to review this product!
+              </p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {reviews.map(review => {
+                  // Build initials from reviewer name
+                  const parts    = review.name.trim().split(' ');
+                  const initials = parts.length >= 2
+                    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+                    : review.name.slice(0, 2).toUpperCase();
+                  const date = new Date(review.date_created).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                  });
+                  // Strip HTML tags from review body (WC sometimes wraps in <p>)
+                  const body = review.review.replace(/<[^>]*>/g, '').trim();
+
+                  return (
+                    <div key={review.id} className="p-4 sm:p-5 bg-white rounded-2xl border border-gray-100 flex flex-col gap-2.5 shadow-sm">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm font-inter shrink-0">
+                            {initials}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-slate-800 text-sm font-semibold font-inter leading-5">{review.name}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <StarRow rating={review.rating} size="sm" />
+                              {review.verified && (
+                                <span className="text-green-700 text-[10px] font-semibold font-inter bg-green-50 border border-green-100 px-2 py-0.5 rounded-full tracking-tight">
+                                  ✓ Verified Purchase
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-zinc-500 text-xs font-inter shrink-0">{date}</span>
+                      </div>
+                      {body && <p className="text-zinc-500 text-sm font-inter leading-6">{body}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Related Products ── */}
+      {(relatedLoading || relatedProducts.length > 0) && (
+        <section className="w-full px-4 md:px-20 py-8 md:py-10">
+          <div className="max-w-[1280px] mx-auto flex flex-col gap-6 sm:gap-8">
+            <h2 className="text-slate-900 text-2xl sm:text-4xl font-semibold font-outfit leading-tight">Related Products</h2>
+            {relatedLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+                    <div className="h-48 sm:h-56 bg-gray-100" />
+                    <div className="p-4 flex flex-col gap-2.5">
+                      <div className="h-3 bg-gray-200 rounded w-1/3" />
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded w-1/2" />
+                      <div className="flex justify-between items-center pt-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3" />
+                        <div className="h-8 w-14 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                {relatedProducts.map(p => <RelatedCard key={p.id} product={p} />)}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
     </div>
   );

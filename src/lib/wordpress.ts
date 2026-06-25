@@ -147,8 +147,8 @@ async function getAuthToken(): Promise<string | null> {
       console.error("WordPress Login Failed:", data.message || "Unknown error");
       throw new Error(data.message || "Invalid WordPress credentials");
     }
-  } catch (error: any) {
-    console.error("Failed to fetch JWT auth token:", error.message);
+  } catch (error: unknown) {
+    console.error("Failed to fetch JWT auth token:", (error as Error).message);
     throw error;
   }
 }
@@ -173,8 +173,8 @@ async function wpFetch<T>(path: string, params?: Record<string, string>, useWooC
         headers.Authorization = `Bearer ${token}`;
       }
     }
-  } catch (authError: any) {
-    throw new Error(`Authentication Failed: ${authError.message}`);
+  } catch (authError: unknown) {
+    throw new Error(`Authentication Failed: ${(authError as Error).message}`);
   }
 
   const res = await fetch(url.toString(), {
@@ -188,7 +188,7 @@ async function wpFetch<T>(path: string, params?: Record<string, string>, useWooC
     try {
       const parsed = JSON.parse(errorBody);
       message = parsed.message || message;
-    } catch (e) {}
+    } catch { }
     throw new Error(message);
   }
   return res.json() as Promise<T>;
@@ -234,16 +234,41 @@ export async function getProductById(id: number): Promise<WPProduct | null> {
   return wpFetch<WPProduct>(`/wc/v3/products/${id}`, undefined, true);
 }
 
+export interface WCAttribute {
+  id:   number;
+  name: string;
+  slug: string;
+  type: string;
+  order_by: string;
+  has_archives: boolean;
+}
+
+export interface WCAttributeTerm {
+  id:          number;
+  name:        string;
+  slug:        string;
+  description: string;
+  menu_order:  number;
+  count:       number;
+}
+
+export interface WPOrderResponse {
+  id:     number;
+  status: string;
+  number: string;
+  total:  string;
+}
+
 export async function getProductCategories(): Promise<WPCategory[]> {
   return wpFetch<WPCategory[]>("/wc/v3/products/categories", { per_page: "100" }, true);
 }
 
-export async function getProductAttributes(): Promise<any[]> {
-  return wpFetch<any[]>("/wc/v3/products/attributes", undefined, true);
+export async function getProductAttributes(): Promise<WCAttribute[]> {
+  return wpFetch<WCAttribute[]>("/wc/v3/products/attributes", undefined, true);
 }
 
-export async function getAttributeTerms(attributeId: number): Promise<any[]> {
-  return wpFetch<any[]>(`/wc/v3/products/attributes/${attributeId}/terms`, { per_page: "100" }, true);
+export async function getAttributeTerms(attributeId: number): Promise<WCAttributeTerm[]> {
+  return wpFetch<WCAttributeTerm[]>(`/wc/v3/products/attributes/${attributeId}/terms`, { per_page: "100" }, true);
 }
 
 // ── Orders (WooCommerce REST API v3) ──────────────────────────────────────────
@@ -271,7 +296,7 @@ export interface WPOrder {
   }[];
 }
 
-export async function createOrder(orderData: WPOrder): Promise<any> {
+export async function createOrder(orderData: WPOrder): Promise<WPOrderResponse> {
   const url = `${WP_BASE_URL}/wc/v3/orders`;
   const auth = Buffer.from(`${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64');
 
@@ -316,17 +341,24 @@ export async function uploadMedia(file: File): Promise<{ source_url: string; id:
 
     const errorData = await res.json();
     throw new Error(errorData.message || "File upload rejected by WordPress");
-  } catch (error: any) {
-    console.error("Media upload error:", error.message);
+  } catch (error: unknown) {
+    console.error("Media upload error:", (error as Error).message);
     throw error;
   }
 }
 
-export async function getRecentMedia(perPage = 12): Promise<{ source_url: string; id: number }[]> {
+export interface WPMediaItem {
+  source_url: string;
+  id:         number;
+  title?:     { rendered: string };
+  mime_type?: string;
+}
+
+export async function getRecentMedia(perPage = 12): Promise<WPMediaItem[]> {
   const token = await getAuthToken();
   if (!token) return [];
 
-  return wpFetch<any[]>("/wp/v2/media", { per_page: String(perPage) }, false);
+  return wpFetch<WPMediaItem[]>("/wp/v2/media", { per_page: String(perPage) }, false);
 }
 
 // ── ButtonInks Plugin API (buttoninks/v1) ─────────────────────────────────────
@@ -380,3 +412,27 @@ export async function removeFromWishlist(userToken: string, productId: number): 
 // The Store API uses cookie-based sessions for guests and logged-in users alike.
 
 export const WC_STORE_URL = `${WP_BASE_URL}/wc/store/v1`;
+
+// ── Product Reviews (WooCommerce REST API v3) ─────────────────────────────────
+
+export interface WPProductReview {
+  id: number;
+  date_created: string;
+  review: string;
+  rating: number;
+  name: string;
+  email: string;
+  verified: boolean;
+}
+
+export async function getProductReviews(productId: number, perPage = 10): Promise<WPProductReview[]> {
+  try {
+    return await wpFetch<WPProductReview[]>(
+      `/wc/v3/products/${productId}/reviews`,
+      { per_page: String(perPage), status: 'approved' },
+      true
+    );
+  } catch {
+    return [];
+  }
+}
