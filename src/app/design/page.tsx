@@ -98,7 +98,21 @@ function DesignContent() {
     router.push('/design/review');
   }, [elements, selectedProduct, router]);
 
-  // ── Mobile inline text editing ───────────────────────────────────────────
+  // ── iOS Safari viewport height fix ──────────────────────────────────────────
+  // iOS Safari's vh includes the address bar, causing overflow. We set --app-height
+  // to the actual window.innerHeight and use it instead of 100vh/h-screen.
+  useEffect(() => {
+    const setAppHeight = () => {
+      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+    };
+    setAppHeight();
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', setAppHeight);
+    return () => {
+      window.removeEventListener('resize', setAppHeight);
+      window.removeEventListener('orientationchange', setAppHeight);
+    };
+  }, []);
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
   const inlineInputRef = useRef<HTMLTextAreaElement>(null);
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
@@ -323,24 +337,19 @@ function DesignContent() {
 
     const el = elements.find(item => item.id === id);
 
-    // Single tap on a text element → immediately open inline editor & keyboard
-    if (el?.type === 'text') {
-      lastTapRef.current = null;
-      setSelectedId(id);
-      setInlineEditId(id);
-      // requestAnimationFrame gives the DOM time to render the textarea before focusing
-      requestAnimationFrame(() => {
-        inlineInputRef.current?.focus();
-      });
-      return;
-    }
-
+    // Always select and start drag — editing is done via the floating action bar "Edit" button
     lastTapRef.current = { id, time: nowRef.current() };
     setSelectedId(id);
-    const t = e.touches[0];
-    startDrag(t.clientX, t.clientY, id);
+
+    // Only start drag if NOT already in inline edit for this element
+    if (inlineEditId !== id) {
+      const t = e.touches[0];
+      startDrag(t.clientX, t.clientY, id);
+    }
+
+    void el; // suppress unused warning
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elements]);
+  }, [elements, inlineEditId]);
 
   const handleTouchMove = useCallback((e: globalThis.TouchEvent) => {
     e.preventDefault();
@@ -365,7 +374,10 @@ function DesignContent() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <main className="w-full h-full flex flex-col bg-gray-50 overflow-hidden font-['Inter'] relative">
+    <main
+      className="w-full flex flex-col bg-gray-50 overflow-hidden font-['Inter'] relative"
+      style={{ height: 'var(--app-height, 100dvh)' }}
+    >
 
       {/* ── Thin Top Nav Bar ── */}
       <nav className="h-12 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 z-50 shadow-sm">
@@ -408,7 +420,7 @@ function DesignContent() {
         {/* Tool Content Panel (Slide-out) */}
         <aside className={`
           fixed md:relative z-20 bg-white border-r border-gray-200 flex-col shrink-0 transition-transform duration-300
-          top-[92px] md:top-0 bottom-0 left-0 w-full md:w-96
+          top-12 md:top-0 bottom-0 left-0 w-full md:w-96
           ${activeTool ? 'translate-x-0 flex' : '-translate-x-full md:-translate-x-full hidden md:flex'}
         `}>
           {/* Dim overlay on mobile */}
@@ -884,11 +896,15 @@ function DesignContent() {
                         className="w-full h-full bg-transparent border-none outline-none resize-none text-center leading-tight p-0"
                         style={{
                           color: el.color,
-                          fontSize: `${el.fontSize}px`,
+                          // iOS auto-zooms when font-size < 16px — clamp to 16 minimum
+                          fontSize: `${Math.max(16, el.fontSize ?? 16)}px`,
                           fontFamily: el.fontFamily,
                           fontWeight: el.fontWeight || '700',
                           textAlign: el.textAlign,
                           caretColor: el.color,
+                          // Disable iOS text size adjustment
+                          WebkitTextSizeAdjust: 'none',
+                          touchAction: 'none',
                         }}
                         autoFocus
                       />
@@ -1001,7 +1017,7 @@ function DesignContent() {
         {/* ── Right Properties Panel ── */}
         <aside className={`
           fixed md:relative z-30 bg-white border-t md:border-t-0 md:border-l border-gray-200 flex-col shrink-0 transition-transform duration-300
-          inset-x-0 bottom-0 h-[50vh] md:inset-y-0 md:right-0 md:h-full md:w-80
+          inset-x-0 bottom-0 h-[50dvh] md:inset-y-0 md:right-0 md:h-full md:w-80
           ${selectedId ? 'translate-y-0 md:translate-x-0 hidden md:flex' : 'translate-y-full md:translate-x-full hidden md:flex'}
         `}>
           {/* Mobile drag handle + close */}
@@ -1203,7 +1219,7 @@ function DesignContent() {
 export default function DesignEditorPage() {
   return (
     <Suspense fallback={
-      <div className="h-screen flex flex-col items-center justify-center bg-white">
+      <div className="flex flex-col items-center justify-center bg-white" style={{ height: '100dvh' }}>
         <Loader2 className="w-12 h-12 text-green-700 animate-spin" />
         <p className="mt-4 font-bold text-green-700 font-['Outfit'] uppercase tracking-widest">Launching Studio...</p>
       </div>
