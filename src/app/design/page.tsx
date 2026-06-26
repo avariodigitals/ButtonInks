@@ -374,26 +374,57 @@ function DesignContent() {
   const handleMouseUp   = useCallback(() => endDrag(), [endDrag]);
 
   // ── Touch drag ──────────────────────────────────────────────────────────────
-  const nowRef = useRef(Date.now);
+  const touchStartPos  = useRef<{ x: number; y: number } | null>(null);
+  const touchStartTime = useRef<number>(0);
 
   const handleTouchStart = useCallback((e: React.TouchEvent, id: string) => {
     e.stopPropagation();
 
-    const el = elements.find(item => item.id === id);
+    const t = e.touches[0];
+    touchStartPos.current  = { x: t.clientX, y: t.clientY };
+    touchStartTime.current = e.timeStamp;
 
-    // Always select and start drag — editing is done via the floating action bar "Edit" button
-    lastTapRef.current = { id, time: nowRef.current() };
+    lastTapRef.current = { id, time: 0 };
     setSelectedId(id);
 
-    // Only start drag if NOT already in inline edit for this element
+    // Start drag unless we're already inline-editing this element
     if (inlineEditId !== id) {
-      const t = e.touches[0];
       startDrag(t.clientX, t.clientY, id);
     }
-
-    void el; // suppress unused warning
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements, inlineEditId]);
+
+  const handleTouchEnd = useCallback((e: globalThis.TouchEvent) => {
+    endDrag();
+
+    // Distinguish tap from drag for text elements
+    if (!touchStartPos.current || !selectedId) return;
+
+    const changed  = e.changedTouches[0];
+    const dx       = changed.clientX - touchStartPos.current.x;
+    const dy       = changed.clientY - touchStartPos.current.y;
+    const dist     = Math.hypot(dx, dy);
+    const elapsed  = e.timeStamp - touchStartTime.current;
+
+    // Tap = finger moved < 8px and held < 300ms
+    if (dist < 8 && elapsed < 300) {
+      // Find the element that was tapped
+      setSelectedId(prev => {
+        // Check if tapped element is a text element
+        const el = elements.find(item => item.id === prev);
+        if (el?.type === 'text') {
+          // Open inline editor and keyboard
+          setInlineEditId(prev);
+          requestAnimationFrame(() => {
+            inlineInputRef.current?.focus();
+          });
+        }
+        return prev;
+      });
+    }
+
+    touchStartPos.current = null;
+  }, [endDrag, selectedId, elements]);
 
   const handleTouchMove = useCallback((e: globalThis.TouchEvent) => {
     // Only prevent default (and thus page scroll) when actually dragging a canvas element
@@ -404,18 +435,16 @@ function DesignContent() {
     moveDrag(t.clientX, t.clientY);
   }, [moveDrag]);
 
-  const handleTouchEnd = useCallback(() => endDrag(), [endDrag]);
-
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchend', handleTouchEnd as EventListener);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchend', handleTouchEnd as EventListener);
     };
   }, [handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
