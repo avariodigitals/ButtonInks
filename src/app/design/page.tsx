@@ -84,6 +84,7 @@ function DesignContent() {
     { id: '1', type: 'text', content: 'Your Design Here', x: 150, y: 300, width: 300, height: 60, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 32, fontWeight: '700', textAlign: 'center', side: 'front' }
   ]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [propsPanelOpen, setPropsPanelOpen] = useState(false); // mobile only — user-triggered
 
   const [wpProducts, setWpProducts] = useState<WPProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<WPProduct | null>(null);
@@ -232,7 +233,7 @@ function DesignContent() {
 
   const deleteElement = (id: string) => {
     setElements(prev => prev.filter(el => el.id !== id));
-    if (selectedId === id) setSelectedId(null);
+    if (selectedId === id) { setSelectedId(null); setPropsPanelOpen(false); }
   };
 
   const addTextElement = () => {
@@ -1018,7 +1019,7 @@ function DesignContent() {
           {/* Canvas Area — scrollable so oversized canvas doesn't clip on small screens */}
           <div
             className="flex-1 relative flex items-center justify-center p-4 md:p-10 overflow-auto no-scrollbar"
-            onClick={() => setSelectedId(null)}
+            onClick={() => { setSelectedId(null); setPropsPanelOpen(false); }}
             onTouchStart={handleCanvasTouchStart}
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
@@ -1140,6 +1141,14 @@ function DesignContent() {
                     <span className="text-[9px] text-white/70 font-bold uppercase">Edit</span>
                   </button>
                 )}
+                {/* Properties panel toggle */}
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); setPropsPanelOpen(v => !v); }}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-colors ${propsPanelOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                >
+                  <Settings2 className="w-4 h-4 text-white" />
+                  <span className="text-[9px] text-white/70 font-bold uppercase">Props</span>
+                </button>
                 {/* Color quick pick */}
                 {selectedElement?.type === 'text' && (
                   <div className="flex items-center gap-1 px-2">
@@ -1202,11 +1211,16 @@ function DesignContent() {
         </section>
 
         {/* ── Right Properties Panel ── */}
-        <aside className={`
-          fixed md:relative z-30 bg-white border-t md:border-t-0 md:border-l border-gray-200 flex-col shrink-0 transition-transform duration-300
-          inset-x-0 bottom-0 h-[55dvh] md:inset-y-0 md:right-0 md:h-full md:w-80
-          ${selectedId && !activeTool ? 'translate-y-0 md:translate-x-0 flex' : 'translate-y-full md:translate-x-full hidden md:flex'}
-        `}
+        <aside className={[
+          'fixed md:relative z-30 bg-white border-t md:border-t-0 md:border-l border-gray-200 flex-col shrink-0 transition-transform duration-300',
+          'inset-x-0 bottom-0 h-[55dvh] md:inset-y-0 md:right-0 md:h-full md:w-80',
+          // Mobile: only show when user explicitly opened props panel
+          // Desktop: show whenever an element is selected
+          (propsPanelOpen && selectedId && !activeTool)
+            ? 'flex translate-y-0'
+            : 'hidden translate-y-full',
+          selectedId ? 'md:flex md:translate-x-0' : 'md:hidden md:translate-x-full',
+        ].join(' ')}
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Mobile drag handle + close */}
@@ -1215,7 +1229,7 @@ function DesignContent() {
           </div>
           <div className="md:hidden w-full h-11 border-b border-gray-100 flex items-center justify-between px-6 bg-stone-50">
             <span className="text-sm font-bold text-gray-900">Adjust Property</span>
-            <button type="button" onClick={() => setSelectedId(null)} className="p-1 hover:bg-gray-200 rounded-md transition-colors">
+            <button type="button" onClick={() => setPropsPanelOpen(false)} className="p-1 hover:bg-gray-200 rounded-md transition-colors">
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
