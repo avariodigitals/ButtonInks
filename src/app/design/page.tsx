@@ -105,7 +105,15 @@ function DesignContent() {
     router.push('/design/review');
   }, [elements, selectedProduct, router]);
 
-  // ── iOS Safari viewport height fix ──────────────────────────────────────────
+  // ── Allow pinch-zoom on this page by overriding the global viewport meta ─────
+  useEffect(() => {
+    // Find the viewport meta tag set by layout.tsx and temporarily allow user scaling
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (!meta) return;
+    const original = meta.content;
+    meta.content = 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes';
+    return () => { meta.content = original; };
+  }, []);
   // iOS Safari's vh includes the address bar, causing overflow. We set --app-height
   // to the actual window.innerHeight and use it instead of 100vh/h-screen.
   useEffect(() => {
@@ -306,7 +314,36 @@ function DesignContent() {
     }
   };
 
-  // ── Mouse drag ──────────────────────────────────────────────────────────────
+  // ── Pinch-to-zoom on canvas ────────────────────────────────────────────────
+  const pinchStartDistRef = useRef<number | null>(null);
+  const pinchStartZoomRef = useRef<number>(100);
+
+  const handleCanvasTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDistRef.current = Math.hypot(dx, dy);
+      pinchStartZoomRef.current = zoom;
+    }
+  }, [zoom]);
+
+  const handleCanvasTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStartDistRef.current !== null) {
+      e.stopPropagation();
+      const dx   = e.touches[0].clientX - e.touches[1].clientX;
+      const dy   = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const ratio = dist / pinchStartDistRef.current;
+      const newZoom = Math.round(Math.min(200, Math.max(25, pinchStartZoomRef.current * ratio)));
+      setZoom(newZoom);
+    }
+  }, []);
+
+  const handleCanvasTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      pinchStartDistRef.current = null;
+    }
+  }, []);
   const startDrag = (clientX: number, clientY: number, id: string) => {
     const el = elements.find(item => item.id === id);
     if (!el) return;
@@ -953,6 +990,9 @@ function DesignContent() {
           <div
             className="flex-1 relative flex items-center justify-center p-4 md:p-10 overflow-auto no-scrollbar"
             onClick={() => setSelectedId(null)}
+            onTouchStart={handleCanvasTouchStart}
+            onTouchMove={handleCanvasTouchMove}
+            onTouchEnd={handleCanvasTouchEnd}
           >
             <div
               ref={workspaceRef}
@@ -1045,8 +1085,8 @@ function DesignContent() {
               ))}
             </div>
 
-            {/* Floating Zoom Bar */}
-            <div className="fixed left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-[0px_24px_48px_-12px_rgba(0,0,0,0.18)] border border-gray-100 flex items-center p-2 gap-1 z-30"
+            {/* Floating Zoom Bar — hidden on mobile when a tool panel is open */}
+            <div className={`fixed left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-[0px_24px_48px_-12px_rgba(0,0,0,0.18)] border border-gray-100 flex items-center p-2 gap-1 z-30 transition-all duration-200 ${activeTool ? 'md:flex hidden' : 'flex'}`}
               style={{ bottom: 'calc(72px + env(safe-area-inset-bottom) + 52px)' }}
             >
               <button onClick={() => setZoom(z => Math.max(25, z - 10))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 rounded-xl text-zinc-600 transition-colors"><Minus className="w-4 h-4" /></button>
@@ -1111,6 +1151,10 @@ function DesignContent() {
             )}
 
             {/* Mobile Bottom Tool Bar — hidden during inline text edit to avoid keyboard overlap */}
+            {/* z-40 backdrop covers it when the tool panel is open (z-20 panel sits above z-40 bar via the overlay) */}
+            {activeTool && (
+              <div className="md:hidden fixed inset-0 z-[39] bg-transparent pointer-events-none" />
+            )}
             <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around px-2 z-40 transition-transform duration-200 ${inlineEditId ? 'translate-y-full' : 'translate-y-0'}`}
               style={{ height: '72px', paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
@@ -1131,9 +1175,11 @@ function DesignContent() {
         {/* ── Right Properties Panel ── */}
         <aside className={`
           fixed md:relative z-30 bg-white border-t md:border-t-0 md:border-l border-gray-200 flex-col shrink-0 transition-transform duration-300
-          inset-x-0 bottom-0 h-[50dvh] md:inset-y-0 md:right-0 md:h-full md:w-80
-          ${selectedId ? 'translate-y-0 md:translate-x-0 hidden md:flex' : 'translate-y-full md:translate-x-full hidden md:flex'}
-        `}>
+          inset-x-0 bottom-0 h-[55dvh] md:inset-y-0 md:right-0 md:h-full md:w-80
+          ${selectedId && !activeTool ? 'translate-y-0 md:translate-x-0 flex' : 'translate-y-full md:translate-x-full hidden md:flex'}
+        `}
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
           {/* Mobile drag handle + close */}
           <div className="md:hidden w-full flex flex-col items-center pt-2 pb-0 bg-white">
             <div className="w-10 h-1 bg-gray-200 rounded-full mb-2" />
