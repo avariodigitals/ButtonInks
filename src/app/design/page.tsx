@@ -71,7 +71,14 @@ function DesignContent() {
 
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [side, setSide] = useState<'front' | 'back'>('front');
-  const [zoom, setZoom] = useState(100);
+  // On mobile, start zoomed to fit the 600px canvas within the screen
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window === 'undefined') return 100;
+    const vw = window.innerWidth;
+    // Leave 32px padding each side; canvas is 600px
+    const fit = Math.floor(((vw - 64) / 600) * 100);
+    return Math.min(100, Math.max(30, fit));
+  });
   const [activePropertyTab, setActivePropertyTab] = useState('Type');
   const [elements, setElements] = useState<DesignElement[]>([
     { id: '1', type: 'text', content: 'Your Design Here', x: 150, y: 300, width: 300, height: 60, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 32, fontWeight: '700', textAlign: 'center', side: 'front' }
@@ -352,7 +359,10 @@ function DesignContent() {
   }, [elements, inlineEditId]);
 
   const handleTouchMove = useCallback((e: globalThis.TouchEvent) => {
-    e.preventDefault();
+    // Only prevent default (and thus page scroll) when actually dragging a canvas element
+    if (isDraggingRef.current) {
+      e.preventDefault();
+    }
     const t = e.touches[0];
     moveDrag(t.clientX, t.clientY);
   }, [moveDrag]);
@@ -417,16 +427,27 @@ function DesignContent() {
           })}
         </aside>
 
-        {/* Tool Content Panel (Slide-out) */}
+        {/* Tool Content Panel — bottom sheet on mobile, left sidebar on desktop */}
         <aside className={`
-          fixed md:relative z-20 bg-white border-r border-gray-200 flex-col shrink-0 transition-transform duration-300
-          top-12 md:top-0 bottom-0 left-0 w-full md:w-96
-          ${activeTool ? 'translate-x-0 flex' : '-translate-x-full md:-translate-x-full hidden md:flex'}
-        `}>
+          fixed md:relative z-20 bg-white border-gray-200 flex-col shrink-0 transition-transform duration-300 ease-out
+          md:border-r md:top-0 md:bottom-0 md:left-0 md:w-96
+          inset-x-0 bottom-0 rounded-t-3xl border-t shadow-2xl
+          ${activeTool
+            ? 'translate-y-0 md:translate-x-0 flex'
+            : 'translate-y-full md:-translate-x-full hidden md:flex'
+          }
+        `}
+          style={{ maxHeight: 'calc(var(--app-height, 100dvh) * 0.72)' }}
+        >
           {/* Dim overlay on mobile */}
           {activeTool && (
             <div className="md:hidden fixed inset-0 bg-black/40 z-[-1]" onClick={() => setActiveTool(null)} />
           )}
+
+          {/* Mobile drag handle */}
+          <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
+            <div className="w-10 h-1 bg-gray-200 rounded-full" />
+          </div>
 
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-stone-50/50">
             <h2 className="text-xl font-bold text-black capitalize font-['Outfit']">{activeTool}</h2>
@@ -547,11 +568,98 @@ function DesignContent() {
 
             {/* ── Text Panel ── */}
             {activeTool === 'text' && (
-              <div className="flex flex-col gap-6">
-                <p className="text-black/60 text-sm leading-relaxed">Edit your text below, or click a text field directly on your design.</p>
-                <button onClick={addTextElement} className="w-full py-4 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl shadow-xl flex items-center justify-center gap-2">
+              <div className="flex flex-col gap-5">
+                <button onClick={addTextElement} className="w-full py-4 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                   <Plus className="w-5 h-5" /> Add New Text
                 </button>
+
+                {/* Live text editor — shown when a text element is selected */}
+                {selectedElement?.type === 'text' && (
+                  <div className="flex flex-col gap-4 pt-2 border-t border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Edit Selected Text</p>
+
+                    {/* Content textarea */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-gray-600">Text Content</label>
+                      <textarea
+                        value={selectedElement.content}
+                        onChange={e => updateElement(selectedId!, { content: e.target.value })}
+                        rows={3}
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-medium focus:border-green-700 outline-none resize-none"
+                        style={{ fontSize: '16px' /* iOS auto-zoom prevention */ }}
+                        placeholder="Type your text…"
+                      />
+                    </div>
+
+                    {/* Font size */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-gray-600">Font Size: {selectedElement.fontSize}px</label>
+                      <input
+                        type="range"
+                        min={10} max={120} step={1}
+                        value={selectedElement.fontSize ?? 32}
+                        onChange={e => updateElement(selectedId!, { fontSize: parseInt(e.target.value) })}
+                        className="w-full accent-green-700"
+                      />
+                    </div>
+
+                    {/* Color */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-gray-600">Color</label>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {['#171717','#ffffff','#dc2626','#2563eb','#16a34a','#f59e0b','#7c3aed','#ec4899','#6b7280'].map(c => (
+                          <button
+                            key={c}
+                            onClick={() => updateElement(selectedId!, { color: c })}
+                            className={`w-7 h-7 rounded-full border-2 transition-all ${selectedElement.color === c ? 'border-green-600 scale-110 shadow-md' : 'border-gray-200 hover:scale-105'}`}
+                            style={{ backgroundColor: c }}
+                            aria-label={c}
+                          />
+                        ))}
+                        {/* Custom color picker */}
+                        <label className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-green-500 transition-colors overflow-hidden" title="Custom color">
+                          <input
+                            type="color"
+                            value={selectedElement.color ?? '#171717'}
+                            onChange={e => updateElement(selectedId!, { color: e.target.value })}
+                            className="opacity-0 absolute w-px h-px"
+                          />
+                          <span className="text-[10px] text-gray-400">+</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Font weight */}
+                    <div className="flex gap-2">
+                      {(['400','700','900'] as const).map(w => (
+                        <button
+                          key={w}
+                          onClick={() => updateElement(selectedId!, { fontWeight: w })}
+                          className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-all ${selectedElement.fontWeight === w ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-600 hover:border-green-500'}`}
+                        >
+                          {w === '400' ? 'Normal' : w === '700' ? 'Bold' : 'Black'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Text align */}
+                    <div className="flex gap-2">
+                      {(['left','center','right'] as const).map(a => (
+                        <button
+                          key={a}
+                          onClick={() => updateElement(selectedId!, { textAlign: a })}
+                          className={`flex-1 py-2 rounded-lg border text-xs font-bold capitalize transition-all ${selectedElement.textAlign === a ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-600 hover:border-green-500'}`}
+                        >
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!selectedElement && (
+                  <p className="text-gray-400 text-sm text-center">Tap a text element on the canvas to edit it here.</p>
+                )}
               </div>
             )}
 
@@ -938,7 +1046,9 @@ function DesignContent() {
             </div>
 
             {/* Floating Zoom Bar */}
-            <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-[0px_24px_48px_-12px_rgba(0,0,0,0.18)] border border-gray-100 flex items-center p-2 gap-1 z-30">
+            <div className="fixed left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-[0px_24px_48px_-12px_rgba(0,0,0,0.18)] border border-gray-100 flex items-center p-2 gap-1 z-30"
+              style={{ bottom: 'calc(72px + env(safe-area-inset-bottom) + 52px)' }}
+            >
               <button onClick={() => setZoom(z => Math.max(25, z - 10))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 rounded-xl text-zinc-600 transition-colors"><Minus className="w-4 h-4" /></button>
               <div className="px-4 text-sm font-bold text-zinc-900 tabular-nums min-w-[70px] text-center">{zoom}%</div>
               <button onClick={() => setZoom(z => Math.min(200, z + 10))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 rounded-xl text-zinc-600 transition-colors"><Plus className="w-4 h-4" /></button>
@@ -948,7 +1058,9 @@ function DesignContent() {
 
             {/* Mobile floating action bar — shown when element selected, hides when inline editing */}
             {selectedId && inlineEditId !== selectedId && (
-              <div className="md:hidden fixed bottom-[80px] left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-zinc-900 rounded-2xl p-1.5 shadow-2xl">
+              <div className="md:hidden fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-zinc-900 rounded-2xl p-1.5 shadow-2xl"
+                style={{ bottom: 'calc(72px + env(safe-area-inset-bottom) + 8px)' }}
+              >
                 {/* Edit text — only for text elements */}
                 {selectedElement?.type === 'text' && (
                   <button
@@ -998,8 +1110,10 @@ function DesignContent() {
               </div>
             )}
 
-            {/* Mobile Bottom Tool Bar */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-white border-t border-gray-200 flex items-center justify-around px-2 z-40">
+            {/* Mobile Bottom Tool Bar — hidden during inline text edit to avoid keyboard overlap */}
+            <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around px-2 z-40 transition-transform duration-200 ${inlineEditId ? 'translate-y-full' : 'translate-y-0'}`}
+              style={{ height: '72px', paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
               {sidebarTools.map((tool) => {
                 const Icon = tool.icon;
                 const isActive = activeTool === tool.id;
