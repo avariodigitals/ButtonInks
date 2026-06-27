@@ -76,7 +76,7 @@ function DesignContent() {
   const [zoom, setZoom] = useState(() => {
     if (typeof window === 'undefined') return 100;
     const vw = window.innerWidth;
-    // Leave 32px padding each side; canvas is 600px
+    if (vw >= 1024) return 100;
     const fit = Math.floor(((vw - 64) / 600) * 100);
     return Math.min(100, Math.max(30, fit));
   });
@@ -635,101 +635,183 @@ function DesignContent() {
             })()}
 
             {/* ── Text Panel ── */}
-            {activeTool === 'text' && (
+            {activeTool === 'text' && (() => {
+              // Auto-select the first text element when panel opens with nothing selected
+              const textElements = elements.filter(el => el.side === side && el.type === 'text');
+              if (!selectedId && textElements.length > 0 && selectedId !== textElements[0].id) {
+                setTimeout(() => setSelectedId(textElements[0].id), 0);
+              }
+              return (
               <div className="flex flex-col gap-5">
-                <button onClick={addTextElement} className="w-full py-4 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
-                  <Plus className="w-5 h-5" /> Add New Text
+                {/* Add Text CTA */}
+                <button
+                  onClick={addTextElement}
+                  className="w-full py-4 bg-green-700 hover:bg-green-800 active:scale-[0.97] text-white font-black rounded-2xl shadow-md flex items-center justify-center gap-2.5 transition-all text-sm tracking-wide"
+                >
+                  <Plus className="w-5 h-5" /> Add Text Layer
                 </button>
 
-                {/* Live text editor — shown when a text element is selected */}
-                {selectedElement?.type === 'text' && (
-                  <div className="flex flex-col gap-4 pt-2 border-t border-gray-100">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Edit Selected Text</p>
+                {/* Live text editor */}
+                {selectedElement?.type === 'text' ? (
+                  <div className="flex flex-col gap-5">
 
-                    {/* Content textarea */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-gray-600">Text Content</label>
+                    {/* ── Text input with live preview ── */}
+                    <div className="flex flex-col gap-2">
+                      {/* Live preview pill */}
+                      <div
+                        className="w-full min-h-[52px] flex items-center justify-center rounded-2xl bg-gray-100 px-4 py-3 overflow-hidden"
+                        style={{ textAlign: selectedElement.textAlign }}
+                      >
+                        <span
+                          className="leading-snug break-words max-w-full"
+                          style={{
+                            color: selectedElement.color === '#ffffff' ? '#171717' : selectedElement.color,
+                            fontFamily: selectedElement.fontFamily,
+                            fontSize: `${Math.min(28, selectedElement.fontSize ?? 32)}px`,
+                            fontWeight: selectedElement.fontWeight || '700',
+                          }}
+                        >
+                          {selectedElement.content || 'Your text…'}
+                        </span>
+                      </div>
+                      {/* Textarea */}
                       <textarea
                         value={selectedElement.content}
                         onChange={e => updateElement(selectedId!, { content: e.target.value })}
-                        rows={3}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-medium focus:border-green-700 outline-none resize-none"
-                        style={{ fontSize: '16px' /* iOS auto-zoom prevention */ }}
+                        rows={2}
+                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 focus:border-green-600 outline-none resize-none bg-white text-gray-900 font-medium leading-snug transition-colors"
+                        style={{ fontSize: '16px' }}
                         placeholder="Type your text…"
                       />
                     </div>
 
-                    {/* Font size */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-gray-600">Font Size: {selectedElement.fontSize}px</label>
-                      <input
-                        type="range"
-                        min={10} max={120} step={1}
-                        value={selectedElement.fontSize ?? 32}
-                        onChange={e => updateElement(selectedId!, { fontSize: parseInt(e.target.value) })}
-                        className="w-full accent-green-700"
-                      />
+                    {/* ── Font family scrollable row ── */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Font</span>
+                      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+                        {fontFamilies.map(f => (
+                          <button
+                            key={f}
+                            onClick={() => updateElement(selectedId!, { fontFamily: f })}
+                            className={`shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all text-sm ${selectedElement.fontFamily === f ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-300'}`}
+                            style={{ fontFamily: f }}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Color */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-gray-600">Color</label>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {['#171717','#ffffff','#dc2626','#2563eb','#16a34a','#f59e0b','#7c3aed','#ec4899','#6b7280'].map(c => (
+                    {/* ── Font size with +/- nudge ── */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Size</span>
+                        <span className="text-sm font-black text-green-700 tabular-nums">{selectedElement.fontSize}px</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => updateElement(selectedId!, { fontSize: Math.max(10, (selectedElement.fontSize ?? 32) - 2) })}
+                          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl border-2 border-gray-200 bg-white hover:border-green-600 hover:text-green-700 active:scale-90 transition-all text-gray-600"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <input
+                          type="range"
+                          min={10} max={120} step={1}
+                          value={selectedElement.fontSize ?? 32}
+                          onChange={e => updateElement(selectedId!, { fontSize: parseInt(e.target.value) })}
+                          className="flex-1 accent-green-700 h-2"
+                        />
+                        <button
+                          onClick={() => updateElement(selectedId!, { fontSize: Math.min(120, (selectedElement.fontSize ?? 32) + 2) })}
+                          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl border-2 border-gray-200 bg-white hover:border-green-600 hover:text-green-700 active:scale-90 transition-all text-gray-600"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* ── Weight + Align in one row ── */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Weight */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Weight</span>
+                        <div className="flex gap-1.5">
+                          {(['400','700','900'] as const).map(w => (
+                            <button
+                              key={w}
+                              onClick={() => updateElement(selectedId!, { fontWeight: w })}
+                              className={`flex-1 py-3 rounded-xl border-2 text-xs transition-all ${selectedElement.fontWeight === w ? 'border-green-600 bg-green-50 text-green-700 font-black' : 'border-gray-100 bg-white text-gray-500 font-bold hover:border-gray-300'}`}
+                              style={{ fontWeight: w }}
+                            >
+                              {w === '400' ? 'A' : w === '700' ? 'A' : 'A'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Align */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Align</span>
+                        <div className="flex gap-1.5">
+                          {([
+                            ['left',   <AlignLeft   key="l" className="w-4 h-4" />],
+                            ['center', <AlignCenter key="c" className="w-4 h-4" />],
+                            ['right',  <AlignRight  key="r" className="w-4 h-4" />],
+                          ] as const).map(([a, icon]) => (
+                            <button
+                              key={a}
+                              onClick={() => updateElement(selectedId!, { textAlign: a })}
+                              className={`flex-1 py-3 rounded-xl border-2 flex items-center justify-center transition-all ${selectedElement.textAlign === a ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-300'}`}
+                            >
+                              {icon}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Color palette ── */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Color</span>
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        {['#171717','#ffffff','#dc2626','#2563eb','#16a34a','#f59e0b','#7c3aed','#ec4899','#6b7280','#0f172a'].map(c => (
                           <button
                             key={c}
                             onClick={() => updateElement(selectedId!, { color: c })}
-                            className={`w-7 h-7 rounded-full border-2 transition-all ${selectedElement.color === c ? 'border-green-600 scale-110 shadow-md' : 'border-gray-200 hover:scale-105'}`}
-                            style={{ backgroundColor: c }}
+                            className={`w-9 h-9 rounded-full transition-all shadow-sm ${selectedElement.color === c ? 'ring-2 ring-offset-2 ring-green-600 scale-110' : 'hover:scale-105'}`}
+                            style={{ backgroundColor: c, border: c === '#ffffff' ? '2px solid #e5e7eb' : 'none' }}
                             aria-label={c}
                           />
                         ))}
-                        {/* Custom color picker */}
-                        <label className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-green-500 transition-colors overflow-hidden" title="Custom color">
+                        {/* Custom colour picker */}
+                        <label
+                          className="w-9 h-9 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-green-500 transition-colors relative overflow-hidden bg-gradient-to-br from-pink-400 via-yellow-300 to-blue-500 shadow-sm"
+                          title="Custom color"
+                        >
                           <input
                             type="color"
                             value={selectedElement.color ?? '#171717'}
                             onChange={e => updateElement(selectedId!, { color: e.target.value })}
-                            className="opacity-0 absolute w-px h-px"
+                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
                           />
-                          <span className="text-[10px] text-gray-400">+</span>
                         </label>
                       </div>
                     </div>
 
-                    {/* Font weight */}
-                    <div className="flex gap-2">
-                      {(['400','700','900'] as const).map(w => (
-                        <button
-                          key={w}
-                          onClick={() => updateElement(selectedId!, { fontWeight: w })}
-                          className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-all ${selectedElement.fontWeight === w ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-600 hover:border-green-500'}`}
-                        >
-                          {w === '400' ? 'Normal' : w === '700' ? 'Bold' : 'Black'}
-                        </button>
-                      ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 py-6 border-t border-gray-100">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
+                      <Type className="w-6 h-6 text-gray-400" />
                     </div>
-
-                    {/* Text align */}
-                    <div className="flex gap-2">
-                      {(['left','center','right'] as const).map(a => (
-                        <button
-                          key={a}
-                          onClick={() => updateElement(selectedId!, { textAlign: a })}
-                          className={`flex-1 py-2 rounded-lg border text-xs font-bold capitalize transition-all ${selectedElement.textAlign === a ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-600 hover:border-green-500'}`}
-                        >
-                          {a}
-                        </button>
-                      ))}
-                    </div>
+                    <p className="text-gray-400 text-sm text-center leading-relaxed">
+                      Tap a text layer on the canvas to edit it, or add a new one above.
+                    </p>
                   </div>
                 )}
-
-                {!selectedElement && (
-                  <p className="text-gray-400 text-sm text-center">Tap a text element on the canvas to edit it here.</p>
-                )}
               </div>
-            )}
+              );
+            })()}
 
             {/* ── Uploads Panel ── */}
             {activeTool === 'uploads' && (() => {
