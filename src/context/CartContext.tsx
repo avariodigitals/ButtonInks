@@ -72,9 +72,21 @@ function parseWCCart(data: Record<string, unknown>): CartItem[] {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart]               = useState<CartItem[]>([]);
+  const [cart, setCart]               = useState<CartItem[]>(() => {
+    // Restore guest cart from sessionStorage on mount
+    try {
+      const raw = typeof window !== 'undefined' ? sessionStorage.getItem('bi_cart') : null;
+      if (raw) return JSON.parse(raw) as CartItem[];
+    } catch { /* ignore */ }
+    return [];
+  });
   const [isLoading, setIsLoading]     = useState(false);
   const [cartSyncing, setCartSyncing] = useState(false);
+
+  // Persist cart to sessionStorage whenever it changes (guest fallback)
+  useEffect(() => {
+    try { sessionStorage.setItem('bi_cart', JSON.stringify(cart)); } catch { /* quota */ }
+  }, [cart]);
 
   // ── Fetch cart from WC ─────────────────────────────────────────────────
   const refreshCart = useCallback(async () => {
@@ -86,7 +98,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setCart(parseWCCart(data));
+        const wcItems = parseWCCart(data);
+        // Only replace local cart if WC returned actual items, to avoid
+        // wiping optimistic state when the WC session hasn't synced yet
+        if (wcItems.length > 0) setCart(wcItems);
       }
     } catch {
       // silent — cart stays as-is
@@ -99,26 +114,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // ── Add item ───────────────────────────────────────────────────────────
   const addToCart = useCallback(async (item: Omit<CartItem, 'key'>) => {
-    setCartSyncing(true);
-    try {
-      const res = await fetch('/api/cart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        credentials: 'include',
-        body: JSON.stringify({ id: item.id, quantity: item.quantity }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // WC returns full cart on add-item
-        if (data.items) {
-          setCart(parseWCCart(data));
-        } else {
-          // Fallback: refresh
-          await refreshCart();
-        }
+    // Optimistic update — add immediately so UI is never empty
+    const tempKey = `local-${item.id}-${Date.now()}`;
+    setCart(prev => {
+      const existing = prev.find(i => i.id === item.id);
+      if (existing) {
+        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i);
       }
-    } finally {
-      setCartSyncing(false);
+      return [...prev, { ...item, key: tempKey }];
+    });
+
+    // Best-effort WC sync — replace temp key with real WC key if it succeeds
+    if (item.id && item.id !== 999) {
+      setCartSyncing(true);
+      try {
+        const res = await fetch('/api/cart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          credentials: 'include',
+          body: JSON.stringify({ id: item.id, quantity: item.quantity }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const wcItems = parseWCCart(data.items ? data : await (await fetch('/api/cart', { headers: authHeaders(), credentials: 'include' })).json());
+          if (wcItems.length > 0) setCart(wcItems);
+          else {
+            // Replace the temp key with a stable one so remove/update still work
+            setCart(prev => prev.map(i => i.key === tempKey ? { ...i, key: String(item.id) } : i));
+          }
+        }
+      } catch {
+        // Keep optimistic state — just replace temp key
+        setCart(prev => prev.map(i => i.key === tempKey ? { ...i, key: String(item.id) } : i));
+      } finally {
+        setCartSyncing(false);
+      }
     }
   }, [refreshCart]);
 
@@ -159,6 +189,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // ── Clear cart ─────────────────────────────────────────────────────────
   const clearCart = useCallback(async () => {
     setCart([]);
+    try { sessionStorage.removeItem('bi_cart'); } catch { /* ignore */ }
     try {
       await fetch('/api/cart', {
         method: 'DELETE',

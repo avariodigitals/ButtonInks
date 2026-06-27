@@ -109,10 +109,13 @@ function DesignContent() {
   // ── Save design to review localStorage ───────────────────────────────────
   const goToReview = useCallback(() => {
     const snapshot = {
-      productId: selectedProduct?.id ?? null,
-      productName: selectedProduct?.name ?? 'Custom Design',
-      productImage: selectedProduct?.images[0]?.src ?? null,
-      productPrice: selectedProduct?.price ?? '23.95',
+      productId:          selectedProduct?.id ?? null,
+      productName:        selectedProduct?.name ?? 'Custom Design',
+      productImage:       selectedProduct?.images[0]?.src ?? null,
+      productPrice:       selectedProduct?.price ?? '23.95',
+      designFee:          selectedProduct?.acf?.design_fee ?? 0,
+      bulkPricing:        selectedProduct?.acf?.bulk_pricing ?? [],
+      productionOptions:  selectedProduct?.acf?.production_options ?? [],
       elements,
     };
     localStorage.setItem('bi_review_design', JSON.stringify(snapshot));

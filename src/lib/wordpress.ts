@@ -78,6 +78,7 @@ export interface WPProduct {
       url:   string;                   // Direct download URL
       label: string;                   // Format: 'PDF' | 'AI' | 'PSD' | 'EPS' | 'PNG' | 'SVG'
     }[];
+    design_fee?: number;               // Flat personalisation fee per unit (£/$ added on top of base price)
   };
 }
 

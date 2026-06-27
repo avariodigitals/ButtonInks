@@ -51,6 +51,9 @@ class ButtonInks_Core {
 
             // Downloadable templates — JSON string
             '_bi_download_templates' => 'string',
+
+            // Design / personalisation fee (flat, per unit)
+            '_bi_design_fee'         => 'string',
         ];
 
         foreach ($fields as $key => $type) {
@@ -298,6 +301,18 @@ class ButtonInks_Core {
                 <p class="bi-note">Shown to the customer on the product page. Keep it short and clear.</p>
             </div>
 
+            <!-- SECTION: Design / Personalisation Fee -->
+            <div class="bi-section">
+                <span class="bi-label">Design &amp; Personalisation Fee</span>
+                <div class="bi-row">
+                    <label>Fee per unit ($)</label>
+                    <input type="number" name="_bi_design_fee"
+                           value="<?php echo esc_attr(get_post_meta($post->ID, '_bi_design_fee', true) ?: '0'); ?>"
+                           placeholder="0.00" min="0" step="0.01" style="width:100px;" />
+                </div>
+                <p class="bi-note">Added to the base product price on the design review page. Set to 0 for no extra charge.</p>
+            </div>
+
             <!-- SECTION: Downloadable Templates -->
             <div class="bi-section">
                 <span class="bi-label">Downloadable Print Templates</span>
@@ -482,6 +497,12 @@ class ButtonInks_Core {
                 sanitize_textarea_field(wp_unslash($_POST['_bi_print_notes'])));
         }
 
+        // Design fee
+        if (isset($_POST['_bi_design_fee'])) {
+            update_post_meta($post_id, '_bi_design_fee',
+                sanitize_text_field(wp_unslash($_POST['_bi_design_fee'])));
+        }
+
         // Downloadable templates — build JSON from parallel url/format arrays
         $allowed_formats = ['PDF', 'AI', 'PSD', 'EPS', 'PNG', 'SVG'];
         $tpl_urls    = isset($_POST['_bi_tpl_url'])    ? (array) $_POST['_bi_tpl_url']    : [];
@@ -554,6 +575,7 @@ class ButtonInks_Core {
             'bulk_pricing'         => $bulk_pricing,
             'print_notes'          => get_post_meta($id, '_bi_print_notes', true) ?: '',
             'download_templates'   => $dl_templates,
+            'design_fee'           => (float) (get_post_meta($id, '_bi_design_fee', true) ?: '0'),
         ];
 
         return $response;
