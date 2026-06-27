@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Search, SlidersHorizontal, X, ChevronDown,
-  Package, ShoppingCart, Bookmark, Share2, Sparkles,
+  Package, ShoppingCart, Bookmark, Share2,
 } from 'lucide-react';
 import { DesignTemplate } from '@/app/api/design-templates/route';
 import { useCart } from '@/context/CartContext';
@@ -323,7 +323,6 @@ export default function DesignsPage() {
       <section className="w-full px-4 md:px-20 py-10 sm:py-16 bg-gradient-to-br from-emerald-50 to-green-50 border-b border-gray-200">
         <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-3 text-center">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-700/10 rounded-full">
-            <Sparkles className="w-4 h-4 text-green-700" />
             <span className="text-green-700 text-xs font-semibold font-inter uppercase tracking-wider">Ready to order</span>
           </div>
           <h1 className="text-green-700 text-3xl sm:text-5xl font-bold font-outfit leading-tight max-w-2xl">

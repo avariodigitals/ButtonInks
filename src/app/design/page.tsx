@@ -1,5 +1,6 @@
 "use client";
 
+import { DesignTemplate } from '@/app/api/design-templates/route';
 import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -140,7 +141,7 @@ function DesignContent() {
 
   // ── Templates state ──────────────────────────────────────────────────────
   const [templateCategory, setTemplateCategory] = useState('all');
-  const [apiTemplates, setApiTemplates] = useState<RawTemplate[]>([]);
+  const [apiTemplates, setApiTemplates] = useState<DesignTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
 
   // ── Product panel pagination ──────────────────────────────────────────────
@@ -261,7 +262,7 @@ function DesignContent() {
     setActiveTool(null);
   };
 
-  const applyTemplate = (tpl: RawTemplate) => {
+  const applyTemplate = (tpl: RawTemplate | DesignTemplate) => {
     idCounterRef.current += 1;
     const base = idCounterRef.current;
     const newEls: DesignElement[] = tpl.elements.map((e: RawTemplateElement, i: number) => ({
@@ -495,16 +496,16 @@ function DesignContent() {
         </aside>
 
         {/* Tool Content Panel — bottom sheet on mobile, left sidebar on desktop */}
-        <aside className={`
-          fixed md:relative z-20 bg-white border-gray-200 flex-col shrink-0 transition-transform duration-300 ease-out
-          md:border-r md:top-0 md:bottom-0 md:left-0 md:w-96
-          inset-x-0 bottom-0 rounded-t-3xl border-t shadow-2xl
-          ${activeTool
-            ? 'translate-y-0 md:translate-x-0 flex'
-            : 'translate-y-full md:-translate-x-full hidden md:flex'
-          }
-        `}
-          style={{ maxHeight: 'calc(var(--app-height, 100dvh) * 0.72)' }}
+        <aside className={[
+          'transition-transform duration-300 ease-out bg-white flex-col shrink-0',
+          'md:relative md:border-r md:border-gray-200 md:w-96 md:z-20',
+          activeTool
+            // Active on both mobile and desktop
+            ? 'flex md:flex fixed inset-x-0 bottom-0 z-20 rounded-t-3xl md:rounded-none border-t md:border-t-0 border-gray-200 shadow-2xl md:shadow-sm translate-y-0 md:translate-x-0'
+            // Hidden on both
+            : 'hidden',
+        ].join(' ')}
+          style={{ maxHeight: activeTool ? 'calc(var(--app-height, 100dvh) * 0.72)' : undefined }}
         >
           {/* Dim overlay on mobile */}
           {activeTool && (
@@ -853,7 +854,8 @@ function DesignContent() {
                       <div key={icon.id} onClick={() => addGraphic(icon.svgUrl)}
                         title={icon.label}
                         className="aspect-square bg-gray-50 rounded-xl border border-gray-100 hover:border-green-500 cursor-pointer flex flex-col items-center justify-center gap-1.5 p-2 transition-all hover:scale-105 hover:bg-green-50">
-                        <Image src={icon.svgUrl} width={40} height={40} className="object-contain" alt={icon.label} />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={icon.svgUrl} width={40} height={40} className="object-contain w-10 h-10" alt={icon.label} />
                         <span className="text-[9px] font-bold text-zinc-400 truncate w-full text-center">{icon.label}</span>
                       </div>
                     ))}
@@ -904,86 +906,61 @@ function DesignContent() {
                 {!templatesLoading && apiTemplates.length > 0 && (
                   <div className="grid grid-cols-2 gap-3">
                     {apiTemplates.map(tpl => {
-                      // Category → icon mapping
-                      const catIcons: Record<string, React.ReactNode> = {
-                        apparel:   <Package        className="w-3.5 h-3.5" />,
-                        mug:       <Circle         className="w-3.5 h-3.5" />,
-                        corporate: <Settings2      className="w-3.5 h-3.5" />,
-                        sticker:   <Sticker        className="w-3.5 h-3.5" />,
-                        banner:    <LayoutTemplate className="w-3.5 h-3.5" />,
-                      };
-                      const catIcon = (tpl.category ? catIcons[tpl.category] : undefined) ?? <Layers className="w-3.5 h-3.5" />;
+                      const tags: string[] = (tpl as RawTemplate & { tags?: string[] }).tags ?? [];
 
                       return (
                         <div
                           key={tpl.id}
                           onClick={() => applyTemplate(tpl)}
-                          className="group flex flex-col rounded-xl border border-gray-100 hover:border-green-500 overflow-hidden cursor-pointer transition-all hover:shadow-md bg-white"
+                          className="bg-white rounded-lg shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10)] overflow-hidden cursor-pointer hover:shadow-md hover:outline hover:outline-2 hover:outline-green-500 transition-all active:scale-[0.97]"
                         >
-                          {/* Mini canvas preview */}
-                          <div className="relative w-full bg-gray-50 overflow-hidden" style={{ paddingBottom: '80%' }}>
-                            <div
-                              className="absolute inset-0"
-                              style={{
-                                /* scale the 600×750 canvas down to fit the preview box */
-                                transform: 'scale(0.27)',
-                                transformOrigin: 'top left',
-                                width: '600px',
-                                height: '750px',
-                                pointerEvents: 'none',
-                              }}
-                            >
-                              {(tpl.elements || []).map((el: RawTemplateElement, i: number) => (
-                                <div
-                                  key={i}
-                                  className="absolute flex items-center justify-center"
-                                  style={{
-                                    left:      `${el.x}px`,
-                                    top:       `${el.y}px`,
-                                    width:     `${el.width}px`,
-                                    height:    `${el.height}px`,
-                                    transform: `rotate(${el.rotation ?? 0}deg)`,
-                                    opacity:   el.opacity ?? 1,
-                                  }}
-                                >
-                                  {el.type === 'text' ? (
-                                    <div
-                                      className="w-full h-full flex items-center justify-center leading-tight text-center"
-                                      style={{
+                          {/* Thumbnail — real image if available, else live canvas preview */}
+                          <div className="relative w-full h-28 bg-gray-50 overflow-hidden">
+                            {tpl.thumbnail ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={tpl.thumbnail} alt={tpl.name}
+                                className="w-full h-full object-cover" />
+                            ) : (
+                              /* Scaled-down live canvas preview */
+                              <div className="absolute inset-0" style={{ overflow: 'hidden' }}>
+                                <div style={{
+                                  transform: 'scale(0.2)',
+                                  transformOrigin: 'top left',
+                                  width: '600px', height: '140px',
+                                  pointerEvents: 'none',
+                                }}>
+                                  {(tpl.elements || []).filter((el: RawTemplateElement) => el.type === 'text').slice(0, 2).map((el: RawTemplateElement, i: number) => (
+                                    <div key={i} className="absolute flex items-center justify-center"
+                                      style={{ left: `${el.x}px`, top: `${el.y * 0.3}px`, width: `${el.width}px`, height: `${el.height}px` }}>
+                                      <span style={{
                                         color:      el.color      ?? '#171717',
                                         fontSize:   `${el.fontSize ?? 32}px`,
                                         fontFamily: el.fontFamily ?? 'Outfit',
                                         fontWeight: el.fontWeight ?? '700',
-                                        textAlign:  el.textAlign  ?? 'center',
-                                      }}
-                                    >
-                                      {el.content}
+                                        whiteSpace: 'nowrap',
+                                      }}>
+                                        {el.content}
+                                      </span>
                                     </div>
-                                  ) : (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={el.content} className="w-full h-full object-contain" alt="" />
-                                  )}
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-
-                            {/* Hover overlay */}
-                            <div className="absolute inset-0 bg-green-700/0 group-hover:bg-green-700/10 transition-colors flex items-center justify-center">
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-green-700 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
-                                <Plus className="w-3 h-3" /> Apply
                               </div>
-                            </div>
+                            )}
                           </div>
 
-                          {/* Template info */}
-                          <div className="p-2.5 flex items-center gap-2 border-t border-gray-50">
-                            <div className="w-6 h-6 rounded-lg bg-green-700/10 text-green-700 flex items-center justify-center shrink-0">
-                              {catIcon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-zinc-800 truncate group-hover:text-green-700 transition-colors">{tpl.name}</p>
-                              <p className="text-[9px] text-zinc-400 capitalize">{tpl.elements?.length} layer{tpl.elements?.length !== 1 ? 's' : ''}</p>
-                            </div>
+                          {/* Info */}
+                          <div className="p-2 flex flex-col gap-1">
+                            <p className="text-gray-900 text-xs font-medium font-inter leading-4 line-clamp-1">{tpl.name}</p>
+                            <p className="text-gray-600 text-xs font-normal font-inter leading-4 capitalize">{tpl.category}</p>
+                            {tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {tags.slice(0, 2).map((tag: string) => (
+                                  <span key={tag} className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-700 text-[10px] font-inter leading-3">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -1116,8 +1093,8 @@ function DesignContent() {
             </div>
 
             {/* Floating Zoom Bar — hidden on mobile when a tool panel is open */}
-            <div className={`fixed left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-[0px_24px_48px_-12px_rgba(0,0,0,0.18)] border border-gray-100 flex items-center p-2 gap-1 z-30 transition-all duration-200 ${activeTool ? 'md:flex hidden' : 'flex'}`}
-              style={{ bottom: 'calc(72px + env(safe-area-inset-bottom) + 52px)' }}
+            <div className={`absolute left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-[0px_24px_48px_-12px_rgba(0,0,0,0.18)] border border-gray-100 flex items-center p-2 gap-1 z-30 transition-all duration-200 ${activeTool ? 'md:flex hidden' : 'flex'}`}
+              style={{ bottom: 'max(40px, calc(72px + env(safe-area-inset-bottom) + 12px))' }}
             >
               <button onClick={() => setZoom(z => Math.max(25, z - 10))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 rounded-xl text-zinc-600 transition-colors"><Minus className="w-4 h-4" /></button>
               <div className="px-4 text-sm font-bold text-zinc-900 tabular-nums min-w-[70px] text-center">{zoom}%</div>
@@ -1212,27 +1189,33 @@ function DesignContent() {
 
         {/* ── Right Properties Panel ── */}
         <aside className={[
-          'fixed md:relative z-30 bg-white border-t md:border-t-0 md:border-l border-gray-200 flex-col shrink-0 transition-transform duration-300',
-          'inset-x-0 bottom-0 h-[55dvh] md:inset-y-0 md:right-0 md:h-full md:w-80',
-          // Mobile: only show when user explicitly opened props panel
-          // Desktop: show whenever an element is selected
+          // Desktop — full height right sidebar, always visible when element selected
+          'md:relative md:flex-col md:shrink-0 md:border-l md:border-gray-200 md:w-80 md:h-full md:translate-x-0 md:translate-y-0 md:bottom-auto md:inset-x-auto md:rounded-none md:shadow-none md:z-30',
+          'transition-transform duration-300 bg-white',
+          // Mobile — bottom sheet, user-triggered
           (propsPanelOpen && selectedId && !activeTool)
-            ? 'flex translate-y-0'
-            : 'hidden translate-y-full',
-          selectedId ? 'md:flex md:translate-x-0' : 'md:hidden md:translate-x-full',
+            ? 'flex flex-col fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 translate-y-0'
+            : 'hidden fixed inset-x-0 bottom-0 translate-y-full',
+          // Desktop override: show if element selected
+          selectedId ? 'md:flex' : 'md:hidden',
         ].join(' ')}
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          style={{
+            height: undefined, // let md:h-full handle it
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
         >
-          {/* Mobile drag handle + close */}
-          <div className="md:hidden w-full flex flex-col items-center pt-2 pb-0 bg-white">
+          {/* Mobile-only: drag handle + title bar */}
+          <div className="md:hidden w-full flex flex-col items-center pt-2 pb-0 bg-white shrink-0">
             <div className="w-10 h-1 bg-gray-200 rounded-full mb-2" />
           </div>
-          <div className="md:hidden w-full h-11 border-b border-gray-100 flex items-center justify-between px-6 bg-stone-50">
+          <div className="md:hidden w-full h-11 border-b border-gray-100 flex items-center justify-between px-6 bg-stone-50 shrink-0">
             <span className="text-sm font-bold text-gray-900">Adjust Property</span>
             <button type="button" onClick={() => setPropsPanelOpen(false)} className="p-1 hover:bg-gray-200 rounded-md transition-colors">
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
+          {/* Mobile-only: max height cap so it's a sheet not full screen */}
+          <style>{`.props-panel-mobile{max-height:55dvh}`}</style>
 
           {/* Tabs */}
           <div className="grid grid-cols-4 border-b border-gray-100 shrink-0">

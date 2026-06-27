@@ -14,8 +14,11 @@ class ButtonInks_Core {
     public function __construct() {
         add_action('rest_api_init',              [$this, 'register_endpoints']);
         add_action('init',                       [$this, 'register_product_meta']);
+        add_action('init',                       [$this, 'register_design_template_cpt']);
         add_action('add_meta_boxes',             [$this, 'add_product_meta_boxes']);
+        add_action('add_meta_boxes',             [$this, 'add_design_template_meta_box']);
         add_action('woocommerce_process_product_meta', [$this, 'save_product_meta']);
+        add_action('save_post_bi_design_template',     [$this, 'save_design_template_meta']);
         add_filter('woocommerce_rest_prepare_product_object', [$this, 'append_acf_to_rest'], 10, 3);
     }
 
@@ -557,7 +560,217 @@ class ButtonInks_Core {
     }
 
     // =========================================================================
-    // 5. REST ENDPOINTS (Registration + Wishlist) — unchanged
+    // 6. DESIGN TEMPLATES — Custom Post Type + REST Endpoint
+    // =========================================================================
+
+    /**
+     * Register the bi_design_template custom post type.
+     * Admin goes to WP Admin → Design Templates → Add New
+     */
+    public function register_design_template_cpt() {
+        register_post_type('bi_design_template', [
+            'labels' => [
+                'name'               => 'Design Templates',
+                'singular_name'      => 'Design Template',
+                'add_new'            => 'Add New Template',
+                'add_new_item'       => 'Add New Design Template',
+                'edit_item'          => 'Edit Design Template',
+                'new_item'           => 'New Design Template',
+                'view_item'          => 'View Design Template',
+                'search_items'       => 'Search Design Templates',
+                'not_found'          => 'No design templates found',
+                'not_found_in_trash' => 'No design templates in trash',
+                'menu_name'          => 'Design Templates',
+            ],
+            'public'              => false,
+            'show_ui'             => true,
+            'show_in_menu'        => true,
+            'menu_icon'           => 'dashicons-art',
+            'supports'            => ['title', 'thumbnail'],
+            'show_in_rest'        => false, // We expose via custom endpoint
+            'rewrite'             => false,
+        ]);
+    }
+
+    /**
+     * Meta box for the Design Template CPT
+     */
+    public function add_design_template_meta_box() {
+        add_meta_box(
+            'bi_design_template_fields',
+            'Template Settings',
+            [$this, 'render_design_template_meta_box'],
+            'bi_design_template',
+            'normal',
+            'high'
+        );
+    }
+
+    public function render_design_template_meta_box($post) {
+        wp_nonce_field('bi_design_template_save', 'bi_dt_nonce');
+
+        $category    = get_post_meta($post->ID, '_bi_dt_category',    true) ?: 'apparel';
+        $tags        = get_post_meta($post->ID, '_bi_dt_tags',         true) ?: '';
+        $elements    = get_post_meta($post->ID, '_bi_dt_elements',     true) ?: '';
+
+        $categories  = ['apparel', 'mug', 'corporate', 'sticker', 'banner', 'business-card', 'poster', 'other'];
+        ?>
+        <style>
+            #bi_design_template_fields .bi-dt-wrap { padding: 8px 0; }
+            #bi_design_template_fields .bi-dt-row  { margin-bottom: 16px; }
+            #bi_design_template_fields .bi-dt-row label { display: block; font-weight: 600; font-size: 12px;
+                text-transform: uppercase; letter-spacing: .04em; color: #1d2327; margin-bottom: 6px; }
+            #bi_design_template_fields select,
+            #bi_design_template_fields input[type=text] { font-size: 13px; width: 100%; max-width: 400px; }
+            #bi_design_template_fields textarea { width: 100%; font-family: Consolas, monospace;
+                font-size: 12px; resize: vertical; min-height: 180px; }
+            #bi_design_template_fields .bi-dt-note { font-size: 11px; color: #646970; margin: 4px 0 0; }
+            #bi_design_template_fields .bi-dt-thumbnail-note {
+                padding: 10px 14px; background: #eef3fa; border-left: 3px solid #2271b1;
+                font-size: 12px; color: #2271b1; margin-top: 8px;
+            }
+        </style>
+
+        <div class="bi-dt-wrap">
+
+            <div class="bi-dt-row">
+                <label for="bi_dt_category">Category</label>
+                <select name="_bi_dt_category" id="bi_dt_category">
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?php echo esc_attr($cat); ?>" <?php selected($category, $cat); ?>>
+                            <?php echo esc_html(ucfirst(str_replace('-', ' ', $cat))); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="bi-dt-note">Used to filter templates in the Design Studio.</p>
+            </div>
+
+            <div class="bi-dt-row">
+                <label for="bi_dt_tags">Style Tags <span style="font-weight:400;text-transform:none;">(comma separated)</span></label>
+                <input type="text" name="_bi_dt_tags" id="bi_dt_tags"
+                       value="<?php echo esc_attr($tags); ?>"
+                       placeholder="e.g. Modern, Minimalist, Bold" />
+                <p class="bi-dt-note">Shown as chips on the template card. Example: Modern, Minimalist</p>
+            </div>
+
+            <div class="bi-dt-row">
+                <label for="bi_dt_elements">Canvas Elements (JSON)</label>
+                <textarea name="_bi_dt_elements" id="bi_dt_elements"
+                          placeholder='[{"type":"text","content":"BRAND NAME","x":80,"y":250,"width":440,"height":90,"rotation":0,"opacity":1,"color":"#064E3B","fontFamily":"Outfit","fontSize":56,"fontWeight":"900","textAlign":"center"}]'
+                ><?php echo esc_textarea($elements); ?></textarea>
+                <p class="bi-dt-note">
+                    JSON array of canvas elements. Each element needs: <code>type</code> (text/image),
+                    <code>content</code>, <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>,
+                    <code>rotation</code>, <code>opacity</code>, and for text: <code>color</code>,
+                    <code>fontFamily</code>, <code>fontSize</code>, <code>fontWeight</code>, <code>textAlign</code>.
+                </p>
+            </div>
+
+            <div class="bi-dt-thumbnail-note">
+                ℹ️ <strong>Preview Thumbnail:</strong> Set the <strong>Featured Image</strong> (right column) —
+                this is the thumbnail shown in the Design Studio template picker. Recommended size: 600×480px.
+            </div>
+
+        </div>
+        <?php
+    }
+
+    public function save_design_template_meta($post_id) {
+        if (!isset($_POST['bi_dt_nonce']) ||
+            !wp_verify_nonce($_POST['bi_dt_nonce'], 'bi_design_template_save')) {
+            return;
+        }
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+        if (!current_user_can('edit_post', $post_id)) return;
+
+        if (isset($_POST['_bi_dt_category'])) {
+            update_post_meta($post_id, '_bi_dt_category',
+                sanitize_text_field(wp_unslash($_POST['_bi_dt_category'])));
+        }
+
+        if (isset($_POST['_bi_dt_tags'])) {
+            update_post_meta($post_id, '_bi_dt_tags',
+                sanitize_text_field(wp_unslash($_POST['_bi_dt_tags'])));
+        }
+
+        if (isset($_POST['_bi_dt_elements'])) {
+            $raw = wp_unslash($_POST['_bi_dt_elements']);
+            // Validate it's parseable JSON before saving
+            $decoded = json_decode($raw, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                update_post_meta($post_id, '_bi_dt_elements', wp_json_encode($decoded));
+            } else {
+                // Store raw anyway so admin doesn't lose their work — frontend will skip invalid entries
+                update_post_meta($post_id, '_bi_dt_elements', sanitize_textarea_field($raw));
+            }
+        }
+    }
+
+    /**
+     * REST endpoint: GET /wp-json/buttoninks/v1/design-templates
+     * Returns all published design templates with thumbnail URL, category, tags, and elements.
+     */
+    private function get_design_templates_endpoint($request) {
+        $category = sanitize_text_field($request->get_param('category') ?? 'all');
+
+        $args = [
+            'post_type'      => 'bi_design_template',
+            'post_status'    => 'publish',
+            'posts_per_page' => 100,
+            'orderby'        => 'menu_order date',
+            'order'          => 'ASC',
+        ];
+
+        if ($category !== 'all') {
+            $args['meta_query'] = [[
+                'key'     => '_bi_dt_category',
+                'value'   => $category,
+                'compare' => '=',
+            ]];
+        }
+
+        $posts     = get_posts($args);
+        $templates = [];
+
+        foreach ($posts as $post) {
+            $elements_raw = get_post_meta($post->ID, '_bi_dt_elements', true);
+            $elements     = [];
+            if ($elements_raw) {
+                $decoded = json_decode($elements_raw, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $elements = $decoded;
+                }
+            }
+
+            // Only include templates with valid elements
+            if (empty($elements)) continue;
+
+            $tags_raw   = get_post_meta($post->ID, '_bi_dt_tags', true) ?: '';
+            $tags       = array_filter(array_map('trim', explode(',', $tags_raw)));
+
+            $thumbnail  = '';
+            if (has_post_thumbnail($post->ID)) {
+                $thumbnail = get_the_post_thumbnail_url($post->ID, 'medium') ?: '';
+            }
+
+            $templates[] = [
+                'id'        => 'wp-' . $post->ID,
+                'name'      => get_the_title($post),
+                'category'  => get_post_meta($post->ID, '_bi_dt_category', true) ?: 'other',
+                'thumbnail' => $thumbnail,
+                'tags'      => array_values($tags),
+                'elements'  => $elements,
+            ];
+        }
+
+        return new WP_REST_Response([
+            'templates' => $templates,
+            'total'     => count($templates),
+        ], 200);
+    }
+
+    // =========================================================================
+    // 5. REST ENDPOINTS (Registration + Wishlist + Design Templates)
     // =========================================================================
 
     public function register_endpoints() {
@@ -566,6 +779,19 @@ class ButtonInks_Core {
             'methods'             => 'POST',
             'callback'            => [$this, 'register_user'],
             'permission_callback' => '__return_true',
+        ]);
+
+        // Design Templates — public read endpoint
+        register_rest_route('buttoninks/v1', '/design-templates', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_design_templates_endpoint'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'category' => [
+                    'default'           => 'all',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
         ]);
 
         register_rest_route('buttoninks/v1', '/wishlist', [
