@@ -811,6 +811,52 @@ class ButtonInks_Core {
             'callback'            => [$this, 'remove_from_wishlist'],
             'permission_callback' => [$this, 'is_user_logged_in'],
         ]);
+
+        // ── Saved Designs ──────────────────────────────────────────────────
+        // GET  /buttoninks/v1/designs          — list saved designs for current user
+        // POST /buttoninks/v1/designs          — create a new saved design
+        // GET  /buttoninks/v1/designs/{id}     — fetch one design
+        // PUT  /buttoninks/v1/designs/{id}     — update (overwrite) a design
+        // DELETE /buttoninks/v1/designs/{id}   — delete a design
+
+        register_rest_route('buttoninks/v1', '/designs', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'list_saved_designs'],
+                'permission_callback' => [$this, 'is_user_logged_in'],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'create_saved_design'],
+                'permission_callback' => [$this, 'is_user_logged_in'],
+                'args'                => [
+                    'name'       => [ 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
+                    'product_id' => [ 'required' => false, 'sanitize_callback' => 'absint' ],
+                    'elements'   => [ 'required' => true ],
+                ],
+            ],
+        ]);
+
+        register_rest_route('buttoninks/v1', '/designs/(?P<id>\d+)', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'get_saved_design'],
+                'permission_callback' => [$this, 'is_user_logged_in'],
+                'args'                => [ 'id' => [ 'validate_callback' => 'is_numeric' ] ],
+            ],
+            [
+                'methods'             => 'PUT',
+                'callback'            => [$this, 'update_saved_design'],
+                'permission_callback' => [$this, 'is_user_logged_in'],
+                'args'                => [ 'id' => [ 'validate_callback' => 'is_numeric' ] ],
+            ],
+            [
+                'methods'             => 'DELETE',
+                'callback'            => [$this, 'delete_saved_design'],
+                'permission_callback' => [$this, 'is_user_logged_in'],
+                'args'                => [ 'id' => [ 'validate_callback' => 'is_numeric' ] ],
+            ],
+        ]);
     }
 
     public function is_user_logged_in() {
@@ -865,6 +911,156 @@ class ButtonInks_Core {
             update_user_meta($user_id, '_buttoninks_wishlist', array_values($wishlist));
         }
         return ['success' => true, 'wishlist' => $wishlist];
+    }
+
+    // =========================================================================
+    // SAVED DESIGNS — stored as a custom post type per user
+    // Each design is a 'bi_saved_design' post with the user as author.
+    // =========================================================================
+
+    private function ensure_saved_design_cpt() {
+        if ( post_type_exists('bi_saved_design') ) return;
+        register_post_type('bi_saved_design', [
+            'public'       => false,
+            'show_ui'      => false,
+            'show_in_rest' => false,
+            'supports'     => ['title', 'author'],
+            'labels'       => [ 'name' => 'Saved Designs' ],
+        ]);
+    }
+
+    /** GET /buttoninks/v1/designs — list all saved designs for the current user */
+    public function list_saved_designs($request) {
+        $this->ensure_saved_design_cpt();
+        $user_id = get_current_user_id();
+
+        $posts = get_posts([
+            'post_type'      => 'bi_saved_design',
+            'author'         => $user_id,
+            'posts_per_page' => 50,
+            'post_status'    => 'publish',
+            'orderby'        => 'modified',
+            'order'          => 'DESC',
+        ]);
+
+        $designs = array_map(function($post) {
+            return [
+                'id'         => $post->ID,
+                'name'       => $post->post_title,
+                'product_id' => (int) get_post_meta($post->ID, '_bi_product_id', true),
+                'elements'   => json_decode(get_post_meta($post->ID, '_bi_elements', true) ?: '[]', true),
+                'updated_at' => $post->post_modified,
+            ];
+        }, $posts);
+
+        return rest_ensure_response($designs);
+    }
+
+    /** POST /buttoninks/v1/designs — create a new saved design */
+    public function create_saved_design($request) {
+        $this->ensure_saved_design_cpt();
+        $user_id = get_current_user_id();
+        $params  = $request->get_json_params();
+
+        $name       = sanitize_text_field($params['name'] ?? 'My Design');
+        $product_id = absint($params['product_id'] ?? 0);
+        $elements   = $params['elements'] ?? [];
+
+        if ( empty($elements) || !is_array($elements) ) {
+            return new WP_Error('missing_elements', 'elements array is required', ['status' => 400]);
+        }
+
+        $post_id = wp_insert_post([
+            'post_type'   => 'bi_saved_design',
+            'post_title'  => $name,
+            'post_status' => 'publish',
+            'post_author' => $user_id,
+        ]);
+
+        if ( is_wp_error($post_id) ) return $post_id;
+
+        update_post_meta($post_id, '_bi_product_id', $product_id);
+        update_post_meta($post_id, '_bi_elements',   wp_json_encode($elements));
+
+        return rest_ensure_response([
+            'success'    => true,
+            'id'         => $post_id,
+            'name'       => $name,
+            'product_id' => $product_id,
+            'elements'   => $elements,
+            'updated_at' => current_time('mysql'),
+        ]);
+    }
+
+    /** GET /buttoninks/v1/designs/{id} — fetch one design (must belong to current user) */
+    public function get_saved_design($request) {
+        $this->ensure_saved_design_cpt();
+        $post = get_post( (int) $request['id'] );
+
+        if ( !$post || $post->post_type !== 'bi_saved_design' ) {
+            return new WP_Error('not_found', 'Design not found', ['status' => 404]);
+        }
+        if ( (int) $post->post_author !== get_current_user_id() ) {
+            return new WP_Error('forbidden', 'Access denied', ['status' => 403]);
+        }
+
+        return rest_ensure_response([
+            'id'         => $post->ID,
+            'name'       => $post->post_title,
+            'product_id' => (int) get_post_meta($post->ID, '_bi_product_id', true),
+            'elements'   => json_decode(get_post_meta($post->ID, '_bi_elements', true) ?: '[]', true),
+            'updated_at' => $post->post_modified,
+        ]);
+    }
+
+    /** PUT /buttoninks/v1/designs/{id} — overwrite an existing design */
+    public function update_saved_design($request) {
+        $this->ensure_saved_design_cpt();
+        $user_id = get_current_user_id();
+        $post    = get_post( (int) $request['id'] );
+
+        if ( !$post || $post->post_type !== 'bi_saved_design' ) {
+            return new WP_Error('not_found', 'Design not found', ['status' => 404]);
+        }
+        if ( (int) $post->post_author !== $user_id ) {
+            return new WP_Error('forbidden', 'Access denied', ['status' => 403]);
+        }
+
+        $params     = $request->get_json_params();
+        $name       = isset($params['name'])       ? sanitize_text_field($params['name']) : $post->post_title;
+        $product_id = isset($params['product_id']) ? absint($params['product_id'])        : (int) get_post_meta($post->ID, '_bi_product_id', true);
+        $elements   = $params['elements'] ?? null;
+
+        wp_update_post(['ID' => $post->ID, 'post_title' => $name]);
+        update_post_meta($post->ID, '_bi_product_id', $product_id);
+
+        if ( $elements !== null && is_array($elements) ) {
+            update_post_meta($post->ID, '_bi_elements', wp_json_encode($elements));
+        }
+
+        return rest_ensure_response([
+            'success'    => true,
+            'id'         => $post->ID,
+            'name'       => $name,
+            'product_id' => $product_id,
+            'updated_at' => current_time('mysql'),
+        ]);
+    }
+
+    /** DELETE /buttoninks/v1/designs/{id} — permanently delete a design */
+    public function delete_saved_design($request) {
+        $this->ensure_saved_design_cpt();
+        $post = get_post( (int) $request['id'] );
+
+        if ( !$post || $post->post_type !== 'bi_saved_design' ) {
+            return new WP_Error('not_found', 'Design not found', ['status' => 404]);
+        }
+        if ( (int) $post->post_author !== get_current_user_id() ) {
+            return new WP_Error('forbidden', 'Access denied', ['status' => 403]);
+        }
+
+        wp_delete_post($post->ID, true);
+        return rest_ensure_response(['success' => true]);
     }
 }
 

@@ -81,9 +81,21 @@ function DesignContent() {
     return Math.min(100, Math.max(30, fit));
   });
   const [activePropertyTab, setActivePropertyTab] = useState('Type');
-  const [elements, setElements] = useState<DesignElement[]>([
-    { id: '1', type: 'text', content: 'Your Design Here', x: 150, y: 300, width: 300, height: 60, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 32, fontWeight: '700', textAlign: 'center', side: 'front' }
-  ]);
+  const [elements, setElements] = useState<DesignElement[]>(() => {
+    // Guest draft restore — sessionStorage survives refresh but not tab close
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = sessionStorage.getItem('bi_draft_design');
+        if (raw) {
+          const draft = JSON.parse(raw) as { elements: DesignElement[] };
+          if (Array.isArray(draft.elements) && draft.elements.length > 0) return draft.elements;
+        }
+      } catch { /* malformed JSON — fall through to default */ }
+    }
+    return [
+      { id: '1', type: 'text', content: 'Your Design Here', x: 150, y: 300, width: 300, height: 60, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 32, fontWeight: '700', textAlign: 'center', side: 'front' }
+    ];
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [propsPanelOpen, setPropsPanelOpen] = useState(false); // mobile only — user-triggered
 
@@ -106,6 +118,77 @@ function DesignContent() {
     localStorage.setItem('bi_review_design', JSON.stringify(snapshot));
     router.push('/design/review');
   }, [elements, selectedProduct, router]);
+
+  // ── Design persistence ────────────────────────────────────────────────────
+  // Signed-in users: auto-save to WP (debounced, 2 s after last change).
+  // Guests:          sessionStorage — survives refresh, gone on tab close.
+  const savedDesignIdRef = useRef<number | null>(null);  // WP post ID once created
+  const saveTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted        = useRef(false);
+
+  const persistDesign = useCallback(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
+    const payload = {
+      name:       selectedProduct?.name ? `Design – ${selectedProduct.name}` : 'My Design',
+      product_id: selectedProduct?.id ?? 0,
+      elements,
+    };
+
+    if (token) {
+      // Signed-in: save to WP
+      const id = savedDesignIdRef.current;
+      if (id) {
+        fetch(`/api/designs/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+          cache: 'no-store',
+        }).catch(() => {});
+      } else {
+        fetch('/api/designs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+          cache: 'no-store',
+        })
+          .then(r => r.json())
+          .then(d => { if (d.id) savedDesignIdRef.current = d.id; })
+          .catch(() => {});
+      }
+    } else {
+      // Guest: sessionStorage — clears when tab closes
+      try { sessionStorage.setItem('bi_draft_design', JSON.stringify(payload)); } catch { /* quota */ }
+    }
+  }, [elements, selectedProduct]);
+
+  // Debounced save — fires 2 s after the last change
+  useEffect(() => {
+    if (!isMounted.current) { isMounted.current = true; return; } // skip initial render
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(persistDesign, 2000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [elements, persistDesign]);
+
+  // Restore draft on mount — signed-in users load from WP; guests are restored via useState initializer above
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
+    if (!token) return; // guests already restored via lazy useState
+
+    fetch('/api/designs', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    })
+      .then(r => r.json())
+      .then((designs: { id: number; elements: DesignElement[]; product_id: number }[]) => {
+        if (!Array.isArray(designs) || designs.length === 0) return;
+        const latest = designs[0];
+        savedDesignIdRef.current = latest.id;
+        if (Array.isArray(latest.elements) && latest.elements.length > 0) {
+          setElements(latest.elements);
+        }
+      })
+      .catch(() => {});
+  }, []); // runs once on mount
 
   // ── Allow pinch-zoom on this page by overriding the global viewport meta ─────
   useEffect(() => {
@@ -1239,10 +1322,11 @@ function DesignContent() {
                 </button>
                 {/* Deselect */}
                 <button
-                  onPointerDown={(e) => { e.stopPropagation(); setSelectedId(null); }}
-                  className="flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                  onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedId(null); setPropsPanelOpen(false); }}
+                  className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl hover:bg-white/10 active:bg-white/20 transition-colors"
                 >
-                  <X className="w-4 h-4 text-white/50" />
+                  <X className="w-4 h-4 text-white/70" />
+                  <span className="text-[9px] text-white/50 font-bold uppercase">Done</span>
                 </button>
               </div>
             )}
