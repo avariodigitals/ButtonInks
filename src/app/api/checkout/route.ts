@@ -1,57 +1,127 @@
 /**
  * /api/checkout
  *
- * Security-hardened order creation.
+ * Security-hardened order creation with automatic guest account handling.
  *
- * All fields are validated and sanitised server-side before being forwarded
- * to WooCommerce. The client CANNOT:
- *   - set_paid: true  (always forced to false — WC marks paid after real payment)
- *   - inject arbitrary payment_method values (validated against enabled gateways)
- *   - override prices (WC calculates prices from product IDs server-side)
- *   - inject extra WC fields (only an explicit allowlist is forwarded)
+ * Flow:
+ *
+ * LOGGED-IN USER:
+ *   JWT in Authorization header → verified with WP → customer_id attached to order
+ *   → order appears in /account/orders immediately
+ *
+ * GUEST USER:
+ *   1. Order created with customer_id: 0
+ *   2. We check if a WC customer already exists for their email
+ *   3. If yes  → update the order to link customer_id
+ *   4. If no   → create a new WC customer (triggers WC "New Account" email with
+ *                password setup link so they can log in and track the order)
+ *   5. Either way the order is linked to a real WP account server-side
+ *
+ * The client CANNOT:
+ *   - set_paid: true
+ *   - inject arbitrary payment methods
+ *   - override prices or shipping costs
+ *   - inject extra WC fields
  */
 import { NextResponse } from 'next/server';
 import { WP_BASE_URL } from '@/lib/wordpress';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Auth helper ───────────────────────────────────────────────────────────────
+const wcBasic = () =>
+  'Basic ' + Buffer.from(
+    `${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`
+  ).toString('base64');
 
+// ── Sanitizers ────────────────────────────────────────────────────────────────
 function sanitizeText(v: unknown, maxLen = 200): string {
   if (typeof v !== 'string') return '';
-  return v.trim().slice(0, maxLen).replace(/[<>]/g, ''); // strip basic HTML injection
+  return v.trim().slice(0, maxLen).replace(/[<>]/g, '');
 }
-
 function sanitizeEmail(v: unknown): string {
   if (typeof v !== 'string') return '';
-  const trimmed = v.trim().toLowerCase().slice(0, 254);
-  // RFC 5322-ish basic check
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : '';
+  const t = v.trim().toLowerCase().slice(0, 254);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) ? t : '';
 }
-
 function sanitizePostcode(v: unknown): string {
   if (typeof v !== 'string') return '';
   return v.trim().slice(0, 20).replace(/[^a-zA-Z0-9\s\-]/g, '');
 }
-
 function sanitizePhone(v: unknown): string {
   if (typeof v !== 'string') return '';
   return v.trim().slice(0, 30).replace(/[^0-9+\-\s().]/g, '');
 }
 
-// ── Fetch enabled gateway IDs from WC (server-to-server) ─────────────────────
+// ── Fetch enabled gateway IDs (cached 5 min) ──────────────────────────────────
 async function getEnabledGatewayIds(): Promise<string[]> {
   try {
-    const auth = Buffer.from(
-      `${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`
-    ).toString('base64');
     const res = await fetch(`${WP_BASE_URL}/wc/v3/payment_gateways`, {
-      headers: { Authorization: `Basic ${auth}` },
+      headers: { Authorization: wcBasic() },
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
     const gateways: { id: string; enabled: boolean }[] = await res.json();
     return gateways.filter(g => g.enabled).map(g => g.id);
-  } catch {
-    return [];
+  } catch { return []; }
+}
+
+// ── Find existing WC customer by email ───────────────────────────────────────
+async function findCustomerByEmail(email: string): Promise<number | null> {
+  try {
+    const url = new URL(`${WP_BASE_URL}/wc/v3/customers`);
+    url.searchParams.set('email', email);
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: wcBasic() },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const customers: { id: number }[] = await res.json();
+    return customers?.[0]?.id ?? null;
+  } catch { return null; }
+}
+
+// ── Create a new WC customer (triggers WC "New Account" welcome email) ────────
+async function createWCCustomer(
+  email: string, firstName: string, lastName: string
+): Promise<number | null> {
+  try {
+    // Generate a username from email (WC will de-duplicate if needed)
+    const username = email.split('@')[0].replace(/[^a-zA-Z0-9_\-.]/g, '').slice(0, 60)
+      || 'customer';
+
+    const res = await fetch(`${WP_BASE_URL}/wc/v3/customers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: wcBasic() },
+      body: JSON.stringify({
+        email,
+        username,
+        first_name: firstName,
+        last_name:  lastName,
+        // No password — WC sends a "Set your password" email automatically
+        // because woocommerce_registration_generate_password = yes
+      }),
+    });
+    if (!res.ok) {
+      console.error('WC customer create failed:', await res.text());
+      return null;
+    }
+    const customer: { id: number } = await res.json();
+    return customer.id ?? null;
+  } catch (e) {
+    console.error('createWCCustomer error:', e);
+    return null;
+  }
+}
+
+// ── Update order's customer_id after creation ─────────────────────────────────
+async function linkOrderToCustomer(orderId: number, customerId: number): Promise<void> {
+  try {
+    await fetch(`${WP_BASE_URL}/wc/v3/orders/${orderId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: wcBasic() },
+      body: JSON.stringify({ customer_id: customerId }),
+    });
+  } catch (e) {
+    console.error('linkOrderToCustomer error:', e);
   }
 }
 
@@ -63,6 +133,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
+    // ── 0. Resolve logged-in WP customer ID from JWT ───────────────────────
+    let wpCustomerId = 0;
+    let isGuest = true;
+    const authHeader = request.headers.get('authorization') ?? '';
+    const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (jwt) {
+      try {
+        const meRes = await fetch(`${WP_BASE_URL}/wp/v2/users/me?context=edit`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+          cache: 'no-store',
+        });
+        if (meRes.ok) {
+          const me = await meRes.json();
+          if (me?.id) { wpCustomerId = Number(me.id); isGuest = false; }
+        }
+      } catch { /* treat as guest */ }
+    }
+
     // ── 1. Validate & sanitize contact fields ──────────────────────────────
     const email     = sanitizeEmail(body.billing?.email);
     const firstName = sanitizeText(body.billing?.first_name, 100);
@@ -72,19 +160,20 @@ export async function POST(request: Request) {
     const city      = sanitizeText(body.billing?.city,       100);
     const state     = sanitizeText(body.billing?.state,      100);
     const postcode  = sanitizePostcode(body.billing?.postcode);
-    const country   = 'US'; // fixed — not accepted from client
 
-    if (!email)     return NextResponse.json({ error: 'Valid email is required' },       { status: 400 });
-    if (!firstName) return NextResponse.json({ error: 'First name is required' },        { status: 400 });
-    if (!lastName)  return NextResponse.json({ error: 'Last name is required' },         { status: 400 });
-    if (!address1)  return NextResponse.json({ error: 'Street address is required' },    { status: 400 });
-    if (!city)      return NextResponse.json({ error: 'City is required' },              { status: 400 });
-    if (!state)     return NextResponse.json({ error: 'State is required' },             { status: 400 });
+    if (!email)     return NextResponse.json({ error: 'Valid email is required' },    { status: 400 });
+    if (!firstName) return NextResponse.json({ error: 'First name is required' },     { status: 400 });
+    if (!lastName)  return NextResponse.json({ error: 'Last name is required' },      { status: 400 });
+    if (!address1)  return NextResponse.json({ error: 'Street address is required' }, { status: 400 });
+    if (!city)      return NextResponse.json({ error: 'City is required' },           { status: 400 });
+    if (!state)     return NextResponse.json({ error: 'State is required' },          { status: 400 });
 
-    const addressBlock = { first_name: firstName, last_name: lastName,
-      address_1: address1, city, state, postcode, country, email, phone };
+    const addressBlock = {
+      first_name: firstName, last_name: lastName, address_1: address1,
+      city, state, postcode, country: 'US', email, phone,
+    };
 
-    // ── 2. Validate line items — only id + quantity, nothing else ──────────
+    // ── 2. Validate line items ─────────────────────────────────────────────
     const rawItems = Array.isArray(body.line_items) ? body.line_items : [];
     if (rawItems.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
@@ -101,7 +190,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No valid items in cart' }, { status: 400 });
     }
 
-    // ── 3. Validate shipping method against known rates ────────────────────
+    // ── 3. Validate shipping ───────────────────────────────────────────────
     const ALLOWED_SHIPPING: Record<string, { label: string; cost: number }> = {
       usps_priority: { label: 'USPS Priority Mail®',    cost: 12.87 },
       usps_ground:   { label: 'USPS Ground Advantage™', cost:  8.45 },
@@ -110,35 +199,36 @@ export async function POST(request: Request) {
       ? body.shipping_lines[0].method_id : 'usps_ground';
     const shippingRate = ALLOWED_SHIPPING[shippingMethodId] ?? ALLOWED_SHIPPING.usps_ground;
 
-    // ── 4. Validate payment method against WC enabled gateways ────────────
+    // ── 4. Validate payment method ─────────────────────────────────────────
     const enabledGatewayIds = await getEnabledGatewayIds();
-    let paymentMethodId    = 'pending';
-    let paymentMethodTitle = 'Pending — to be arranged';
+    let paymentMethodId    = 'other';
+    let paymentMethodTitle = 'To be arranged';
+    let orderStatus        = 'on-hold'; // triggers admin "New Order" email
 
     if (enabledGatewayIds.length > 0) {
       const requested = typeof body.payment_method === 'string' ? body.payment_method : '';
       if (enabledGatewayIds.includes(requested)) {
         paymentMethodId    = requested;
         paymentMethodTitle = sanitizeText(body.payment_method_title, 100) || requested;
+        orderStatus        = 'pending';
       } else {
-        // Gateway sent by client is not enabled — reject with a clear message
         return NextResponse.json(
           { error: 'Selected payment method is not available. Please refresh and try again.' },
           { status: 400 }
         );
       }
     }
-    // If no gateways enabled at all, we allow the order through as 'pending'
 
-    // ── 5. Customer note (optional, sanitised) ─────────────────────────────
+    // ── 5. Sanitize customer note ──────────────────────────────────────────
     const customerNote = sanitizeText(body.customer_note ?? '', 500);
 
-    // ── 6. Build the WC order payload — explicitly constructed, nothing extra
+    // ── 6. Build order payload ─────────────────────────────────────────────
     const orderPayload = {
-      status:               'pending',          // ensures WC fires the "New Order" admin email
+      status:               orderStatus,
       payment_method:       paymentMethodId,
       payment_method_title: paymentMethodTitle,
-      set_paid:             false,              // NEVER true — WC handles this
+      set_paid:             false,
+      customer_id:          wpCustomerId,
       billing:              addressBlock,
       shipping:             addressBlock,
       line_items:           lineItems,
@@ -151,27 +241,45 @@ export async function POST(request: Request) {
     };
 
     // ── 7. Create order in WooCommerce ─────────────────────────────────────
-    const auth = Buffer.from(
-      `${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`
-    ).toString('base64');
-
     const wcRes = await fetch(`${WP_BASE_URL}/wc/v3/orders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+      headers: { 'Content-Type': 'application/json', Authorization: wcBasic() },
       body: JSON.stringify(orderPayload),
     });
 
     if (!wcRes.ok) {
-      const errText = await wcRes.text();
-      console.error('WC order creation failed:', errText);
-      // Don't leak WC internals to the client
+      console.error('WC order creation failed:', await wcRes.text());
       return NextResponse.json({ error: 'Order could not be created. Please try again.' }, { status: 502 });
     }
 
     const order = await wcRes.json();
 
-    // Return only what the frontend needs — not the full WC order object
-    return NextResponse.json({ id: order.id, status: order.status });
+    // ── 8. Guest: find or create WC account, then link order ──────────────
+    // Run async after responding — customer gets confirmation immediately,
+    // account creation happens in background (fire-and-forget with await for
+    // the order link so the admin sees the customer name in WP).
+    if (isGuest) {
+      // Check if account already exists for this email
+      let customerId = await findCustomerByEmail(email);
+
+      if (!customerId) {
+        // New guest → create WC account, triggers "New Account" welcome email
+        // with password setup link so they can log in and track orders
+        customerId = await createWCCustomer(email, firstName, lastName);
+      }
+
+      if (customerId) {
+        // Link the just-created order to the account
+        await linkOrderToCustomer(order.id, customerId);
+      }
+    }
+
+    // Return only what the frontend needs
+    return NextResponse.json({
+      id:     order.id,
+      status: order.status,
+      guest:  isGuest,  // frontend can use this to prompt "Check your email to set up your account"
+    });
 
   } catch (err) {
     console.error('Checkout API error:', err);

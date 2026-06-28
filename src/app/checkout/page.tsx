@@ -143,9 +143,13 @@ export default function CheckoutPage() {
 
     setIsLoading(true);
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
       const response = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           payment_method:       selectedGateway?.id    ?? 'pending',
           payment_method_title: selectedGateway?.title ?? 'Pending — to be arranged',
@@ -170,8 +174,10 @@ export default function CheckoutPage() {
       const result = await response.json();
       if (response.ok) {
         clearCart();
-        showNotification({ title: 'Order Placed!',
-          message: `Order #${result.id} confirmed. We'll be in touch shortly.`, type: 'success' });
+        const guestMsg = result.guest
+          ? `Order #${result.id} confirmed. Check your email to set up your account and track this order.`
+          : `Order #${result.id} confirmed. We'll be in touch shortly.`;
+        showNotification({ title: 'Order Placed!', message: guestMsg, type: 'success' });
         router.push('/');
       } else {
         throw new Error(result.error || 'Failed to place order');
