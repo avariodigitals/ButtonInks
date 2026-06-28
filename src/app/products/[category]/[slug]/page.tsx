@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getProductBySlug } from '@/lib/wordpress';
@@ -38,9 +38,12 @@ export default async function DynamicProductPage({ params }: Props) {
   }
 
   // Pass data to the interactive Client View
+  // Suspense is required because ProductDetailView uses useSearchParams
   return (
     <main className="w-full bg-white">
-      <ProductDetailView product={product} categorySlug={category} />
+      <Suspense fallback={<div className="w-full h-96 flex items-center justify-center"><span className="text-gray-400 text-sm">Loading…</span></div>}>
+        <ProductDetailView product={product} categorySlug={category} />
+      </Suspense>
     </main>
   );
 }

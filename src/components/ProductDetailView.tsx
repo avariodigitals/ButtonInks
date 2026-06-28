@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import {
   ChevronRight, Star, Minus, Plus, Upload, Maximize2,
   FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, LayoutGrid, Send,
@@ -359,6 +360,51 @@ export default function ProductDetailView({
   );
   const [selectedPrintArea, setSelectedPrintArea] = useState<string>('Front');
   const [selectedMaterial,  setSelectedMaterial]  = useState<string>('');
+
+  // ── Restore selections from "Edit selection" URL params ───────────────────
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const sel = searchParams.get('sel');
+    const qty = searchParams.get('qty');
+
+    if (qty) {
+      const n = parseInt(qty, 10);
+      if (n > 0) setQuantity(n);
+    }
+
+    if (!sel) return;
+
+    // Parse "Color: Red, Blue · Size: L · Print Area: Front · Urgent Production"
+    const parts = sel.split('·').map(s => s.trim());
+    const restoredAttrs: Record<string, string[]> = {};
+    let restoredPrintArea = '';
+    let restoredProduction = '';
+    let restoredMaterial = '';
+
+    for (const part of parts) {
+      if (part.toLowerCase().startsWith('print area:')) {
+        restoredPrintArea = part.split(':')[1]?.trim() ?? '';
+      } else if (part.toLowerCase() === 'urgent production') {
+        restoredProduction = 'urgent';
+      } else if (part.toLowerCase() === 'standard production') {
+        restoredProduction = 'regular';
+      } else if (part.toLowerCase().startsWith('material:')) {
+        restoredMaterial = part.split(':')[1]?.trim() ?? '';
+      } else if (part.includes(':')) {
+        // Attribute — e.g. "Color: Red, Blue" or "Size: L"
+        const colonIdx = part.indexOf(':');
+        const attrName = part.slice(0, colonIdx).trim();
+        const vals = part.slice(colonIdx + 1).split(',').map(v => v.trim()).filter(Boolean);
+        if (attrName && vals.length) restoredAttrs[attrName] = vals;
+      }
+    }
+
+    if (Object.keys(restoredAttrs).length) setSelectedAttributes(restoredAttrs);
+    if (restoredPrintArea) setSelectedPrintArea(restoredPrintArea);
+    if (restoredProduction) setSelectedProduction(restoredProduction);
+    if (restoredMaterial) setSelectedMaterial(restoredMaterial);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
 
   // ── Live data from WP ────────────────────────────────────────────────────
   const [reviews,        setReviews]        = useState<WPProductReview[]>([]);

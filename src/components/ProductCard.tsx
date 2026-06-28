@@ -7,6 +7,59 @@ import { useRouter } from "next/navigation";
 import { Star, Heart, Loader2, ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
+// ── Price helpers ─────────────────────────────────────────────────────────────
+/**
+ * Strip all HTML tags from a string, returning plain text.
+ * Used to pull numbers out of WooCommerce price_html.
+ */
+function stripTags(html: string): string {
+  return html.replace(/<[^>]*>/g, '');
+}
+
+/**
+ * Extract a dollar amount from a WC price_html string.
+ * Returns null when the string is empty or the amount is 0.
+ */
+function extractAmount(html: string): number | null {
+  // Find the first $ followed by digits in the plain text
+  const match = stripTags(html).match(/\$([\d,]+\.?\d*)/);
+  if (!match) return null;
+  const val = parseFloat(match[1].replace(/,/g, ''));
+  return val > 0 ? val : null;
+}
+
+interface ParsedPrice {
+  regular: number | null;  // struck-through price (only present when on sale)
+  current: number | null;  // the price to show in green
+}
+
+/**
+ * Parse WooCommerce price_html into structured regular/current prices.
+ *
+ * WC sale format:  <del>...$45.00...</del><ins>...$26.95...</ins>
+ * WC plain format: <span ...>$12.00</span>  (no del/ins)
+ */
+function parsePriceHtml(priceHtml: string): ParsedPrice {
+  if (!priceHtml) return { regular: null, current: null };
+
+  // Try to extract <del> and <ins> sections
+  const delMatch = priceHtml.match(/<del[^>]*>([\s\S]*?)<\/del>/i);
+  const insMatch = priceHtml.match(/<ins[^>]*>([\s\S]*?)<\/ins>/i);
+
+  if (delMatch && insMatch) {
+    return {
+      regular: extractAmount(delMatch[1]),
+      current: extractAmount(insMatch[1]),
+    };
+  }
+
+  // No sale markup — just a plain price
+  return { regular: null, current: extractAmount(priceHtml) };
+}
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
 export interface ProductCardProps {
   category: string;
   name: string;
@@ -99,7 +152,7 @@ export default function ProductCard({
     } finally {
       setAddingToCart(false);
     }
-  }, [productId, addingToCart, cartSyncing, addToCart, name, rawPrice, image, isLoggedIn]);
+  }, [productId, addingToCart, cartSyncing, addToCart, name, rawPrice, image, isLoggedIn, category, slug]);
 
   return (
     <Link
@@ -161,10 +214,23 @@ export default function ProductCard({
 
         {/* Price row */}
         <div className="flex flex-wrap items-baseline gap-1">
-          <span
-            className="text-slate-900 text-base font-semibold leading-6 [&_del]:text-gray-400 [&_del]:text-xs [&_del]:font-normal [&_del]:mr-1 [&_ins]:no-underline font-['Outfit']"
-            dangerouslySetInnerHTML={{ __html: price }}
-          />
+          {(() => {
+            const { regular, current } = parsePriceHtml(price);
+            // Fallback: if parsing yields nothing, try rawPrice
+            const displayCurrent = current ?? (rawPrice > 0 ? rawPrice : null);
+            return (
+              <>
+                {regular && (
+                  <span className="text-gray-400 text-xs font-normal line-through font-['Inter']">
+                    {fmt(regular)}
+                  </span>
+                )}
+                <span className={`text-base font-semibold leading-6 font-['Outfit'] ${regular ? 'text-green-700' : 'text-slate-900'}`}>
+                  {displayCurrent ? fmt(displayCurrent) : 'Get a quote'}
+                </span>
+              </>
+            );
+          })()}
           {minQty && (
             <span className="text-gray-400 text-xs font-normal leading-4 font-['Inter']">
               · {minQty}

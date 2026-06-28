@@ -91,7 +91,18 @@ export default function CartPage() {
                       <h3 className="text-gray-900 text-xl font-bold font-['Outfit']">{item.name}</h3>
                       <p className="text-zinc-500 text-lg font-medium">{formatPrice(item.price)}</p>
                       <Link
-                        href={item.slug && item.category ? `/products/${item.category}/${item.slug}` : '/cart'}
+                        href={(() => {
+                          if (!item.slug || !item.category) return '/cart';
+                          const base = `/products/${item.category}/${item.slug}`;
+                          // Extract selections from the item name
+                          // Name format: "Product Name (Color: Red, Blue · Size: L · Print Area: Front · Urgent Production)"
+                          const match = item.name.match(/\((.+)\)$/);
+                          const params = new URLSearchParams();
+                          params.set('qty', String(item.quantity));
+                          params.set('cartKey', item.key);
+                          if (match?.[1]) params.set('sel', match[1]);
+                          return `${base}?${params.toString()}`;
+                        })()}
                         className="w-fit text-green-700 text-sm font-medium border-b border-green-700"
                       >
                         Edit selection
