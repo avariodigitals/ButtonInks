@@ -9,6 +9,24 @@ import {
 } from 'lucide-react';
 import { WPProduct } from '@/lib/wordpress';
 
+// ── Price helpers ─────────────────────────────────────────────────────────────
+function stripTags(html: string) { return html.replace(/<[^>]*>/g, ''); }
+function extractAmount(html: string): number | null {
+  const m = stripTags(html).match(/\$([\d,]+\.?\d*)/);
+  if (!m) return null;
+  const v = parseFloat(m[1].replace(/,/g, ''));
+  return v > 0 ? v : null;
+}
+function parsePriceHtml(h: string): { regular: number | null; current: number | null } {
+  if (!h) return { regular: null, current: null };
+  const del = h.match(/<del[^>]*>([\s\S]*?)<\/del>/i);
+  const ins = h.match(/<ins[^>]*>([\s\S]*?)<\/ins>/i);
+  if (del && ins) return { regular: extractAmount(del[1]), current: extractAmount(ins[1]) };
+  return { regular: null, current: extractAmount(h) };
+}
+const fmtPrice = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
 // ── Sub-category fallback images ──────────────────────────────────────────────
 const FALLBACK_IMAGES: Record<string, string> = {
   "Men's T-Shirt":   "https://central.buttoninks.com/wp-content/uploads/2026/06/4eaa81fd3f8803cade95bdbc610dba5e45973afd.png",
@@ -113,7 +131,6 @@ function ProductCard({ product }: { product: WPProduct }) {
   const categorySlug = product.categories?.[0]?.slug ?? 'all';
   const href = `/products/${categorySlug}/${product.slug}`;
   const image = product.images?.[0]?.src;
-  const price = product.price ? `from $${parseFloat(product.price).toFixed(2)}` : 'Get a quote';
   const isNew = product.acf?.enable_designer || product.acf?.enable_upload;
 
   return (
@@ -173,7 +190,20 @@ function ProductCard({ product }: { product: WPProduct }) {
         {/* Price + CTA */}
         <div className="flex justify-between items-center pt-0.5">
           <div className="flex flex-col">
-            <span className="text-slate-900 text-sm font-bold font-['Outfit']">{price}</span>
+            {(() => {
+              const { regular, current } = parsePriceHtml(product.price_html || '');
+              const displayCurrent = current ?? (parseFloat(product.price || '0') > 0 ? parseFloat(product.price) : null);
+              return (
+                <div className="flex flex-wrap items-baseline gap-1">
+                  {regular && (
+                    <span className="text-gray-400 text-xs font-normal line-through font-['Inter']">{fmtPrice(regular)}</span>
+                  )}
+                  <span className={`text-sm font-bold font-['Outfit'] ${regular ? 'text-green-700' : 'text-slate-900'}`}>
+                    {displayCurrent ? fmtPrice(displayCurrent) : 'Get a quote'}
+                  </span>
+                </div>
+              );
+            })()}
             {product.acf?.bulk_pricing?.[0] && (
               <span className="text-gray-400 text-[10px] font-['Inter']">
                 min {product.acf.bulk_pricing[0].min_qty}

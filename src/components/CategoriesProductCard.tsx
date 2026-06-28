@@ -10,6 +10,31 @@ function getToken(): string | null {
   try { return localStorage.getItem('bi_token'); } catch { return null; }
 }
 
+// ── Price helpers (same logic as ProductCard) ─────────────────────────────────
+function stripTags(html: string): string {
+  return html.replace(/<[^>]*>/g, '');
+}
+
+function extractAmount(html: string): number | null {
+  const match = stripTags(html).match(/\$([\d,]+\.?\d*)/);
+  if (!match) return null;
+  const val = parseFloat(match[1].replace(/,/g, ''));
+  return val > 0 ? val : null;
+}
+
+function parsePriceHtml(priceHtml: string): { regular: number | null; current: number | null } {
+  if (!priceHtml) return { regular: null, current: null };
+  const delMatch = priceHtml.match(/<del[^>]*>([\s\S]*?)<\/del>/i);
+  const insMatch = priceHtml.match(/<ins[^>]*>([\s\S]*?)<\/ins>/i);
+  if (delMatch && insMatch) {
+    return { regular: extractAmount(delMatch[1]), current: extractAmount(insMatch[1]) };
+  }
+  return { regular: null, current: extractAmount(priceHtml) };
+}
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
 export default function CategoriesProductCard({
   product,
   index,
@@ -94,10 +119,24 @@ export default function CategoriesProductCard({
 
         <div className="flex justify-between items-end mt-1">
           <div className="flex flex-col gap-1">
-            <div
-              className="text-slate-900 text-lg sm:text-xl font-black font-['Outfit'] [&_del]:text-gray-400 [&_del]:text-sm [&_del]:font-normal [&_del]:mr-1 [&_ins]:no-underline"
-              dangerouslySetInnerHTML={{ __html: product.price_html || `$${product.price}` }}
-            />
+            <div className="flex flex-wrap items-baseline gap-1.5">
+              {(() => {
+                const { regular, current } = parsePriceHtml(product.price_html || '');
+                const displayCurrent = current ?? (parseFloat(product.price || '0') > 0 ? parseFloat(product.price) : null);
+                return (
+                  <>
+                    {regular && (
+                      <span className="text-gray-400 text-sm font-normal line-through font-['Inter']">
+                        {fmt(regular)}
+                      </span>
+                    )}
+                    <span className={`text-lg sm:text-xl font-black font-['Outfit'] ${regular ? 'text-green-700' : 'text-slate-900'}`}>
+                      {displayCurrent ? fmt(displayCurrent) : 'Get a quote'}
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
             <span className="text-gray-400 text-[10px] font-medium font-['Inter']">Free Shipping over $75</span>
           </div>
           <span className="px-4 sm:px-6 py-3 bg-green-700 group-hover:bg-green-800 text-white text-xs font-bold font-['Inter'] rounded-xl shadow-xl shadow-green-700/20 transition-all uppercase tracking-widest whitespace-nowrap min-h-[44px] flex items-center">

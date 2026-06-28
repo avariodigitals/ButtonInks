@@ -277,11 +277,25 @@ function RelatedCard({ product }: { product: WPProduct }) {
   const categorySlug = product.categories?.[0]?.slug ?? 'all';
   const href  = `/products/${categorySlug}/${product.slug}`;
   const image = product.images?.[0]?.src;
-  const price = product.price ? `from $${parseFloat(product.price).toFixed(2)}` : 'Get a quote';
   const rating = parseFloat(product.average_rating || '0');
   const badge = product.on_sale ? { label: 'Sale', color: 'bg-red-500' }
     : product.acf?.enable_designer ? { label: 'Custom', color: 'bg-green-700' }
     : null;
+
+  // Parse sale price from price_html
+  function stripTags(html: string) { return html.replace(/<[^>]*>/g, ''); }
+  function extractAmt(html: string): number | null {
+    const m = stripTags(html).match(/\$([\d,]+\.?\d*)/);
+    if (!m) return null;
+    const v = parseFloat(m[1].replace(/,/g, ''));
+    return v > 0 ? v : null;
+  }
+  const del = product.price_html?.match(/<del[^>]*>([\s\S]*?)<\/del>/i);
+  const ins = product.price_html?.match(/<ins[^>]*>([\s\S]*?)<\/ins>/i);
+  const regularPrice = del ? extractAmt(del[1]) : null;
+  const currentPrice2 = ins ? extractAmt(ins[1]) : extractAmt(product.price_html || '');
+  const displayPrice = currentPrice2 ?? (parseFloat(product.price || '0') > 0 ? parseFloat(product.price) : null);
+  const fmtR = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
   return (
     <Link
@@ -321,7 +335,14 @@ function RelatedCard({ product }: { product: WPProduct }) {
         )}
         <div className="flex justify-between items-center">
           <div>
-            <span className="text-slate-900 text-sm sm:text-base font-semibold font-outfit leading-6">{price}</span>
+            <div className="flex flex-wrap items-baseline gap-1">
+              {regularPrice && (
+                <span className="text-gray-400 text-xs font-normal line-through font-inter">{fmtR(regularPrice)}</span>
+              )}
+              <span className={`text-sm sm:text-base font-semibold font-outfit leading-6 ${regularPrice ? 'text-green-700' : 'text-slate-900'}`}>
+                {displayPrice ? fmtR(displayPrice) : 'Get a quote'}
+              </span>
+            </div>
             {product.acf?.bulk_pricing?.[0] && (
               <span className="text-gray-400 text-xs font-inter leading-4"> · min {product.acf.bulk_pricing[0].min_qty}</span>
             )}
