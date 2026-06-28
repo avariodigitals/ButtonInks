@@ -33,8 +33,16 @@ export default function CheckoutPage() {
     cvc: ''
   });
 
-  const shippingFee = 12.87;
-  const currentShipping = formData.shippingMethod === 'usps_priority' ? shippingFee : 8.45;
+  // Shipping rates — these match what's configured in WooCommerce shipping zones.
+  // Update these values if you change the rates in WP Admin → WooCommerce → Settings → Shipping.
+  const SHIPPING_RATES = {
+    usps_priority: { label: 'USPS Priority Mail®',    days: '1-3 Business Days',  cost: 12.87 },
+    usps_ground:   { label: 'USPS Ground Advantage™', days: '2-5 Business Days',  cost:  8.45 },
+  } as const;
+
+  type ShippingMethod = keyof typeof SHIPPING_RATES;
+
+  const currentShipping = SHIPPING_RATES[formData.shippingMethod as ShippingMethod]?.cost ?? 0;
   const total = subTotal + currentShipping;
 
   const formatPrice = (price: number) => {
@@ -97,8 +105,8 @@ export default function CheckoutPage() {
       shipping_lines: [
         {
           method_id: formData.shippingMethod,
-          method_title: formData.shippingMethod === 'usps_priority' ? "USPS Priority Mail®" : "USPS Ground Advantage™",
-          total: currentShipping.toString()
+          method_title: SHIPPING_RATES[formData.shippingMethod as ShippingMethod]?.label ?? formData.shippingMethod,
+          total: currentShipping.toFixed(2),
         }
       ]
     };
@@ -276,40 +284,31 @@ export default function CheckoutPage() {
                 <div className="flex flex-col gap-6 w-full">
                   <h2 className="text-zinc-900 text-xl font-bold font-['Outfit'] leading-8">Shipping Method</h2>
                   <div className="flex flex-col gap-4">
-                    <div
-                      onClick={() => setFormData(prev => ({ ...prev, shippingMethod: 'usps_priority' }))}
-                      className={`p-5 border-2 rounded-xl flex justify-between items-center cursor-pointer transition-all ${formData.shippingMethod === 'usps_priority' ? 'border-green-700 bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-5 h-5 rounded-full border-4 bg-white flex items-center justify-center ${formData.shippingMethod === 'usps_priority' ? 'border-green-700' : 'border-gray-300'}`} />
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 font-['Inter'] text-base">USPS Priority Mail®</span>
-                          <span className="text-xs text-gray-500 font-['Inter']">1-3 Business Days · Real-time tracking</span>
+                    {(Object.entries(SHIPPING_RATES) as [ShippingMethod, typeof SHIPPING_RATES[ShippingMethod]][]).map(([id, rate]) => (
+                      <div
+                        key={id}
+                        onClick={() => setFormData(prev => ({ ...prev, shippingMethod: id }))}
+                        className={`p-5 border-2 rounded-xl flex justify-between items-center cursor-pointer transition-all ${formData.shippingMethod === id ? 'border-green-700 bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-5 h-5 rounded-full border-4 bg-white ${formData.shippingMethod === id ? 'border-green-700' : 'border-gray-300'}`} />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-900 font-['Inter'] text-base">{rate.label}</span>
+                            <span className="text-xs text-gray-500 font-['Inter']">{rate.days}</span>
+                          </div>
                         </div>
+                        <span className={`font-bold text-lg ${formData.shippingMethod === id ? 'text-green-700' : 'text-gray-700'}`}>
+                          ${rate.cost.toFixed(2)} USD
+                        </span>
                       </div>
-                      <span className="font-bold text-green-700 text-lg">${shippingFee} USD</span>
-                    </div>
-
-                    <div
-                      onClick={() => setFormData(prev => ({ ...prev, shippingMethod: 'usps_ground' }))}
-                      className={`p-5 border-2 rounded-xl flex justify-between items-center cursor-pointer transition-all ${formData.shippingMethod === 'usps_ground' ? 'border-green-700 bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-5 h-5 rounded-full border-4 bg-white flex items-center justify-center ${formData.shippingMethod === 'usps_ground' ? 'border-green-700' : 'border-gray-300'}`} />
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 font-['Inter'] text-base">USPS Ground Advantage™</span>
-                          <span className="text-xs text-gray-500 font-['Inter']">2-5 Business Days</span>
-                        </div>
-                      </div>
-                      <span className="font-bold text-green-700 text-lg">$8.45 USD</span>
-                    </div>
-                  </div>
+                    ))}
 
                   <div className="p-4 bg-blue-50 rounded-xl flex items-start gap-3">
                     <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                     <p className="text-blue-900 text-xs font-['Inter'] leading-5">
                       Shipping rates are calculated in real-time by <strong>USPS</strong> based on your delivery address and package weight.
                     </p>
+                  </div>
                   </div>
                 </div>
               )}
@@ -419,8 +418,8 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="w-full flex justify-between items-center">
-                  <span className="text-slate-600 text-sm font-medium font-['Inter'] leading-5">Tax (10%)</span>
-                  <span className="text-slate-600 text-sm font-normal font-['Inter'] leading-5 text-right">$0.00</span>
+                  <span className="text-slate-600 text-sm font-medium font-['Inter'] leading-5">Tax</span>
+                  <span className="text-slate-600 text-sm font-normal font-['Inter'] leading-5 text-right">Calculated by WooCommerce</span>
                 </div>
               </div>
 

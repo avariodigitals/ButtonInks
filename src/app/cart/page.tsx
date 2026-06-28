@@ -1,19 +1,39 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { ChevronRight, Minus, Plus, Trash2, ShoppingBag, Tag, Loader2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
 export default function CartPage() {
   const { cart, updateQuantity, removeFromCart, subTotal } = useCart();
+  const [coupon, setCoupon] = useState('');
+  const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [couponMsg, setCouponMsg] = useState('');
+  const [discount, setDiscount] = useState(0);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
+  const TAX_RATE = 0; // WC handles tax server-side; show 0 here, calculated on order
+  const tax      = subTotal * TAX_RATE;
+  const total    = subTotal - discount + tax;
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
+
+  const applyCoupon = async () => {
+    if (!coupon.trim()) return;
+    setCouponStatus('loading');
+    // PRINT15 = 15% off first order (matches the banner promo)
+    if (coupon.trim().toUpperCase() === 'PRINT15') {
+      const disc = subTotal * 0.15;
+      setDiscount(disc);
+      setCouponMsg(`15% discount applied (−${formatPrice(disc)})`);
+      setCouponStatus('success');
+    } else {
+      setDiscount(0);
+      setCouponMsg('Invalid or expired coupon code.');
+      setCouponStatus('error');
+    }
   };
 
   if (cart.length === 0) {
@@ -70,7 +90,10 @@ export default function CartPage() {
                     <div className="flex flex-col gap-3">
                       <h3 className="text-gray-900 text-xl font-bold font-['Outfit']">{item.name}</h3>
                       <p className="text-zinc-500 text-lg font-medium">{formatPrice(item.price)}</p>
-                      <Link href={`/products/${item.id}`} className="w-fit text-green-700 text-sm font-medium border-b border-green-700">
+                      <Link
+                        href={item.slug && item.category ? `/products/${item.category}/${item.slug}` : '/cart'}
+                        className="w-fit text-green-700 text-sm font-medium border-b border-green-700"
+                      >
                         Edit selection
                       </Link>
                     </div>
@@ -118,14 +141,26 @@ export default function CartPage() {
                   <div className="flex-1 max-w-[240px] bg-gray-50 rounded-[30px] border border-transparent focus-within:border-green-700 overflow-hidden">
                     <input
                       type="text"
+                      value={coupon}
+                      onChange={e => { setCoupon(e.target.value); setCouponStatus('idle'); setCouponMsg(''); }}
+                      onKeyDown={e => e.key === 'Enter' && applyCoupon()}
                       placeholder="Enter Coupon Code"
                       className="w-full h-14 px-5 bg-transparent outline-none text-sm font-['Inter']"
                     />
                   </div>
-                  <button className="w-28 h-14 bg-green-700 rounded-3xl text-white text-base font-medium font-['Inter'] hover:bg-green-600 transition-colors shrink-0">
-                    Apply
+                  <button
+                    onClick={applyCoupon}
+                    disabled={couponStatus === 'loading'}
+                    className="w-28 h-14 bg-green-700 rounded-3xl text-white text-base font-medium font-['Inter'] hover:bg-green-600 transition-colors shrink-0 flex items-center justify-center"
+                  >
+                    {couponStatus === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
                   </button>
                 </div>
+                {couponMsg && (
+                  <p className={`text-xs font-medium flex items-center gap-1.5 ${couponStatus === 'success' ? 'text-green-700' : 'text-red-500'}`}>
+                    <Tag className="w-3 h-3" /> {couponMsg}
+                  </p>
+                )}
               </div>
 
               <div className="h-px bg-gray-200" />
@@ -135,9 +170,15 @@ export default function CartPage() {
                   <span className="text-slate-600 text-sm font-medium font-['Inter'] leading-5">Sub Total</span>
                   <span className="text-slate-600 text-sm font-normal font-['Inter'] leading-5 text-right">{formatPrice(subTotal)}</span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700 text-sm font-medium font-['Inter'] leading-5">Discount (PRINT15)</span>
+                    <span className="text-green-700 text-sm font-normal font-['Inter'] leading-5 text-right">−{formatPrice(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-600 text-sm font-medium font-['Inter'] leading-5">Tax (10%)</span>
-                  <span className="text-slate-600 text-sm font-normal font-['Inter'] leading-5 text-right">$0.00</span>
+                  <span className="text-slate-600 text-sm font-medium font-['Inter'] leading-5">Tax</span>
+                  <span className="text-slate-600 text-sm font-normal font-['Inter'] leading-5 text-right">Calculated at checkout</span>
                 </div>
               </div>
 
@@ -145,7 +186,7 @@ export default function CartPage() {
 
               <div className="flex justify-between items-center">
                 <span className="text-slate-600 text-sm font-medium font-['Space_Grotesk'] leading-5">Total</span>
-                <span className="text-slate-800 text-base font-medium font-['Inter'] leading-6 text-right">{formatPrice(subTotal)}</span>
+                <span className="text-slate-800 text-base font-medium font-['Inter'] leading-6 text-right">{formatPrice(total)}</span>
               </div>
             </div>
 

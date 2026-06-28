@@ -45,6 +45,7 @@ const FeaturedSellingSection = ({ products }: FeaturedSellingSectionProps) => {
               href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
               productId={p.id}
               rawPrice={parseFloat(p.price || '0')}
+              slug={p.slug}
             />
           ))}
         </div>

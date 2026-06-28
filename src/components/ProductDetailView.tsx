@@ -457,11 +457,13 @@ export default function ProductDetailView({
     ].filter(Boolean).join(' · ');
 
     addToCart({
-      id:    product.id,
-      name:  `${decodeHTMLEntities(product.name)}${extras ? ` (${extras})` : ''}`,
-      price: unitPrice,
+      id:       product.id,
+      name:     `${decodeHTMLEntities(product.name)}${extras ? ` (${extras})` : ''}`,
+      price:    unitPrice,
       quantity,
-      image: uniqueImages[0]?.src || '',
+      image:    uniqueImages[0]?.src || '',
+      slug:     product.slug,
+      category: categorySlug,
     });
     showNotification({
       title:   'Added to Cart',

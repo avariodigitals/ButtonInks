@@ -19,6 +19,7 @@ export interface ProductCardProps {
   href: string;
   productId?: number;   // WP product ID — used for cart & wishlist
   rawPrice?: number;    // numeric price for cart
+  slug?: string;        // WP product slug — used for "Edit selection" link in cart
 }
 
 function getToken(): string | null {
@@ -37,6 +38,7 @@ export default function ProductCard({
   href,
   productId,
   rawPrice = 0,
+  slug,
 }: ProductCardProps) {
   const router = useRouter();
   const { addToCart, cart, cartSyncing } = useCart();
@@ -87,7 +89,7 @@ export default function ProductCard({
 
     setAddingToCart(true);
     try {
-      await addToCart({ id: productId, name, price: rawPrice, quantity: 1, image });
+      await addToCart({ id: productId, name, price: rawPrice, quantity: 1, image, slug, category });
       if (!isLoggedIn) {
         // Guest: show "Added" temporarily
         setGuestAdded(true);

@@ -85,11 +85,13 @@ export default function WishlistPage() {
     setAddingId(product.id);
     try {
       await addToCart({
-        id: product.id,
-        name: product.name,
-        price: parseFloat(product.price) || 0,
+        id:       product.id,
+        name:     product.name,
+        price:    parseFloat(product.price) || 0,
         quantity: 1,
-        image: product.images?.[0]?.src ?? '',
+        image:    product.images?.[0]?.src ?? '',
+        slug:     product.slug,
+        category: product.categories?.[0]?.slug ?? 'all',
       });
       showNotification({ title: 'Added to cart', message: product.name, type: 'success' });
     } finally {

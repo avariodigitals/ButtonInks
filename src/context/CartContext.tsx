@@ -26,6 +26,8 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  slug?: string;      // WP product slug — used for "Edit selection" link
+  category?: string;  // First category slug — used for "Edit selection" link
 }
 
 interface CartContextType {

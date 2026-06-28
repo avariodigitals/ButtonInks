@@ -49,6 +49,7 @@ export default function NewArrivals({ products }: NewArrivalsProps) {
               href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
               productId={p.id}
               rawPrice={parseFloat(p.price || '0')}
+              slug={p.slug}
             />
           ))}
         </div>
