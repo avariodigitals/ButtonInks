@@ -102,8 +102,31 @@ export default function CheckoutPage() {
     email: '', firstName: '', lastName: '', phone: '',
     address: '', city: '', state: '', zipCode: '', note: '',
     shippingMethod: 'usps_priority',
-    paymentMethod:  '',        // set to first enabled gateway once loaded
+    paymentMethod:  '',
+    createAccount: false,   // guest opt-in — only used when not logged in
   });
+
+  // ── Auth state ─────────────────────────────────────────────────────────────
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem('bi_token'));
+  }, []);
+
+  // Pre-fill email (and name if stored) from logged-in user profile
+  // so it can't accidentally be typed as a different address
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
+    if (!token) return;
+    const storedEmail = localStorage.getItem('bi_user_email') ?? '';
+    const storedName  = localStorage.getItem('bi_user_name')  ?? '';
+    const [first, ...rest] = storedName.trim().split(' ');
+    setFormData(prev => ({
+      ...prev,
+      email:     storedEmail || prev.email,
+      firstName: storedEmail ? (first || prev.firstName) : prev.firstName,
+      lastName:  storedEmail ? (rest.join(' ') || prev.lastName) : prev.lastName,
+    }));
+  }, []);
 
   // Auto-select the first enabled gateway whenever gateways load
   useEffect(() => {
@@ -164,6 +187,7 @@ export default function CheckoutPage() {
                       country: 'US', email: formData.email, phone: formData.phone },
           line_items: cart.map(item => ({ product_id: item.id, quantity: item.quantity })),
           customer_note: formData.note,
+          create_account: !isLoggedIn && formData.createAccount,
           shipping_lines: [{
             method_id:    formData.shippingMethod,
             method_title: SHIPPING_RATES[formData.shippingMethod as ShippingMethod]?.label ?? formData.shippingMethod,
@@ -175,7 +199,9 @@ export default function CheckoutPage() {
       if (response.ok) {
         clearCart();
         const guestMsg = result.guest
-          ? `Order #${result.id} confirmed. Check your email to set up your account and track this order.`
+          ? result.account_created
+            ? `Order #${result.id} confirmed. Check your email to set up your account and track this order.`
+            : `Order #${result.id} confirmed. We'll be in touch shortly.`
           : `Order #${result.id} confirmed. We'll be in touch shortly.`;
         showNotification({ title: 'Order Placed!', message: guestMsg, type: 'success' });
         router.push('/');
@@ -258,8 +284,15 @@ export default function CheckoutPage() {
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
                       <label className="text-zinc-900 text-xs font-medium font-['Inter']">Email Address *</label>
-                      <input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="you@company.com"
-                        className="w-full h-12 px-4 bg-white rounded-[10px] border border-gray-200 focus:outline-none focus:border-green-700 text-sm font-['Inter']" />
+                      <div className="relative">
+                        <input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="you@company.com"
+                          readOnly={isLoggedIn}
+                          className={`w-full h-12 px-4 bg-white rounded-[10px] border border-gray-200 focus:outline-none focus:border-green-700 text-sm font-['Inter'] ${isLoggedIn ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                        />
+                        {isLoggedIn && (
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-green-700 font-semibold font-['Inter'] bg-green-50 px-2 py-0.5 rounded-full">Account</span>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1">
@@ -305,6 +338,24 @@ export default function CheckoutPage() {
                       <textarea name="note" rows={2} value={formData.note} onChange={handleInputChange}
                         className="w-full px-4 py-3 bg-white rounded-[10px] border border-gray-200 focus:outline-none focus:border-green-700 text-sm resize-none" />
                     </div>
+
+                    {/* Account opt-in — only shown to guests */}
+                    {!isLoggedIn && (
+                      <label className="flex items-start gap-3 p-4 bg-emerald-50 rounded-xl border border-emerald-100 cursor-pointer group hover:border-green-700 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.createAccount}
+                          onChange={e => setFormData(prev => ({ ...prev, createAccount: e.target.checked }))}
+                          className="mt-0.5 w-4 h-4 accent-green-700 shrink-0 cursor-pointer"
+                        />
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-zinc-900 text-sm font-semibold font-['Inter']">Save my details for faster checkout next time</span>
+                          <span className="text-zinc-500 text-xs font-['Inter'] leading-5">
+                            We&apos;ll create a free account so you can track this order and reorder easily. You&apos;ll receive an email to set your password.
+                          </span>
+                        </div>
+                      </label>
+                    )}
                   </div>
                 </div>
               )}

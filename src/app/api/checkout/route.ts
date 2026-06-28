@@ -220,7 +220,8 @@ export async function POST(request: Request) {
     }
 
     // ── 5. Sanitize customer note ──────────────────────────────────────────
-    const customerNote = sanitizeText(body.customer_note ?? '', 500);
+    const customerNote  = sanitizeText(body.customer_note ?? '', 500);
+    const createAccount = isGuest && body.create_account === true;
 
     // ── 6. Build order payload ─────────────────────────────────────────────
     const orderPayload = {
@@ -254,31 +255,26 @@ export async function POST(request: Request) {
 
     const order = await wcRes.json();
 
-    // ── 8. Guest: find or create WC account, then link order ──────────────
-    // Run async after responding — customer gets confirmation immediately,
-    // account creation happens in background (fire-and-forget with await for
-    // the order link so the admin sees the customer name in WP).
-    if (isGuest) {
-      // Check if account already exists for this email
+    // ── 8. Guest: find or create WC account if they opted in ──────────────
+    // Only runs for guests who ticked "Save my details for faster checkout".
+    let accountCreated = false;
+    if (createAccount) {
       let customerId = await findCustomerByEmail(email);
-
       if (!customerId) {
-        // New guest → create WC account, triggers "New Account" welcome email
-        // with password setup link so they can log in and track orders
         customerId = await createWCCustomer(email, firstName, lastName);
+        if (customerId) accountCreated = true;
       }
-
-      if (customerId) {
-        // Link the just-created order to the account
-        await linkOrderToCustomer(order.id, customerId);
-      }
+      if (customerId) await linkOrderToCustomer(order.id, customerId);
     }
+    // Logged-in user: already linked via customer_id.
+    // Guest who didn't opt in: pure guest order, customer_id stays 0.
 
     // Return only what the frontend needs
     return NextResponse.json({
-      id:     order.id,
-      status: order.status,
-      guest:  isGuest,  // frontend can use this to prompt "Check your email to set up your account"
+      id:              order.id,
+      status:          order.status,
+      guest:           isGuest,
+      account_created: accountCreated,
     });
 
   } catch (err) {
