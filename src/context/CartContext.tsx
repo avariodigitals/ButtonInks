@@ -214,13 +214,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       {isLoading && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white/60 backdrop-blur-[2px]">
-          <div className="flex flex-col items-center gap-3 p-8 bg-white rounded-3xl shadow-2xl border border-gray-100">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-green-700/10 rounded-full" />
-              <div className="absolute inset-0 w-16 h-16 border-t-4 border-green-700 rounded-full animate-spin" />
-            </div>
-            <p className="text-green-700 font-bold font-['Outfit'] text-lg">Processing...</p>
-          </div>
+          <div className="w-12 h-12 border-4 border-green-700/20 border-t-green-700 rounded-full animate-spin" />
         </div>
       )}
     </CartContext.Provider>

@@ -431,6 +431,7 @@ export default function ProductDetailView({
 
   // ── Attribute toggles ─────────────────────────────────────────────────────
   const toggleAttr = (name: string, val: string, multi: boolean) => {
+    setValidationErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
     setSelectedAttributes(prev => {
       const cur = prev[name] ?? [];
       if (multi) {
@@ -440,14 +441,43 @@ export default function ProductDetailView({
     });
   };
 
+  // ── Validation state ──────────────────────────────────────────────────────
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // Required attributes: everything that isn't material/fabric
+  const requiredAttrs = product.attributes.filter(
+    a => !a.name.toLowerCase().includes('material') && !a.name.toLowerCase().includes('fabric')
+  );
+
   // ── Add to cart ───────────────────────────────────────────────────────────
   const handleAddToCart = () => {
-    const attrParts = product.attributes
-      .filter(a => !a.name.toLowerCase().includes('material') && !a.name.toLowerCase().includes('fabric'))
-      .flatMap(a => {
-        const vals = selectedAttributes[a.name] ?? [];
-        return vals.length ? [`${a.name}: ${vals.join(', ')}`] : [];
+    // Validate required attributes
+    const errors: Record<string, string> = {};
+    for (const attr of requiredAttrs) {
+      const vals = selectedAttributes[attr.name] ?? [];
+      if (vals.length === 0) {
+        errors[attr.name] = `Please select a ${attr.name.toLowerCase()}`;
+      }
+    }
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      // Scroll to the first error
+      const firstAttr = requiredAttrs[0];
+      if (firstAttr) {
+        document.getElementById(`attr-${firstAttr.name}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      showNotification({
+        title:   'Please complete your selection',
+        message: Object.values(errors)[0],
+        type:    'error',
       });
+      return;
+    }
+
+    const attrParts = requiredAttrs.flatMap(a => {
+      const vals = selectedAttributes[a.name] ?? [];
+      return vals.length ? [`${a.name}: ${vals.join(', ')}`] : [];
+    });
 
     const extras = [
       ...attrParts,
@@ -672,13 +702,19 @@ export default function ProductDetailView({
               .map((attr, idx) => {
                 const isColor  = attr.name.toLowerCase() === 'color';
                 const selected = selectedAttributes[attr.name] ?? [];
+                const error    = validationErrors[attr.name];
                 return (
-                  <div key={`${attr.name}-${idx}`} className="flex flex-col gap-2.5">
-                    <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">
-                      {isColor
-                        ? <>Choose Color <span className="text-slate-500 text-sm sm:text-base font-normal">(Select Multiple)</span></>
-                        : `Choose ${attr.name}`}
-                    </span>
+                  <div key={`${attr.name}-${idx}`} id={`attr-${attr.name}`} className={`flex flex-col gap-2.5 ${error ? 'p-3 rounded-xl border border-red-200 bg-red-50/40' : ''}`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">
+                        {isColor
+                          ? <>Choose Color <span className="text-slate-500 text-sm sm:text-base font-normal">(Select Multiple)</span></>
+                          : <>Choose {attr.name} <span className="text-red-500 text-sm">*</span></>}
+                      </span>
+                      {error && (
+                        <span className="text-red-500 text-xs font-medium font-inter">{error}</span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {attr.options.map(opt => {
                         const isSel = selected.includes(opt);

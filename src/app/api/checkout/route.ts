@@ -135,6 +135,7 @@ export async function POST(request: Request) {
 
     // ── 6. Build the WC order payload — explicitly constructed, nothing extra
     const orderPayload = {
+      status:               'pending',          // ensures WC fires the "New Order" admin email
       payment_method:       paymentMethodId,
       payment_method_title: paymentMethodTitle,
       set_paid:             false,              // NEVER true — WC handles this
