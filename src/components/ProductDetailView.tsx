@@ -708,15 +708,15 @@ export default function ProductDetailView({
       </section>
 
       {/* ── Main product section ── */}
-      <section className="w-full px-4 md:px-20 py-8 md:py-12">
-        <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-8 xl:gap-14 items-start">
+      <section className="w-full px-4 md:px-20 py-6 md:py-10">
+        <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-6 xl:gap-10 items-start">
 
-          {/* LEFT — Images */}
-          <div className="w-full lg:w-[540px] shrink-0 flex flex-col gap-3">
-            <div className="relative w-full aspect-[589/480] bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(15,81,50,0.06)] border border-green-900/5 overflow-hidden">
+          {/* LEFT — Images (dominant column) */}
+          <div className="w-full lg:flex-1 shrink-0 flex flex-col gap-2.5">
+            <div className="relative w-full aspect-square bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(15,81,50,0.06)] border border-green-900/5 overflow-hidden">
               {mainImage ? (
                 <Image src={mainImage} alt={decodeHTMLEntities(product.name)} fill
-                  className="object-contain p-4" sizes="(max-width:1024px) 100vw,540px" priority />
+                  className="object-contain p-6" sizes="(max-width:1024px) 100vw,640px" priority />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="w-16 h-16 text-gray-200" />
@@ -742,24 +742,22 @@ export default function ProductDetailView({
             )}
           </div>
 
-          {/* RIGHT — Info & Config */}
-          <div className="flex-1 min-w-0 flex flex-col gap-5">
+          {/* RIGHT — Info & Config (compact panel) */}
+          <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col gap-4">
 
             {/* Title + rating */}
-            <div className="flex flex-col gap-2">
-              <h1 className="text-slate-900 text-2xl sm:text-3xl xl:text-4xl font-semibold font-outfit leading-tight">
+            <div className="flex flex-col gap-1.5">
+              <h1 className="text-slate-900 text-xl sm:text-2xl font-semibold font-outfit leading-tight">
                 {decodeHTMLEntities(product.name)}
               </h1>
               {avgRating > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <StarRow rating={avgRating} size="md" />
-                  <span className="text-neutral-900 text-sm font-semibold font-inter">{avgRating.toFixed(1)}</span>
-                  <span className="text-gray-500 text-xs font-inter">
-                    ({ratingCount.toLocaleString()} reviews)
-                  </span>
+                  <StarRow rating={avgRating} size="sm" />
+                  <span className="text-neutral-900 text-xs font-semibold font-inter">{avgRating.toFixed(1)}</span>
+                  <span className="text-gray-500 text-xs font-inter">({ratingCount.toLocaleString()} reviews)</span>
                 </div>
               )}
-              <div className="text-gray-600 text-sm font-inter leading-6"
+              <div className="text-gray-500 text-xs font-inter leading-5"
                 dangerouslySetInnerHTML={{ __html: product.short_description }} />
             </div>
 
@@ -771,18 +769,16 @@ export default function ProductDetailView({
                 const selected = selectedAttributes[attr.name] ?? [];
                 const error    = validationErrors[attr.name];
                 return (
-                  <div key={`${attr.name}-${idx}`} id={`attr-${attr.name}`} className={`flex flex-col gap-2.5 ${error ? 'p-3 rounded-xl border border-red-200 bg-red-50/40' : ''}`}>
+                  <div key={`${attr.name}-${idx}`} id={`attr-${attr.name}`} className={`flex flex-col gap-2 ${error ? 'p-2.5 rounded-xl border border-red-200 bg-red-50/40' : ''}`}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">
+                      <span className="text-slate-900 text-sm font-semibold font-inter">
                         {isColor
-                          ? <>Choose Color <span className="text-slate-500 text-sm sm:text-base font-normal">(Select Multiple)</span></>
-                          : <>Choose {attr.name} <span className="text-red-500 text-sm">*</span></>}
+                          ? <>Choose Color <span className="text-slate-400 text-xs font-normal">(Select Multiple)</span></>
+                          : <>Choose {attr.name} <span className="text-red-500 text-xs">*</span></>}
                       </span>
-                      {error && (
-                        <span className="text-red-500 text-xs font-medium font-inter">{error}</span>
-                      )}
+                      {error && <span className="text-red-500 text-xs font-medium font-inter">{error}</span>}
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {attr.options.map(opt => {
                         const isSel = selected.includes(opt);
                         if (isColor) {
@@ -792,7 +788,7 @@ export default function ProductDetailView({
                             <button key={opt} title={opt} onClick={() => toggleAttr(attr.name, opt, true)}
                               aria-label={opt} aria-pressed={isSel}
                               className={`relative w-6 h-6 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
-                                isSel ? 'border-transparent ring-[3.5px] ring-green-500 scale-110' : 'border-gray-200 hover:scale-110'
+                                isSel ? 'border-transparent ring-[3px] ring-green-500 scale-110' : 'border-gray-200 hover:scale-110'
                               }`}
                               style={{ backgroundColor: hex }}>
                               {isSel && <span className={`absolute inset-0 flex items-center justify-center text-[8px] font-black ${light ? 'text-gray-800' : 'text-white'}`}>✓</span>}
@@ -800,14 +796,14 @@ export default function ProductDetailView({
                             </button>
                           ) : (
                             <button key={opt} onClick={() => toggleAttr(attr.name, opt, true)}
-                              className={`px-3 py-1.5 rounded-lg border text-sm font-inter font-medium transition-all ${isSel ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:border-green-700'}`}>
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-inter font-medium transition-all ${isSel ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:border-green-700'}`}>
                               {opt}
                             </button>
                           );
                         }
                         return (
                           <button key={opt} onClick={() => toggleAttr(attr.name, opt, false)}
-                            className={`flex-1 min-w-[44px] h-11 px-2 sm:px-3 rounded-[10px] font-bold font-inter text-sm sm:text-base border-[1.31px] transition-all ${
+                            className={`flex-1 min-w-[40px] h-9 px-2 rounded-[8px] font-bold font-inter text-xs border-[1.31px] transition-all ${
                               isSel ? 'bg-green-700 text-white border-green-700' : 'bg-white text-gray-700 border-gray-300 hover:border-green-700'
                             }`}>
                             {opt}
@@ -820,50 +816,48 @@ export default function ProductDetailView({
               })}
 
             {/* Quantity */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-neutral-900 text-sm font-bold font-inter">Quantity:</span>
+                <span className="text-neutral-900 text-xs font-bold font-inter">Quantity:</span>
                 <span className="text-gray-500 text-xs font-inter">Min. 1</span>
               </div>
-              <div className="w-36 sm:w-40 h-11 sm:h-12 bg-white rounded-lg border border-green-900/10 flex items-center overflow-hidden">
+              <div className="w-32 h-9 bg-white rounded-lg border border-green-900/10 flex items-center overflow-hidden">
                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-full flex items-center justify-center hover:bg-gray-50 border-r border-gray-100" aria-label="Decrease">
-                  <Minus className="w-4 h-4 text-neutral-700" />
+                  className="w-9 h-full flex items-center justify-center hover:bg-gray-50 border-r border-gray-100" aria-label="Decrease">
+                  <Minus className="w-3.5 h-3.5 text-neutral-700" />
                 </button>
-                <div className="flex-1 text-center text-neutral-900 text-base font-bold font-inter">{quantity}</div>
+                <div className="flex-1 text-center text-neutral-900 text-sm font-bold font-inter">{quantity}</div>
                 <button onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-full flex items-center justify-center hover:bg-gray-50 border-l border-gray-100" aria-label="Increase">
-                  <Plus className="w-4 h-4 text-neutral-700" />
+                  className="w-9 h-full flex items-center justify-center hover:bg-gray-50 border-l border-gray-100" aria-label="Increase">
+                  <Plus className="w-3.5 h-3.5 text-neutral-700" />
                 </button>
               </div>
             </div>
 
             {/* Price */}
-            <div className="flex flex-col gap-2">
-              <div className="px-4 sm:px-5 py-4 bg-green-50/50 rounded-xl flex flex-wrap items-baseline gap-2 sm:gap-3">
-                <span className="text-green-700 text-2xl sm:text-3xl font-extrabold font-outfit">{fmt(unitPrice)}</span>
-                <span className="text-zinc-500 text-xs sm:text-sm font-inter leading-5">
+            <div className="flex flex-col gap-1.5">
+              <div className="px-4 py-3 bg-green-50/50 rounded-xl flex flex-wrap items-baseline gap-2">
+                <span className="text-green-700 text-xl sm:text-2xl font-extrabold font-outfit">{fmt(unitPrice)}</span>
+                <span className="text-zinc-500 text-xs font-inter leading-5">
                   per unit (With your Logo) · Total:{' '}
                   <span className="text-green-700 font-bold">{fmt(unitPrice * quantity)}</span>
                 </span>
-                {isOnSale && <span className="text-gray-400 text-sm line-through font-inter">{fmt(regularUnitPrice)}</span>}
+                {isOnSale && <span className="text-gray-400 text-xs line-through font-inter">{fmt(regularUnitPrice)}</span>}
               </div>
-              <p className="text-green-700 text-xs sm:text-sm font-inter leading-5">
-                Shipping and final pricing is calculated at checkout
-              </p>
+              <p className="text-green-700 text-xs font-inter">Shipping and final pricing is calculated at checkout</p>
             </div>
 
             {/* Bulk pricing */}
             {product.acf?.bulk_pricing && product.acf.bulk_pricing.length > 0 && (
-              <div className="bg-gray-50 rounded-2xl p-4 sm:p-5 border border-gray-100">
-                <h4 className="text-gray-900 font-bold mb-3 flex items-center gap-2 text-sm font-inter">
-                  <SlidersHorizontal className="w-4 h-4 text-green-700" /> Bulk Pricing
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <h4 className="text-gray-900 font-bold mb-2 flex items-center gap-2 text-xs font-inter">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-green-700" /> Bulk Pricing
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   {product.acf.bulk_pricing.map((tier, i) => (
-                    <div key={i} className={`p-3 rounded-xl border transition-all ${quantity >= tier.min_qty ? 'bg-white border-green-700 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                    <div key={i} className={`p-2 rounded-lg border transition-all ${quantity >= tier.min_qty ? 'bg-white border-green-700 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
                       <span className="text-[10px] uppercase font-bold text-gray-400 block font-inter">{tier.min_qty}+ units</span>
-                      <span className="text-base sm:text-lg font-black text-green-700 font-outfit">{fmt(parseFloat(tier.discount_price))}</span>
+                      <span className="text-sm font-black text-green-700 font-outfit">{fmt(parseFloat(tier.discount_price))}</span>
                     </div>
                   ))}
                 </div>
@@ -871,12 +865,12 @@ export default function ProductDetailView({
             )}
 
             {/* Print Area */}
-            <div className="flex flex-col gap-2.5">
-              <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">Print Area</span>
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-2">
+              <span className="text-slate-900 text-sm font-semibold font-inter">Print Area</span>
+              <div className="grid grid-cols-3 gap-2">
                 {printAreas.map(area => (
                   <button key={area} onClick={() => setSelectedPrintArea(area)}
-                    className={`px-2 sm:px-4 py-3 rounded-[10px] border-[1.31px] text-xs sm:text-base font-bold font-inter leading-tight text-center transition-all ${
+                    className={`py-2 rounded-[8px] border-[1.31px] text-xs font-bold font-inter text-center transition-all ${
                       selectedPrintArea === area ? 'border-green-700 text-green-700 bg-white' : 'border-gray-300 text-gray-700 bg-white hover:border-green-700'
                     }`}>
                     {area}
@@ -886,26 +880,26 @@ export default function ProductDetailView({
             </div>
 
             {/* Production Options */}
-            <div className="flex flex-col gap-2.5">
-              <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">Production Options</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-2">
+              <span className="text-slate-900 text-sm font-semibold font-inter">Production Options</span>
+              <div className="grid grid-cols-2 gap-2">
                 {(product.acf?.production_options?.length
                   ? product.acf.production_options.map(opt => ({
                       key:      opt.type,
                       label:    opt.type === 'urgent' ? 'Urgent Production' : 'Standard Production',
-                      subtitle: `${opt.delivery_days} Days${opt.type === 'regular' ? ' - Standard turnaround' : ' - Priority Manufacturing'}`,
+                      subtitle: `${opt.delivery_days} Days${opt.type === 'regular' ? ' - Standard' : ' - Priority'}`,
                     }))
                   : [
-                      { key: 'regular', label: 'Standard Production', subtitle: '3-5 Days - Standard turnaround' },
-                      { key: 'urgent',  label: 'Urgent Production',   subtitle: '1-2 days - Priority Manufacturing' },
+                      { key: 'regular', label: 'Standard Production', subtitle: '3-5 Days - Standard' },
+                      { key: 'urgent',  label: 'Urgent Production',   subtitle: '1-2 Days - Priority' },
                     ]
                 ).map(opt => (
                   <button key={opt.key} onClick={() => setSelectedProduction(opt.key)}
-                    className={`px-4 py-3 rounded-[10px] border-[1.31px] flex flex-col items-center gap-0.5 transition-all ${
+                    className={`px-3 py-2 rounded-[8px] border-[1.31px] flex flex-col items-center gap-0.5 transition-all ${
                       selectedProduction === opt.key ? 'border-green-700 text-green-700 bg-white' : 'border-gray-300 text-gray-700 bg-white hover:border-green-700'
                     }`}>
-                    <span className="text-sm sm:text-base font-bold font-inter">{opt.label}</span>
-                    <span className={`text-xs font-inter leading-4 ${selectedProduction === opt.key ? 'text-green-700' : 'text-gray-500'}`}>{opt.subtitle}</span>
+                    <span className="text-xs font-bold font-inter">{opt.label}</span>
+                    <span className={`text-[10px] font-inter ${selectedProduction === opt.key ? 'text-green-700' : 'text-gray-500'}`}>{opt.subtitle}</span>
                   </button>
                 ))}
               </div>
@@ -929,28 +923,28 @@ export default function ProductDetailView({
             )}
 
             {/* CTAs */}
-            <div className="flex flex-col gap-3 pt-1">
+            <div className="flex flex-col gap-2.5 pt-1">
               {buyAsIs && (
                 <Link href={`/products/${categorySlug}/${product.slug}/designs`}
-                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                  <LayoutGrid className="w-5 h-5" /> Choose a Ready-Made Design
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm">
+                  <LayoutGrid className="w-4 h-4" /> Choose a Ready-Made Design
                 </Link>
               )}
               {showUploadBtn && (
                 <Link href={`/upload?product=${product.id}`}
-                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                  <Upload className="w-5 h-5" /> Upload your Design
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm">
+                  <Upload className="w-4 h-4" /> Upload your Design
                 </Link>
               )}
               {showDesignBtn && (
                 <Link href={`/design?product=${product.id}`}
-                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                  <Upload className="w-5 h-5" /> Design Your Own
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm">
+                  <Upload className="w-4 h-4" /> Design Your Own
                 </Link>
               )}
               <button onClick={handleAddToCart}
-                className="w-full bg-white border-2 border-green-700 text-green-700 hover:bg-green-50 font-bold font-inter py-3.5 sm:py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                <ShoppingCart className="w-5 h-5" /> Add to Cart
+                className="w-full bg-white border-2 border-green-700 text-green-700 hover:bg-green-50 font-bold font-inter py-3 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm">
+                <ShoppingCart className="w-4 h-4" /> Add to Cart
               </button>
             </div>
           </div>
