@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Plugin Name: ButtonInks Core
  * Description: Headless core functionality for ButtonInks Next.js integration.
@@ -34,12 +34,27 @@ class ButtonInks_Core {
             '_bi_enable_upload'      => 'string',
             '_bi_buy_as_is'          => 'string',
 
-            // Delivery speed
+            // Production options (formerly "Delivery speed")
             '_bi_enable_regular'     => 'string',
             '_bi_enable_urgent'      => 'string',
             '_bi_urgent_extra_cost'  => 'string',
             '_bi_regular_days'       => 'string',
             '_bi_urgent_days'        => 'string',
+
+            // Print Style / Decoration method
+            '_bi_print_style'        => 'string',
+
+            // Product type specifics
+            '_bi_product_type'       => 'string',  // 'clothing' | 'paper' | 'stationery' | ''
+
+            // Clothing / Apparel
+            '_bi_clothing_specs'     => 'string',  // JSON
+
+            // Paper Printing
+            '_bi_paper_specs'        => 'string',  // JSON
+
+            // Stationery / Banners
+            '_bi_stationery_specs'   => 'string',  // JSON
 
             // Bulk pricing
             '_bi_enable_bulk'        => 'string',
@@ -105,6 +120,19 @@ class ButtonInks_Core {
         while (count($bulk_tiers) < 3) {
             $bulk_tiers[] = ['min_qty' => '', 'pct' => ''];
         }
+
+        // Print style & product type specifics
+        $print_style          = get_post_meta($post->ID, '_bi_print_style',       true) ?: '';
+        $product_type         = get_post_meta($post->ID, '_bi_product_type',      true) ?: '';
+
+        $clothing_specs_raw   = get_post_meta($post->ID, '_bi_clothing_specs',    true) ?: '{}';
+        $clothing_specs       = json_decode($clothing_specs_raw, true) ?: [];
+
+        $paper_specs_raw      = get_post_meta($post->ID, '_bi_paper_specs',       true) ?: '{}';
+        $paper_specs          = json_decode($paper_specs_raw, true) ?: [];
+
+        $stationery_specs_raw = get_post_meta($post->ID, '_bi_stationery_specs',  true) ?: '{}';
+        $stationery_specs     = json_decode($stationery_specs_raw, true) ?: [];
         ?>
 
         <style>
@@ -198,10 +226,121 @@ class ButtonInks_Core {
                 </p>
             </div>
 
-            <!-- SECTION: Delivery Speed Options -->
+
+            <!-- SECTION: Print Style / Decoration Method -->
             <div class="bi-section">
-                <span class="bi-label">Delivery Speed Options</span>
-                <p class="bi-note">Enable the speed options available for this product. Defaults are shown — only change if this product is different.</p>
+                <span class="bi-label">Print Style / Decoration Method</span>
+                <p class="bi-note" style="margin-bottom:10px;">Select how this product is decorated or printed.</p>
+                <select name="_bi_print_style" style="min-width:260px;font-size:13px;">
+                    <option value="">-- Select print style --</option>
+                    <?php
+                    $print_styles = [
+                        'embroidery'      => 'Embroidery',
+                        'heat_transfer'   => 'Heat Transfer',
+                        'dtg'             => 'Direct-to-Garment (DTG)',
+                        'screen_printing' => 'Screen Printing',
+                        'pad_printing'    => 'Pad Printing',
+                        'digital_inkjet'  => 'Digital Inkjet',
+                        'laser_engraving' => 'Laser Engraving',
+                        'digital_print'   => 'Digital Print',
+                        'offset_print'    => 'Offset Printing',
+                        'uv_print'        => 'UV Printing',
+                    ];
+                    foreach ($print_styles as $val => $lbl): ?>
+                        <option value="<?php echo esc_attr($val); ?>" <?php selected($print_style, $val); ?>><?php echo esc_html($lbl); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- SECTION: Product Type Specifics -->
+            <div class="bi-section">
+                <span class="bi-label">Product Type Specifics</span>
+                <p class="bi-note" style="margin-bottom:10px;">Select the product type to reveal its specific options.</p>
+                <div class="bi-row" style="margin-bottom:14px;">
+                    <label style="min-width:100px;">Product Type</label>
+                    <select name="_bi_product_type" id="bi_product_type" style="font-size:13px;" onchange="biShowProductType(this.value)">
+                        <option value="">-- Select type --</option>
+                        <option value="clothing"   <?php selected($product_type,'clothing'); ?>>Clothing / Apparel</option>
+                        <option value="paper"      <?php selected($product_type,'paper'); ?>>Paper Printing</option>
+                        <option value="stationery" <?php selected($product_type,'stationery'); ?>>Stationery / Banners / Pens</option>
+                    </select>
+                </div>
+
+                <!-- Clothing / Apparel -->
+                <div id="bi_type_clothing" class="bi-indent <?php echo ($product_type==='clothing')?'':'bi-hidden'; ?>">
+                    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1d2327;margin:0 0 10px;">Clothing / Apparel Options</p>
+                    <?php
+                    $fabric_types=array('100% Cotton','Cotton/Poly Blend','Performance Poly','Tri-Blend','Fleece','Dri-FIT / Moisture Wicking');
+                    $garment_fits=array('Regular Fit','Slim Fit','Relaxed Fit','Oversized','Ladies Fit','Youth');
+                    ?>
+                    <div class="bi-row">
+                        <label style="min-width:110px;">Fabric Type</label>
+                        <select name="_bi_clothing_fabric" style="font-size:12px;min-width:200px;">
+                            <option value="">-- Select fabric --</option>
+                            <?php foreach($fabric_types as $f): ?><option value="<?php echo esc_attr($f); ?>" <?php selected($clothing_specs['fabric']??'',$f); ?>><?php echo esc_html($f); ?></option><?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="bi-row">
+                        <label style="min-width:110px;">Garment Fit</label>
+                        <select name="_bi_clothing_fit" style="font-size:12px;min-width:200px;">
+                            <option value="">-- Select fit --</option>
+                            <?php foreach($garment_fits as $f): ?><option value="<?php echo esc_attr($f); ?>" <?php selected($clothing_specs['fit']??'',$f); ?>><?php echo esc_html($f); ?></option><?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="bi-row">
+                        <label style="min-width:110px;">Gender</label>
+                        <select name="_bi_clothing_gender" style="font-size:12px;min-width:160px;">
+                            <option value="">-- Select --</option>
+                            <?php foreach(array('Unisex',"Men's","Women's",'Youth','Kids') as $g): ?><option value="<?php echo esc_attr($g); ?>" <?php selected($clothing_specs['gender']??'',$g); ?>><?php echo esc_html($g); ?></option><?php endforeach; ?>
+                        </select>
+                    </div>
+                    <p class="bi-note">Sizes (S, M, L, XL...) are set via the WooCommerce Attributes tab.</p>
+                </div>
+
+                <!-- Paper Printing -->
+                <div id="bi_type_paper" class="bi-indent <?php echo ($product_type==='paper')?'':'bi-hidden'; ?>">
+                    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1d2327;margin:0 0 10px;">Paper Printing Options</p>
+                    <?php
+                    $paper_stocks=array('Standard (100gsm)','Premium (170gsm)','Glossy','Matte','Silk','Uncoated','Kraft');
+                    $paper_corners=array('Square','Rounded');
+                    $orientations=array('Vertical (Portrait)','Horizontal (Landscape)','Both');
+                    $thicknesses=array('Standard','Premium / Thick');
+                    ?>
+                    <div class="bi-row"><label style="min-width:120px;">Paper Stock</label><select name="_bi_paper_stock" style="font-size:12px;min-width:200px;"><option value="">-- Select --</option><?php foreach($paper_stocks as $s): ?><option value="<?php echo esc_attr($s); ?>" <?php selected($paper_specs['stock']??'',$s); ?>><?php echo esc_html($s); ?></option><?php endforeach; ?></select></div>
+                    <div class="bi-row"><label style="min-width:120px;">Corner Style</label><select name="_bi_paper_corners" style="font-size:12px;min-width:160px;"><option value="">-- Select --</option><?php foreach($paper_corners as $c): ?><option value="<?php echo esc_attr($c); ?>" <?php selected($paper_specs['corners']??'',$c); ?>><?php echo esc_html($c); ?></option><?php endforeach; ?></select></div>
+                    <div class="bi-row"><label style="min-width:120px;">Orientation</label><select name="_bi_paper_orientation" style="font-size:12px;min-width:200px;"><option value="">-- Select --</option><?php foreach($orientations as $o): ?><option value="<?php echo esc_attr($o); ?>" <?php selected($paper_specs['orientation']??'',$o); ?>><?php echo esc_html($o); ?></option><?php endforeach; ?></select></div>
+                    <div class="bi-row"><label style="min-width:120px;">Paper Thickness</label><select name="_bi_paper_thickness" style="font-size:12px;min-width:200px;"><option value="">-- Select --</option><?php foreach($thicknesses as $t): ?><option value="<?php echo esc_attr($t); ?>" <?php selected($paper_specs['thickness']??'',$t); ?>><?php echo esc_html($t); ?></option><?php endforeach; ?></select></div>
+                    <div class="bi-row"><label style="min-width:120px;">Perforated</label><select name="_bi_paper_perforated" style="font-size:12px;min-width:120px;"><option value="">-- Select --</option><option value="no" <?php selected($paper_specs['perforated']??'','no'); ?>>No</option><option value="yes" <?php selected($paper_specs['perforated']??'','yes'); ?>>Yes</option></select></div>
+                </div>
+
+                <!-- Stationery / Banners / Pens -->
+                <div id="bi_type_stationery" class="bi-indent <?php echo ($product_type==='stationery')?'':'bi-hidden'; ?>">
+                    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1d2327;margin:0 0 10px;">Stationery / Banner / Pen Options</p>
+                    <?php
+                    $pen_materials=array('ABS Plastic','Aluminium','Brass','Metal','Stainless Steel');
+                    $banner_materials=array('Vinyl','Polyester Fabric','PVC-Free Vinyl');
+                    $subtypes=array('pen'=>'Pen / Pencil','banner'=>'Banner','notebook'=>'Notebook','folder'=>'Folder','other'=>'Other');
+                    $cur_subtype=$stationery_specs['subtype']??'';
+                    ?>
+                    <div class="bi-row">
+                        <label style="min-width:120px;">Item Subtype</label>
+                        <select name="_bi_stationery_subtype" id="bi_stn_subtype" style="font-size:12px;min-width:180px;" onchange="biToggleStationeryMaterial(this.value)">
+                            <option value="">-- Select --</option>
+                            <?php foreach($subtypes as $val=>$lbl): ?><option value="<?php echo esc_attr($val); ?>" <?php selected($cur_subtype,$val); ?>><?php echo esc_html($lbl); ?></option><?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div id="bi_stn_pen_mat" class="<?php echo ($cur_subtype==='pen'||$cur_subtype==='')?'':'bi-hidden'; ?>" style="margin-top:8px;">
+                        <div class="bi-row"><label style="min-width:120px;">Pen Material</label><select name="_bi_stationery_pen_material" style="font-size:12px;min-width:200px;"><option value="">-- Select --</option><?php foreach($pen_materials as $m): ?><option value="<?php echo esc_attr($m); ?>" <?php selected($stationery_specs['pen_material']??'',$m); ?>><?php echo esc_html($m); ?></option><?php endforeach; ?></select></div>
+                    </div>
+                    <div id="bi_stn_ban_mat" class="<?php echo ($cur_subtype==='banner')?'':'bi-hidden'; ?>" style="margin-top:8px;">
+                        <div class="bi-row"><label style="min-width:120px;">Banner Material</label><select name="_bi_stationery_banner_material" style="font-size:12px;min-width:200px;"><option value="">-- Select --</option><?php foreach($banner_materials as $m): ?><option value="<?php echo esc_attr($m); ?>" <?php selected($stationery_specs['banner_material']??'',$m); ?>><?php echo esc_html($m); ?></option><?php endforeach; ?></select></div>
+                    </div>
+                </div>
+            </div>
+            <!-- SECTION: Production Options (renamed from Delivery Speed) -->
+            <div class="bi-section">
+                <span class="bi-label">Production Options</span>
+                <p class="bi-note">Select the production turnaround times available for this product. This is about production speed — not shipping.</p>
 
                 <div class="bi-option" style="margin-top:10px;">
                     <input type="checkbox" name="_bi_enable_regular" value="1" id="bi_regular"
@@ -215,7 +354,7 @@ class ButtonInks_Core {
                 </div>
                 <div id="bi_regular_opts" class="bi-indent <?php echo ($enable_regular === '1') ? '' : 'bi-hidden'; ?>">
                     <div class="bi-row">
-                        <label>Delivery days</label>
+                        <label>Production days</label>
                         <input type="text" name="_bi_regular_days" value="<?php echo esc_attr($regular_days); ?>" placeholder="3-5" style="width:70px;" />
                         <span class="bi-note" style="margin:0;">business days</span>
                     </div>
@@ -237,7 +376,7 @@ class ButtonInks_Core {
                         <input type="number" name="_bi_urgent_extra_cost" value="<?php echo esc_attr($urgent_cost); ?>" placeholder="15" min="0" step="0.01" />
                     </div>
                     <div class="bi-row">
-                        <label>Delivery days</label>
+                        <label>Production days</label>
                         <input type="text" name="_bi_urgent_days" value="<?php echo esc_attr($urgent_days); ?>" placeholder="1-2" style="width:70px;" />
                         <span class="bi-note" style="margin:0;">business days</span>
                     </div>
@@ -371,6 +510,22 @@ class ButtonInks_Core {
             document.getElementById(id).classList.toggle('bi-hidden', !show);
         }
 
+        // Show/hide product type panels
+        function biShowProductType(val) {
+            ['clothing','paper','stationery'].forEach(function(t) {
+                var el = document.getElementById('bi_type_' + t);
+                if (el) el.classList.toggle('bi-hidden', val !== t);
+            });
+        }
+
+        // Toggle stationery material sub-panels
+        function biToggleStationeryMaterial(val) {
+            var pen = document.getElementById('bi_stn_pen_mat');
+            var ban = document.getElementById('bi_stn_ban_mat');
+            if (pen) pen.classList.toggle('bi-hidden', val !== 'pen' && val !== '');
+            if (ban) ban.classList.toggle('bi-hidden', val !== 'banner');
+        }
+
         // Template rows — add / remove
         var biTplIndex = <?php echo count($dl_templates); ?>;
 
@@ -490,6 +645,42 @@ class ButtonInks_Core {
             usort($tiers, function($a, $b) { return $a['min_qty'] - $b['min_qty']; });
         }
         update_post_meta($post_id, '_bi_bulk_tiers', wp_json_encode($tiers));
+
+        // Print style
+        if (isset($_POST['_bi_print_style'])) {
+            update_post_meta($post_id, '_bi_print_style', sanitize_text_field(wp_unslash($_POST['_bi_print_style'])));
+        }
+
+        // Product type
+        if (isset($_POST['_bi_product_type'])) {
+            update_post_meta($post_id, '_bi_product_type', sanitize_text_field(wp_unslash($_POST['_bi_product_type'])));
+        }
+
+        // Clothing specs
+        $clothing_specs_save = [
+            'fabric' => sanitize_text_field(wp_unslash($_POST['_bi_clothing_fabric'] ?? '')),
+            'fit'    => sanitize_text_field(wp_unslash($_POST['_bi_clothing_fit']    ?? '')),
+            'gender' => sanitize_text_field(wp_unslash($_POST['_bi_clothing_gender'] ?? '')),
+        ];
+        update_post_meta($post_id, '_bi_clothing_specs', wp_json_encode($clothing_specs_save));
+
+        // Paper specs
+        $paper_specs_save = [
+            'stock'       => sanitize_text_field(wp_unslash($_POST['_bi_paper_stock']       ?? '')),
+            'corners'     => sanitize_text_field(wp_unslash($_POST['_bi_paper_corners']     ?? '')),
+            'orientation' => sanitize_text_field(wp_unslash($_POST['_bi_paper_orientation'] ?? '')),
+            'thickness'   => sanitize_text_field(wp_unslash($_POST['_bi_paper_thickness']   ?? '')),
+            'perforated'  => sanitize_text_field(wp_unslash($_POST['_bi_paper_perforated']  ?? '')),
+        ];
+        update_post_meta($post_id, '_bi_paper_specs', wp_json_encode($paper_specs_save));
+
+        // Stationery specs
+        $stationery_specs_save = [
+            'subtype'         => sanitize_text_field(wp_unslash($_POST['_bi_stationery_subtype']          ?? '')),
+            'pen_material'    => sanitize_text_field(wp_unslash($_POST['_bi_stationery_pen_material']     ?? '')),
+            'banner_material' => sanitize_text_field(wp_unslash($_POST['_bi_stationery_banner_material']  ?? '')),
+        ];
+        update_post_meta($post_id, '_bi_stationery_specs', wp_json_encode($stationery_specs_save));
 
         // Artwork notes
         if (isset($_POST['_bi_print_notes'])) {

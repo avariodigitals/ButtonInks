@@ -63,6 +63,25 @@ export interface WPProduct {
     enable_upload?:      boolean;      // Upload Design — customer uploads artwork
     buy_as_is?:          boolean;      // Retail / no customisation
     available_colors?:   string[];     // Deprecated — use WC Color attribute
+    print_style?:        string;       // Decoration method e.g. 'embroidery' | 'dtg' | 'screen_printing'
+    product_type?:       string;       // 'clothing' | 'paper' | 'stationery' | ''
+    clothing_specs?: {
+      fabric?: string;
+      fit?: string;
+      gender?: string;
+    };
+    paper_specs?: {
+      stock?: string;
+      corners?: string;
+      orientation?: string;
+      thickness?: string;
+      perforated?: string;
+    };
+    stationery_specs?: {
+      subtype?: string;
+      pen_material?: string;
+      banner_material?: string;
+    };
     print_notes?:        string;       // Artwork / print guidelines
     bulk_pricing?: {
       min_qty:        number;

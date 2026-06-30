@@ -885,19 +885,19 @@ export default function ProductDetailView({
               </div>
             </div>
 
-            {/* Production Time */}
+            {/* Production Options */}
             <div className="flex flex-col gap-2.5">
-              <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">Production Time</span>
+              <span className="text-slate-900 text-base sm:text-lg font-semibold font-inter leading-7">Production Options</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 {(product.acf?.production_options?.length
                   ? product.acf.production_options.map(opt => ({
                       key:      opt.type,
-                      label:    opt.type === 'urgent' ? 'Urgent Production' : 'Regular Production',
+                      label:    opt.type === 'urgent' ? 'Urgent Production' : 'Standard Production',
                       subtitle: `${opt.delivery_days} Days${opt.type === 'regular' ? ' - Standard turnaround' : ' - Priority Manufacturing'}`,
                     }))
                   : [
-                      { key: 'regular', label: 'Regular Production', subtitle: '2-5 Days - Standard turnaround' },
-                      { key: 'urgent',  label: 'Urgent Production',  subtitle: '2 days - Priority Manufacturing' },
+                      { key: 'regular', label: 'Standard Production', subtitle: '3-5 Days - Standard turnaround' },
+                      { key: 'urgent',  label: 'Urgent Production',   subtitle: '1-2 days - Priority Manufacturing' },
                     ]
                 ).map(opt => (
                   <button key={opt.key} onClick={() => setSelectedProduction(opt.key)}
