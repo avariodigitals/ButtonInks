@@ -71,10 +71,10 @@ export default function CategoriesProductCard({
     >
       {/* Image */}
       <div className="relative aspect-[4/3] p-4 flex items-center justify-center bg-white overflow-hidden">
-        {product.on_sale && (
+        {product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && parseFloat(product.price || '0') > 0 && (
           <span className="absolute top-3 left-3 px-3 py-1 bg-red-600 text-white text-[10px] font-black rounded-full z-10 shadow-lg">SALE</span>
         )}
-        {index === 0 && !product.on_sale && (
+        {index === 0 && !(product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && parseFloat(product.price || '0') > 0) && (
           <span className="absolute top-3 left-3 px-3 py-1 bg-green-700 text-white text-[10px] font-black rounded-full z-10 shadow-lg">BEST SELLER</span>
         )}
         {/* Wishlist */}

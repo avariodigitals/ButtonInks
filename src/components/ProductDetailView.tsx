@@ -278,7 +278,11 @@ function RelatedCard({ product }: { product: WPProduct }) {
   const href  = `/products/${categorySlug}/${product.slug}`;
   const image = product.images?.[0]?.src;
   const rating = parseFloat(product.average_rating || '0');
-  const badge = product.on_sale ? { label: 'Sale', color: 'bg-red-500' }
+  const isActuallyOnSale = product.on_sale === true
+    && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0')
+    && parseFloat(product.price || '0') > 0;
+
+  const badge = isActuallyOnSale ? { label: 'Sale', color: 'bg-red-500' }
     : product.acf?.enable_designer ? { label: 'Custom', color: 'bg-green-700' }
     : null;
 
@@ -412,11 +416,13 @@ export default function ProductDetailView({
       } else if (part.toLowerCase().startsWith('material:')) {
         restoredMaterial = part.split(':')[1]?.trim() ?? '';
       } else if (part.includes(':')) {
-        // Attribute — e.g. "Color: Red, Blue" or "Size: L"
+        // Attribute — e.g. "Color: Red" or "Size: L"
         const colonIdx = part.indexOf(':');
         const attrName = part.slice(0, colonIdx).trim();
+        const isColorAttr = attrName.toLowerCase() === 'color';
         const vals = part.slice(colonIdx + 1).split(',').map(v => v.trim()).filter(Boolean);
-        if (attrName && vals.length) restoredAttrs[attrName] = vals;
+        // Color is single-select — only restore the first value
+        if (attrName && vals.length) restoredAttrs[attrName] = isColorAttr ? [vals[0]] : vals;
       }
     }
 
@@ -709,10 +715,10 @@ export default function ProductDetailView({
 
       {/* ── Main product section ── */}
       <section className="w-full px-4 md:px-20 py-6 md:py-10">
-        <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-6 xl:gap-10 items-start">
+        <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* LEFT — Images (dominant column) */}
-          <div className="w-full lg:flex-1 shrink-0 flex flex-col gap-2.5">
+          {/* LEFT — Images */}
+          <div className="w-full lg:w-1/2 flex flex-col gap-2.5">
             <div className="relative w-full aspect-square bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(15,81,50,0.06)] border border-green-900/5 overflow-hidden">
               {mainImage ? (
                 <Image src={mainImage} alt={decodeHTMLEntities(product.name)} fill
@@ -742,8 +748,8 @@ export default function ProductDetailView({
             )}
           </div>
 
-          {/* RIGHT — Info & Config (compact panel) */}
-          <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col gap-4">
+          {/* RIGHT — Info & Config */}
+          <div className="w-full lg:w-1/2 flex flex-col gap-4">
 
             {/* Title + rating */}
             <div className="flex flex-col gap-1.5">
@@ -773,7 +779,7 @@ export default function ProductDetailView({
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-slate-900 text-sm font-semibold font-inter">
                         {isColor
-                          ? <>Choose Color <span className="text-slate-400 text-xs font-normal">(Select Multiple)</span></>
+                          ? <>Choose Color <span className="text-red-500 text-xs">*</span></>
                           : <>Choose {attr.name} <span className="text-red-500 text-xs">*</span></>}
                       </span>
                       {error && <span className="text-red-500 text-xs font-medium font-inter">{error}</span>}
@@ -785,7 +791,7 @@ export default function ProductDetailView({
                           const hex   = COLOR_MAP[opt.toLowerCase().trim()] ?? null;
                           const light = hex ? isLightColor(hex) : false;
                           return hex ? (
-                            <button key={opt} title={opt} onClick={() => toggleAttr(attr.name, opt, true)}
+                            <button key={opt} title={opt} onClick={() => toggleAttr(attr.name, opt, false)}
                               aria-label={opt} aria-pressed={isSel}
                               className={`relative w-6 h-6 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
                                 isSel ? 'border-transparent ring-[3px] ring-green-500 scale-110' : 'border-gray-200 hover:scale-110'
@@ -795,7 +801,7 @@ export default function ProductDetailView({
                               {light && <span className="absolute inset-0 rounded-full ring-1 ring-gray-200" />}
                             </button>
                           ) : (
-                            <button key={opt} onClick={() => toggleAttr(attr.name, opt, true)}
+                            <button key={opt} onClick={() => toggleAttr(attr.name, opt, false)}
                               className={`px-2.5 py-1 rounded-lg border text-xs font-inter font-medium transition-all ${isSel ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:border-green-700'}`}>
                               {opt}
                             </button>

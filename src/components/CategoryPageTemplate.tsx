@@ -148,10 +148,10 @@ function ProductCard({ product }: { product: WPProduct }) {
       className="bg-white rounded-2xl shadow-[0px_2px_8px_0px_rgba(13,27,46,0.06)] outline outline-[1.31px] outline-offset-[-1.31px] outline-slate-900/5 flex flex-col overflow-hidden group active:scale-[0.98] transition-all hover:shadow-md"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50">
-        {product.on_sale && (
+        {product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && parseFloat(product.price || '0') > 0 && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">Sale</span>
         )}
-        {!product.on_sale && (product.acf?.enable_designer || product.acf?.enable_upload) && (
+        {!(product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && parseFloat(product.price || '0') > 0) && (product.acf?.enable_designer || product.acf?.enable_upload) && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-green-700 text-white text-[10px] font-bold rounded-full">Custom</span>
         )}
         {/* Wishlist button */}

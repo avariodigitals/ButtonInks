@@ -140,10 +140,10 @@ function ProductCard({ product }: { product: WPProduct }) {
     >
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50">
-        {product.on_sale && (
+        {product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && parseFloat(product.price || '0') > 0 && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">Sale</span>
         )}
-        {isNew && !product.on_sale && (
+        {isNew && !(product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && parseFloat(product.price || '0') > 0) && (
           <span className="absolute top-3 left-3 z-10 px-2 py-0.5 bg-green-700 text-white text-[10px] font-bold rounded-full">Custom</span>
         )}
         {image ? (

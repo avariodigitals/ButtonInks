@@ -7,6 +7,7 @@ import { ShoppingCart, Loader2, ArrowLeft, Truck, Zap, ChevronDown, ChevronUp, T
 import { WP_URL } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
+import ColoredGraphic from '@/components/ColoredGraphic';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -94,8 +95,17 @@ function DesignCanvas({
                 {el.content}
               </div>
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={el.content} className="w-full h-full object-contain" alt="element" />
+              el.type === 'graphic' ? (
+                <ColoredGraphic
+                  src={el.content}
+                  color={el.color}
+                  className="w-full h-full object-contain"
+                  alt="graphic"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={el.content} className="w-full h-full object-contain" alt="element" />
+              )
             )}
           </div>
         ))}

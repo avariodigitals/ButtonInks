@@ -8,12 +8,13 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Type, UploadCloud, Sticker, LayoutTemplate, Package, X, Trash2,
   ChevronDown, Plus, ChevronLeft, ChevronRight, Layers, Palette,
-  Settings2, Copy, Loader2, Move, Minus,
+  Settings2, Copy, Loader2,
   RefreshCw, Eye, ArrowLeft, AlignLeft, AlignCenter, AlignRight,
-  ImageIcon, Circle, Search
+  ImageIcon, Circle, Search, Minus
 } from 'lucide-react';
 import { WPProduct, WP_URL } from '@/lib/wordpress';
 import { useNotification } from '@/context/NotificationContext';
+import ColoredGraphic from '@/components/ColoredGraphic';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,18 +83,27 @@ function DesignContent() {
   });
   const [activePropertyTab, setActivePropertyTab] = useState('Type');
   const [elements, setElements] = useState<DesignElement[]>(() => {
-    // Guest draft restore — sessionStorage survives refresh but not tab close
     if (typeof window !== 'undefined') {
       try {
+        // 1. Try draft (written on every change + flushed immediately before Review navigation)
         const raw = sessionStorage.getItem('bi_draft_design');
         if (raw) {
           const draft = JSON.parse(raw) as { elements: DesignElement[] };
           if (Array.isArray(draft.elements) && draft.elements.length > 0) return draft.elements;
         }
-      } catch { /* malformed JSON — fall through to default */ }
+      } catch { /* malformed — fall through */ }
+
+      try {
+        // 2. Fall back to the review snapshot elements (covers "Back" from review page)
+        const raw = localStorage.getItem('bi_review_design');
+        if (raw) {
+          const snap = JSON.parse(raw) as { elements: DesignElement[] };
+          if (Array.isArray(snap.elements) && snap.elements.length > 0) return snap.elements;
+        }
+      } catch { /* malformed — fall through */ }
     }
     return [
-      { id: '1', type: 'text', content: 'Your Design Here', x: 150, y: 300, width: 300, height: 60, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 32, fontWeight: '700', textAlign: 'center', side: 'front' }
+      { id: '1', type: 'text', content: 'Your Design Here', x: 175, y: 270, width: 200, height: 36, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 18, fontWeight: '700', textAlign: 'center', side: 'front' }
     ];
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -119,6 +129,13 @@ function DesignContent() {
       elements,
     };
     localStorage.setItem('bi_review_design', JSON.stringify(snapshot));
+
+    // Always flush the latest draft to sessionStorage immediately before navigating
+    // so it's available when the user comes back from the review page.
+    try {
+      sessionStorage.setItem('bi_draft_design', JSON.stringify({ elements }));
+    } catch { /* storage quota */ }
+
     router.push('/design/review');
   }, [elements, selectedProduct, router]);
 
@@ -224,6 +241,8 @@ function DesignContent() {
   const [iconSearch, setIconSearch] = useState('print');
   const [iconResults, setIconResults] = useState<{ id: string; label: string; svgUrl: string }[]>([]);
   const [iconsLoading, setIconsLoading] = useState(false);
+  // Color to apply when adding a graphic — defaults to black, user can change before clicking an icon
+  const [graphicColor, setGraphicColor] = useState('#171717');
 
   // ── Templates state ──────────────────────────────────────────────────────
   const [templateCategory, setTemplateCategory] = useState('all');
@@ -243,9 +262,15 @@ function DesignContent() {
   const dragOffset = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
 
+  // ── Resize / Rotate handle state ─────────────────────────────────────────
+  type HandleType = 'nw' | 'ne' | 'se' | 'sw' | 'rotate';
+  const activeHandleRef   = useRef<HandleType | null>(null);
+  const handleStartRef    = useRef<{ mx: number; my: number; x: number; y: number; w: number; h: number; rot: number; cx: number; cy: number } | null>(null);
+
   // ── Fetch products & media ──────────────────────────────────────────────────
   useEffect(() => {
-    fetch('/api/products-list')
+    // Fetch up to 100 products so the product panel is fully populated
+    fetch('/api/products-list?per_page=100&status=publish')
       .then(r => r.json())
       .then(d => { if (!d.error) setWpProducts(Array.isArray(d) ? d : []); })
       .catch(() => {});
@@ -315,8 +340,8 @@ function DesignContent() {
   }, [activeTool, templateCategory]);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
-  const updateElement = (id: string, updates: Partial<DesignElement>) =>
-    setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
+  const updateElement = useCallback((id: string, updates: Partial<DesignElement>) =>
+    setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el)), []);
 
   const deleteElement = (id: string) => {
     setElements(prev => prev.filter(el => el.id !== id));
@@ -327,9 +352,9 @@ function DesignContent() {
     const newId = Date.now().toString();
     setElements(prev => [...prev, {
       id: newId, type: 'text', content: 'New Text',
-      x: 150, y: 250, width: 300, height: 60,
+      x: 175, y: 270, width: 200, height: 36,
       rotation: 0, opacity: 1,
-      color: '#171717', fontFamily: 'Outfit', fontSize: 32,
+      color: '#171717', fontFamily: 'Outfit', fontSize: 18,
       fontWeight: '700', textAlign: 'center', side
     }]);
     setSelectedId(newId);
@@ -341,8 +366,10 @@ function DesignContent() {
     const newId = `g-${idCounterRef.current}`;
     setElements(prev => [...prev, {
       id: newId, type: 'graphic', content,
-      x: 200, y: 200, width: 150, height: 150,
-      rotation: 0, opacity: 1, side
+      x: 225, y: 225, width: 100, height: 100,
+      rotation: 0, opacity: 1,
+      color: graphicColor,
+      side
     }]);
     setSelectedId(newId);
     setActiveTool(null);
@@ -448,9 +475,73 @@ function DesignContent() {
       x: (clientX - dragOffset.current.x) / (zoom / 100),
       y: (clientY - dragOffset.current.y) / (zoom / 100),
     });
-  }, [selectedId, zoom]);
+  }, [selectedId, zoom, updateElement]);
 
   const endDrag = useCallback(() => { isDraggingRef.current = false; }, []);
+
+  // ── Handle pointer events (resize + rotate) ──────────────────────────────
+  const startHandle = useCallback((e: React.PointerEvent, id: string, handle: 'nw'|'ne'|'se'|'sw'|'rotate') => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const el = elements.find(el => el.id === id);
+    if (!el) return;
+    activeHandleRef.current = handle;
+    // Centre of element in canvas coords
+    const cx = el.x + el.width  / 2;
+    const cy = el.y + el.height / 2;
+    handleStartRef.current = {
+      mx: e.clientX, my: e.clientY,
+      x: el.x, y: el.y, w: el.width, h: el.height,
+      rot: el.rotation, cx, cy,
+    };
+  }, [elements]);
+
+  const moveHandle = useCallback((e: React.PointerEvent) => {
+    if (!activeHandleRef.current || !handleStartRef.current || !selectedId) return;
+    const s      = handleStartRef.current;
+    const handle = activeHandleRef.current;
+    const scale  = zoom / 100;
+    const dx     = (e.clientX - s.mx) / scale;
+    const dy     = (e.clientY - s.my) / scale;
+
+    if (handle === 'rotate') {
+      // Angle from element centre to current pointer
+      const angle = Math.atan2(
+        e.clientY / scale - (s.cy),
+        e.clientX / scale - (s.cx)
+      ) * (180 / Math.PI) + 90;
+      updateElement(selectedId, { rotation: Math.round(angle) });
+      return;
+    }
+
+    const MIN = 20;
+    let newX = s.x, newY = s.y, newW = s.w, newH = s.h;
+
+    if (handle === 'se') {
+      newW = Math.max(MIN, s.w + dx);
+      newH = Math.max(MIN, s.h + dy);
+    } else if (handle === 'sw') {
+      newW = Math.max(MIN, s.w - dx);
+      newH = Math.max(MIN, s.h + dy);
+      newX = s.x + (s.w - newW);
+    } else if (handle === 'ne') {
+      newW = Math.max(MIN, s.w + dx);
+      newH = Math.max(MIN, s.h - dy);
+      newY = s.y + (s.h - newH);
+    } else if (handle === 'nw') {
+      newW = Math.max(MIN, s.w - dx);
+      newH = Math.max(MIN, s.h - dy);
+      newX = s.x + (s.w - newW);
+      newY = s.y + (s.h - newH);
+    }
+
+    updateElement(selectedId, { x: newX, y: newY, width: newW, height: newH });
+  }, [selectedId, zoom, updateElement]);
+  const endHandle = useCallback(() => {
+    activeHandleRef.current  = null;
+    handleStartRef.current   = null;
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -615,7 +706,6 @@ function DesignContent() {
             {/* ── Product Panel ── */}
             {activeTool === 'product' && (() => {
               const filtered = wpProducts
-                .filter(p => p.acf?.enable_designer !== false)
                 .filter(p => productSearch === '' || p.name.toLowerCase().includes(productSearch.toLowerCase()));
               const totalPages = Math.ceil(filtered.length / PRODUCTS_PER_PAGE);
               const paginated = filtered.slice(productPage * PRODUCTS_PER_PAGE, (productPage + 1) * PRODUCTS_PER_PAGE);
@@ -1007,6 +1097,35 @@ function DesignContent() {
                   ))}
                 </div>
 
+                {/* Graphic color picker */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Icon Color</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {['#171717','#ffffff','#dc2626','#2563eb','#16a34a','#f59e0b','#7c3aed','#ec4899','#6b7280','#0f172a','#ea580c','#0891b2'].map(c => (
+                      <button
+                        key={c}
+                        onClick={() => setGraphicColor(c)}
+                        className={`w-7 h-7 rounded-full transition-all shadow-sm ${graphicColor === c ? 'ring-2 ring-offset-2 ring-green-600 scale-110' : 'hover:scale-105'}`}
+                        style={{ backgroundColor: c, border: c === '#ffffff' ? '2px solid #e5e7eb' : 'none' }}
+                        aria-label={c}
+                      />
+                    ))}
+                    <label
+                      className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-green-500 transition-colors relative overflow-hidden bg-gradient-to-br from-pink-400 via-yellow-300 to-blue-500 shadow-sm"
+                      title="Custom color"
+                    >
+                      <input
+                        type="color"
+                        value={graphicColor}
+                        onChange={e => setGraphicColor(e.target.value)}
+                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                      />
+                    </label>
+                    <span className="text-xs text-zinc-400 font-mono">{graphicColor}</span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400">Click an icon below to add it in this color</p>
+                </div>
+
                 {/* Results grid */}
                 {iconsLoading && (
                   <div className="flex justify-center py-8">
@@ -1247,14 +1366,63 @@ function DesignContent() {
                       </div>
                     )
                   ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={el.content} className="w-full h-full object-contain pointer-events-none" alt="element" />
+                    // Image or graphic element
+                    el.type === 'graphic' ? (
+                      <ColoredGraphic
+                        src={el.content}
+                        color={el.color}
+                        className="w-full h-full object-contain pointer-events-none"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={el.content} className="w-full h-full object-contain pointer-events-none" alt="element" />
+                    )
                   )}
 
                   {selectedId === el.id && inlineEditId !== el.id && (
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg pointer-events-none">
-                      <Move className="w-4 h-4 text-white" />
-                    </div>
+                    <>
+                      {/* ── Rotate handle — top centre ── */}
+                      <div
+                        className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 z-30 cursor-grab active:cursor-grabbing"
+                        onPointerDown={(e) => startHandle(e, el.id, 'rotate')}
+                        onPointerMove={moveHandle}
+                        onPointerUp={endHandle}
+                      >
+                        <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                          <RefreshCw className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <div className="w-px h-2 bg-blue-300" />
+                      </div>
+
+                      {/* ── Corner resize handles ── */}
+                      {(['nw','ne','se','sw'] as const).map(corner => {
+                        const posStyle: React.CSSProperties = {
+                          position: 'absolute',
+                          width: 14, height: 14,
+                          background: 'white',
+                          border: '2px solid #22c55e',
+                          borderRadius: 3,
+                          zIndex: 30,
+                          cursor:
+                            corner === 'nw' ? 'nw-resize' :
+                            corner === 'ne' ? 'ne-resize' :
+                            corner === 'se' ? 'se-resize' : 'sw-resize',
+                          ...(corner === 'nw' ? { top: -7,  left: -7  } : {}),
+                          ...(corner === 'ne' ? { top: -7,  right: -7 } : {}),
+                          ...(corner === 'se' ? { bottom: -7, right: -7 } : {}),
+                          ...(corner === 'sw' ? { bottom: -7, left: -7  } : {}),
+                        };
+                        return (
+                          <div
+                            key={corner}
+                            style={posStyle}
+                            onPointerDown={(e) => startHandle(e, el.id, corner)}
+                            onPointerMove={moveHandle}
+                            onPointerUp={endHandle}
+                          />
+                        );
+                      })}
+                    </>
                   )}
                 </div>
               ))}
@@ -1509,16 +1677,30 @@ function DesignContent() {
             {activePropertyTab === 'Colors' && (
               <div className="flex flex-col gap-5">
                 <h4 className="text-green-700 text-[10px] font-black uppercase tracking-widest">Color Palette</h4>
-                {selectedElement?.type === 'text' ? (
-                  <div className="grid grid-cols-5 gap-3">
-                    {colorPalette.map(color => (
-                      <button key={color} onClick={() => updateElement(selectedId!, { color })}
-                        className={`w-11 h-11 rounded-xl border border-black/5 transition-all hover:scale-110 shadow-sm ${selectedElement?.color === color ? 'ring-2 ring-green-700 ring-offset-2' : ''}`}
-                        style={{ backgroundColor: color }} />
-                    ))}
-                  </div>
+                {(selectedElement?.type === 'text' || selectedElement?.type === 'graphic') ? (
+                  <>
+                    <div className="grid grid-cols-5 gap-3">
+                      {colorPalette.map(color => (
+                        <button key={color} onClick={() => updateElement(selectedId!, { color })}
+                          className={`w-11 h-11 rounded-xl border border-black/5 transition-all hover:scale-110 shadow-sm ${selectedElement?.color === color ? 'ring-2 ring-green-700 ring-offset-2' : ''}`}
+                          style={{ backgroundColor: color }} />
+                      ))}
+                    </div>
+                    {/* Custom colour picker */}
+                    <div className="flex items-center gap-3">
+                      <label className="w-11 h-11 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-green-500 transition-colors relative overflow-hidden bg-gradient-to-br from-pink-400 via-yellow-300 to-blue-500 shadow-sm" title="Custom color">
+                        <input
+                          type="color"
+                          value={selectedElement?.color ?? '#171717'}
+                          onChange={e => updateElement(selectedId!, { color: e.target.value })}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                        />
+                      </label>
+                      <span className="text-xs text-zinc-500 font-mono">{selectedElement?.color ?? '#171717'}</span>
+                    </div>
+                  </>
                 ) : (
-                  <p className="text-sm text-zinc-400 text-center pt-4">Select a text element to change its color.</p>
+                  <p className="text-sm text-zinc-400 text-center pt-4">Select a text or graphic element to change its color.</p>
                 )}
               </div>
             )}

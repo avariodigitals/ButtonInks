@@ -92,8 +92,9 @@ export default function Navbar() {
           </button>
 
           {/* Cart with badge */}
-          <Link href="/cart" className="relative p-2 rounded-md cursor-pointer hover:bg-gray-50 group">
+          <Link href="/cart" className="relative flex flex-col items-center gap-0.5 px-2 py-1 rounded-md cursor-pointer hover:bg-gray-50 group">
             <ShoppingCart className="w-5 h-5 text-gray-700 group-hover:text-green-700 transition-colors" />
+            <span className="text-[10px] font-medium text-gray-500 group-hover:text-green-700 transition-colors font-inter leading-none">Cart</span>
             {itemCount > 0 && (
               <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-700 rounded-full flex items-center justify-center">
                 <span className="text-white text-[10px] font-bold leading-4 font-['Inter']">
@@ -104,13 +105,15 @@ export default function Navbar() {
           </Link>
 
           {/* Wishlist (Desktop) */}
-          <Link href="/wishlist" className="hidden md:flex w-10 h-10 items-center justify-center hover:text-green-700 text-neutral-700 transition-colors">
-            <Heart className="w-5 h-5" />
+          <Link href="/wishlist" className="hidden md:flex flex-col items-center gap-0.5 px-2 py-1 rounded-md hover:bg-gray-50 group transition-colors">
+            <Heart className="w-5 h-5 text-neutral-700 group-hover:text-green-700 transition-colors" />
+            <span className="text-[10px] font-medium text-gray-500 group-hover:text-green-700 transition-colors font-inter leading-none">Wishlist</span>
           </Link>
 
           {/* Account (Desktop) */}
-          <Link href="/account" className="hidden md:flex w-10 h-10 items-center justify-center hover:text-green-700 text-neutral-700 transition-colors">
-            <User className="w-5 h-5" />
+          <Link href="/account" className="hidden md:flex flex-col items-center gap-0.5 px-2 py-1 rounded-md hover:bg-gray-50 group transition-colors">
+            <User className="w-5 h-5 text-neutral-700 group-hover:text-green-700 transition-colors" />
+            <span className="text-[10px] font-medium text-gray-500 group-hover:text-green-700 transition-colors font-inter leading-none">Account</span>
           </Link>
 
           {/* Hamburger Menu (Mobile) */}

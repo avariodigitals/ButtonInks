@@ -191,7 +191,7 @@ export default function WishlistPage() {
                       <Package className="w-12 h-12 text-gray-200" />
                     </div>
                   )}
-                  {product.on_sale && (
+                  {product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && parseFloat(product.price || '0') > 0 && (
                     <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider">
                       Sale
                     </span>
@@ -214,7 +214,7 @@ export default function WishlistPage() {
                     <span className="text-base font-black text-green-700">
                       ${parseFloat(product.price || '0').toFixed(2)}
                     </span>
-                    {product.on_sale && product.regular_price && (
+                    {product.on_sale && parseFloat(product.regular_price || '0') > parseFloat(product.price || '0') && product.regular_price && (
                       <span className="text-xs text-zinc-400 line-through">
                         ${parseFloat(product.regular_price).toFixed(2)}
                       </span>

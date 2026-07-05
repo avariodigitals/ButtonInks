@@ -4,7 +4,7 @@ import CategoryNav from "@/components/CategoryNav";
 
 export default function Header() {
   return (
-    <header className="w-full sticky top-0 z-50 bg-white shadow-sm">
+    <header className="w-full sticky top-0 z-50 bg-white shadow-sm overflow-visible">
       <AnnouncementBar />
       <Navbar />
       <CategoryNav />
