@@ -3,23 +3,137 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight } from "lucide-react";
+import { Search, Phone, ShoppingCart, Heart, User, Menu, X, ChevronRight, ChevronDown } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { WP_URL } from "@/lib/wordpress";
 import SearchModal from "@/components/SearchModal";
 
-const categories = [
-  { label: "All Categories", href: "/categories" },
-  { label: "Embroidery", href: "/categories?category=embroidery-uniforms" },
-  { label: "Custom T-Shirts", href: "/categories?category=custom-t-shirts" },
-  { label: "Drinkware", href: "/categories?category=drinkware-mugs" },
-  { label: "Bags", href: "/categories?category=bags-carrying" },
-  { label: "Photo Prints", href: "/categories?category=photo-prints-art" },
-  { label: "Apparel", href: "/categories?category=apparel-outerwear" },
-  { label: "Marketing Prints", href: "/categories?category=marketing-prints" },
-  { label: "Corporate Gifts", href: "/categories?category=corporate-gifts" },
-  { label: "Stickers & Labels", href: "/categories?category=stickers-labels" },
+// ── Shared category data (mirrors CategoryNav.tsx) ───────────────────────────
+interface SubCategory { label: string; href: string; }
+interface MobileCategory { label: string; href: string; subcategories?: SubCategory[]; }
+
+const mobileCategories: MobileCategory[] = [
+  { label: "All", href: "/categories" },
+  {
+    label: "Embroidery",
+    href: "/categories?category=embroidery",
+    subcategories: [
+      { label: "Polo Shirts",      href: "/categories?category=polo" },
+      { label: "Caps",             href: "/categories?category=cap" },
+      { label: "Hoodies",          href: "/categories?category=hoodie" },
+      { label: "Long Sleeve Polo", href: "/categories?category=long-sleeve-polo" },
+    ],
+  },
+  { label: "DTF Prints", href: "/categories?category=dtf-direct-to-filmprints" },
+  {
+    label: "Apparel",
+    href: "/categories?category=apparel",
+    subcategories: [
+      { label: "T-Shirts",        href: "/categories?category=tshirts" },
+      { label: "Custom Hoodies",  href: "/categories?category=custom-hoodies" },
+      { label: "Bags",            href: "/categories?category=bags" },
+    ],
+  },
+  {
+    label: "Drinkware",
+    href: "/categories?category=best-custom-drinkware",
+    subcategories: [
+      { label: "Custom Coffee Mugs", href: "/categories?category=custom-coffee-mugs" },
+      { label: "Personalized Mugs",  href: "/categories?category=personalized-mugs" },
+    ],
+  },
+  {
+    label: "Gifts & Decor",
+    href: "/categories?category=gifts-decor",
+    subcategories: [
+      { label: "Birthday Gifts",  href: "/categories?category=birthday-gifts" },
+      { label: "Corporate Gifts", href: "/categories?category=corporate-gifts" },
+      { label: "Wedding Gifts",   href: "/categories?category=wedding-gifts" },
+    ],
+  },
+  {
+    label: "Banners",
+    href: "/categories?category=banners",
+    subcategories: [
+      { label: "Promotional Banners", href: "/categories?category=promotional-banners" },
+      { label: "Rollup Banners",      href: "/categories?category=rollupbanners" },
+      { label: "Table Banners",       href: "/categories?category=table-banners" },
+      { label: "Other Banners",       href: "/categories?category=other-banners" },
+    ],
+  },
+  { label: "Office Supplies",        href: "/categories?category=office-supplies" },
+  { label: "Event Merchandize",      href: "/categories?category=event-merchandize" },
+  {
+    label: "Retail",
+    href: "/categories?category=retail",
+    subcategories: [
+      { label: "Hoodies", href: "/categories?category=ready_made_hoodies" },
+    ],
+  },
+  { label: "Personalization Center", href: "/categories?category=personalization-center" },
 ];
+
+// ── Mobile category row (expandable if has subcategories) ────────────────────
+function MobileCatRow({ cat, onClose }: { cat: MobileCategory; onClose: () => void }) {
+  const [open, setOpen] = useState(false);
+  const hasSubs = !!cat.subcategories?.length;
+
+  if (!hasSubs) {
+    return (
+      <Link
+        href={cat.href}
+        onClick={onClose}
+        className="px-6 py-4 flex justify-between items-center hover:bg-green-50 group border-b border-gray-50"
+      >
+        <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700 transition-colors font-inter">
+          {cat.label}
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="border-b border-gray-50">
+      {/* Parent row — tap to expand, not navigate */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full px-6 py-4 flex justify-between items-center hover:bg-green-50 group"
+      >
+        <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700 transition-colors font-inter">
+          {cat.label}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-gray-400 group-hover:text-green-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {/* Subcategory list */}
+      {open && (
+        <div className="bg-gray-50 border-t border-gray-100">
+          {/* "View all" shortcut */}
+          <Link
+            href={cat.href}
+            onClick={onClose}
+            className="px-8 py-3 flex items-center justify-between text-xs font-semibold text-green-700 hover:bg-green-50 transition-colors border-b border-gray-100"
+          >
+            View all {cat.label} <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+          {cat.subcategories!.map(sub => (
+            <Link
+              key={sub.label}
+              href={sub.href}
+              onClick={onClose}
+              className="px-8 py-3 flex justify-between items-center text-sm text-gray-600 hover:bg-green-50 hover:text-green-700 transition-colors border-b border-gray-50 last:border-0"
+            >
+              {sub.label}
+              <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen]     = useState(false);
@@ -94,7 +208,8 @@ export default function Navbar() {
           {/* Cart with badge */}
           <Link href="/cart" className="relative flex flex-col items-center gap-0.5 px-2 py-1 rounded-md cursor-pointer hover:bg-gray-50 group">
             <ShoppingCart className="w-5 h-5 text-gray-700 group-hover:text-green-700 transition-colors" />
-            <span className="text-[10px] font-medium text-gray-500 group-hover:text-green-700 transition-colors font-inter leading-none">Cart</span>
+            {/* Label hidden on mobile, shown on desktop */}
+            <span className="hidden md:block text-[10px] font-medium text-gray-500 group-hover:text-green-700 transition-colors font-inter leading-none">Cart</span>
             {itemCount > 0 && (
               <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-700 rounded-full flex items-center justify-center">
                 <span className="text-white text-[10px] font-bold leading-4 font-['Inter']">
@@ -187,7 +302,7 @@ export default function Navbar() {
             {/* Categories List */}
             <div className="flex flex-col py-4">
               <span className="px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 font-['Inter']">Shop Categories</span>
-              {/* Ready-Made Designs — plain row, same style as category links */}
+              {/* Ready-Made Designs — plain row */}
               <Link
                 href="/designs"
                 onClick={() => setIsMenuOpen(false)}
@@ -198,18 +313,8 @@ export default function Navbar() {
                 </span>
                 <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-green-500" />
               </Link>
-              {categories.map((cat) => (
-                <Link
-                  key={cat.label}
-                  href={cat.href}
-                  onClick={() => setIsMenuOpen(false)}
-                  className="px-6 py-4 flex justify-between items-center hover:bg-green-50 group border-b border-gray-50 last:border-0"
-                >
-                  <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700 transition-colors font-['Inter']">
-                    {cat.label}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-green-500" />
-                </Link>
+              {mobileCategories.map((cat) => (
+                <MobileCatRow key={cat.label} cat={cat} onClose={() => setIsMenuOpen(false)} />
               ))}
             </div>
           </div>

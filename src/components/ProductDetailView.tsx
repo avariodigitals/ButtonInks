@@ -11,6 +11,7 @@ import {
 import { WPProduct, WPProductReview, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
+import { colorNameToHex } from '@/lib/colorLookup';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 function isLightColor(hex: string): boolean {
@@ -253,24 +254,23 @@ function ReviewFormModal({
   );
 }
 
-// ── Color map ─────────────────────────────────────────────────────────────────
-const COLOR_MAP: Record<string, string> = {
+// ── Color map — replaced by colorNameToHex() from color-name-list ────────────
+// Kept as a thin fallback for common names that need specific brand-accurate hex values.
+const COLOR_MAP_OVERRIDES: Record<string, string> = {
   'black': '#111827', 'white': '#F9FAFB', 'grey': '#9CA3AF', 'gray': '#9CA3AF',
-  'charcoal': '#374151', 'dark heather': '#4B5563', 'heather grey': '#D1D5DB',
-  'sport grey': '#E5E7EB', 'ash': '#9CA3AF', 'silver': '#C0C0C0', 'natural': '#FAF5EB',
-  'navy': '#1E3A5F', 'royal blue': '#1D4ED8', 'sapphire': '#0F52BA',
-  'light blue': '#BFDBFE', 'sky blue': '#38BDF8', 'columbia blue': '#9EC8E8',
-  'carolina blue': '#56A0D3', 'powder blue': '#B0E0E6', 'tour blue': '#0369A1',
-  'forest green': '#166534', 'irish green': '#15803D', 'kelly green': '#22C55E',
-  'military green': '#4B5320', 'olive': '#6B7280', 'lime': '#84CC16',
-  'red': '#DC2626', 'cardinal': '#9F1239', 'maroon': '#7F1D1D', 'burgundy': '#800020',
-  'cranberry': '#9B1B30', 'cherry red': '#DC143C', 'hot pink': '#EC4899',
-  'light pink': '#FBD5E4', 'pink': '#F9A8D4', 'coral': '#F87171',
-  'orange': '#EA580C', 'gold': '#D97706', 'yellow': '#FBBF24', 'sand': '#D6C9A0',
-  'daisy': '#FDE047', 'purple': '#7C3AED', 'violet': '#8B5CF6', 'plum': '#9D174D',
-  'lavender': '#C4B5FD', 'brown': '#92400E', 'chocolate': '#3B1F0A', 'tan': '#D2B48C',
-  'mint': '#6EE7B7', 'teal': '#0D9488', 'cyan': '#06B6D4',
+  'charcoal': '#374151', 'navy': '#1E3A5F', 'red': '#DC2626', 'orange': '#EA580C',
+  'gold': '#D97706', 'yellow': '#FBBF24', 'purple': '#7C3AED', 'violet': '#8B5CF6',
+  'pink': '#F9A8D4', 'coral': '#F87171', 'lime': '#84CC16', 'teal': '#0D9488',
+  'cyan': '#06B6D4', 'brown': '#92400E', 'tan': '#D2B48C', 'mint': '#6EE7B7',
 };
+
+function resolveColorName(name: string): string | null {
+  const key = name.toLowerCase().trim();
+  // 1. Check our brand overrides first
+  if (COLOR_MAP_OVERRIDES[key]) return COLOR_MAP_OVERRIDES[key];
+  // 2. Fall back to the 35,000-name database
+  return colorNameToHex(name);
+}
 
 // ── Related product card (live WP data) ───────────────────────────────────────
 function RelatedCard({ product }: { product: WPProduct }) {
@@ -718,8 +718,24 @@ export default function ProductDetailView({
         <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
           {/* LEFT — Images */}
-          <div className="w-full lg:w-1/2 flex flex-col gap-2.5">
-            <div className="relative w-full aspect-square bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(15,81,50,0.06)] border border-green-900/5 overflow-hidden">
+          <div className="w-full lg:w-1/2 flex flex-row gap-2.5">
+
+            {/* Vertical thumbnail strip — shown when there are multiple images */}
+            {uniqueImages.length > 1 && (
+              <div className="flex flex-col gap-2 overflow-y-auto no-scrollbar shrink-0" style={{ maxHeight: '520px' }}>
+                {uniqueImages.map((img, idx) => (
+                  <button key={`${img.id}-${idx}`} onClick={() => setMainImage(img.src)}
+                    className={`relative w-16 h-16 shrink-0 rounded-[10px] overflow-hidden border-2 transition-all ${
+                      mainImage === img.src ? 'border-green-700' : 'border-gray-100 hover:border-gray-300'
+                    }`}>
+                    <Image src={img.src} alt={img.alt || product.name} fill className="object-cover" sizes="64px" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Main image */}
+            <div className="relative flex-1 aspect-square bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(15,81,50,0.06)] border border-green-900/5 overflow-hidden">
               {mainImage ? (
                 <Image src={mainImage} alt={decodeHTMLEntities(product.name)} fill
                   className="object-contain p-6" sizes="(max-width:1024px) 100vw,640px" priority />
@@ -734,18 +750,6 @@ export default function ProductDetailView({
                 <Maximize2 className="w-4 h-4 text-neutral-700" />
               </button>
             </div>
-            {uniqueImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                {uniqueImages.map((img, idx) => (
-                  <button key={`${img.id}-${idx}`} onClick={() => setMainImage(img.src)}
-                    className={`relative w-16 h-16 shrink-0 rounded-[10px] overflow-hidden border-2 transition-all ${
-                      mainImage === img.src ? 'border-green-700' : 'border-gray-100 hover:border-gray-300'
-                    }`}>
-                    <Image src={img.src} alt={img.alt || product.name} fill className="object-cover" sizes="64px" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* RIGHT — Info & Config */}
@@ -785,13 +789,22 @@ export default function ProductDetailView({
                       {error && <span className="text-red-500 text-xs font-medium font-inter">{error}</span>}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {attr.options.map(opt => {
+                      {attr.options.map((opt, colorIdx) => {
                         const isSel = selected.includes(opt);
+
+                        // When a color is clicked, also swap the main image to the
+                        // product image at the same index (if one exists).
+                        const handleColorClick = () => {
+                          toggleAttr(attr.name, opt, false);
+                          const matchedImg = uniqueImages[colorIdx];
+                          if (matchedImg) setMainImage(matchedImg.src);
+                        };
+
                         if (isColor) {
-                          const hex   = COLOR_MAP[opt.toLowerCase().trim()] ?? null;
+                          const hex   = resolveColorName(opt);
                           const light = hex ? isLightColor(hex) : false;
                           return hex ? (
-                            <button key={opt} title={opt} onClick={() => toggleAttr(attr.name, opt, false)}
+                            <button key={opt} title={opt} onClick={handleColorClick}
                               aria-label={opt} aria-pressed={isSel}
                               className={`relative w-6 h-6 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
                                 isSel ? 'border-transparent ring-[3px] ring-green-500 scale-110' : 'border-gray-200 hover:scale-110'
@@ -801,7 +814,7 @@ export default function ProductDetailView({
                               {light && <span className="absolute inset-0 rounded-full ring-1 ring-gray-200" />}
                             </button>
                           ) : (
-                            <button key={opt} onClick={() => toggleAttr(attr.name, opt, false)}
+                            <button key={opt} onClick={handleColorClick}
                               className={`px-2.5 py-1 rounded-lg border text-xs font-inter font-medium transition-all ${isSel ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:border-green-700'}`}>
                               {opt}
                             </button>
