@@ -73,39 +73,52 @@ function DesignContent() {
 
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [side, setSide] = useState<'front' | 'back'>('front');
-  // On mobile, start zoomed to fit the 600px canvas within the screen
-  const [zoom, setZoom] = useState(() => {
-    if (typeof window === 'undefined') return 100;
-    const vw = window.innerWidth;
-    if (vw >= 1024) return 100;
-    const fit = Math.floor(((vw - 64) / 600) * 100);
-    return Math.min(100, Math.max(30, fit));
-  });
+
+  // Always start at 100 on the server — adjust to fit mobile after hydration
+  const [zoom, setZoom] = useState(100);
+
   const [activePropertyTab, setActivePropertyTab] = useState('Type');
-  const [elements, setElements] = useState<DesignElement[]>(() => {
-    if (typeof window !== 'undefined') {
+
+  // Always start with the default element on the server — restore from storage after hydration
+  const defaultElements: DesignElement[] = [
+    { id: '1', type: 'text', content: 'Your Design Here', x: 175, y: 270, width: 200, height: 36, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 18, fontWeight: '700', textAlign: 'center', side: 'front' }
+  ];
+  const [elements, setElements] = useState<DesignElement[]>(defaultElements);
+
+  // After hydration: restore zoom for mobile + restore saved draft/design
+  useEffect(() => {
+    // Defer state updates to avoid synchronous-setState-in-effect warning
+    requestAnimationFrame(() => {
+      // Zoom
+      const vw = window.innerWidth;
+      if (vw < 1024) {
+        const fit = Math.floor(((vw - 64) / 600) * 100);
+        setZoom(Math.min(100, Math.max(30, fit)));
+      }
+
+      // Restore elements from storage
       try {
-        // 1. Try draft (written on every change + flushed immediately before Review navigation)
         const raw = sessionStorage.getItem('bi_draft_design');
         if (raw) {
           const draft = JSON.parse(raw) as { elements: DesignElement[] };
-          if (Array.isArray(draft.elements) && draft.elements.length > 0) return draft.elements;
+          if (Array.isArray(draft.elements) && draft.elements.length > 0) {
+            setElements(draft.elements);
+            return;
+          }
         }
-      } catch { /* malformed — fall through */ }
+      } catch { /* malformed */ }
 
       try {
-        // 2. Fall back to the review snapshot elements (covers "Back" from review page)
         const raw = localStorage.getItem('bi_review_design');
         if (raw) {
           const snap = JSON.parse(raw) as { elements: DesignElement[] };
-          if (Array.isArray(snap.elements) && snap.elements.length > 0) return snap.elements;
+          if (Array.isArray(snap.elements) && snap.elements.length > 0) {
+            setElements(snap.elements);
+          }
         }
-      } catch { /* malformed — fall through */ }
-    }
-    return [
-      { id: '1', type: 'text', content: 'Your Design Here', x: 175, y: 270, width: 200, height: 36, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 18, fontWeight: '700', textAlign: 'center', side: 'front' }
-    ];
-  });
+      } catch { /* malformed */ }
+    });
+  }, []); // run once after mount
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [propsPanelOpen, setPropsPanelOpen] = useState(false); // mobile only — user-triggered
 
