@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -6,14 +6,14 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import {
   ChevronRight, Star, Minus, Plus, Upload, Maximize2,
-  FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, LayoutGrid, Send,
+  FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, LayoutGrid, Send, Loader2,
 } from 'lucide-react';
 import { WPProduct, WPProductReview, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
 import ColorSwatch from '@/components/ColorSwatch';
 
-// ── Utility ───────────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Utility Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 /**
  * Expand common size abbreviations that customers may not recognise.
@@ -59,7 +59,7 @@ function RatingBar({ stars, count, total }: { stars: number; count: number; tota
   );
 }
 
-// ── Write-a-Review modal ─────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Write-a-Review modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function ReviewFormModal({
   productId,
   productName,
@@ -224,7 +224,7 @@ function ReviewFormModal({
                 rows={4}
                 value={body}
                 onChange={e => setBody(e.target.value)}
-                placeholder="Share your experience with this product…"
+                placeholder="Share your experience with this productÃ¢â‚¬Â¦"
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-inter text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-green-600 transition-colors resize-none"
               />
             </div>
@@ -248,7 +248,7 @@ function ReviewFormModal({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  Submitting…
+                  SubmittingÃ¢â‚¬Â¦
                 </span>
               ) : (
                 <>
@@ -266,7 +266,7 @@ function ReviewFormModal({
 
 
 
-// ── Related product card (live WP data) ───────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Related product card (live WP data) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function RelatedCard({ product }: { product: WPProduct }) {
   const categorySlug = product.categories?.[0]?.slug ?? 'all';
   const href  = `/products/${categorySlug}/${product.slug}`;
@@ -342,7 +342,7 @@ function RelatedCard({ product }: { product: WPProduct }) {
               </span>
             </div>
             {product.acf?.bulk_pricing?.[0] && (
-              <span className="text-gray-400 text-xs font-inter leading-4"> · min {product.acf.bulk_pricing[0].min_qty}</span>
+              <span className="text-gray-400 text-xs font-inter leading-4"> Ã‚Â· min {product.acf.bulk_pricing[0].min_qty}</span>
             )}
           </div>
           <span className="px-3 py-1.5 bg-green-700 rounded-lg text-white text-xs font-bold font-inter leading-4 group-hover:bg-green-800 transition-colors">
@@ -354,7 +354,7 @@ function RelatedCard({ product }: { product: WPProduct }) {
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Main Component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 export default function ProductDetailView({
   product,
   categorySlug,
@@ -370,6 +370,9 @@ export default function ProductDetailView({
   );
 
   const [mainImage,          setMainImage]          = useState(uniqueImages[0]?.src || '');
+  // Track which image src is being loaded Ã¢â‚¬â€ null when not transitioning or when only 1 image
+  const [pendingImageSrc,    setPendingImageSrc]    = useState<string | null>(null);
+  const hasMultipleImages = uniqueImages.length > 1;
   const [lightboxOpen,       setLightboxOpen]       = useState(false);
   const [quantity,           setQuantity]           = useState(1);
   const [activeTab,          setActiveTab]          = useState('Description');
@@ -380,7 +383,7 @@ export default function ProductDetailView({
   const [selectedPrintArea, setSelectedPrintArea] = useState<string>('Front');
   const [selectedMaterial,  setSelectedMaterial]  = useState<string>('');
 
-  // ── Restore selections from "Edit selection" URL params ───────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Restore selections from "Edit selection" URL params Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const searchParams = useSearchParams();
   useEffect(() => {
     const sel = searchParams.get('sel');
@@ -393,8 +396,8 @@ export default function ProductDetailView({
 
     if (!sel) return;
 
-    // Parse "Color: Red, Blue · Size: L · Print Area: Front · Urgent Production"
-    const parts = sel.split('·').map(s => s.trim());
+    // Parse "Color: Red, Blue Ã‚Â· Size: L Ã‚Â· Print Area: Front Ã‚Â· Urgent Production"
+    const parts = sel.split('Ã‚Â·').map(s => s.trim());
     const restoredAttrs: Record<string, string[]> = {};
     let restoredPrintArea = '';
     let restoredProduction = '';
@@ -410,12 +413,12 @@ export default function ProductDetailView({
       } else if (part.toLowerCase().startsWith('material:')) {
         restoredMaterial = part.split(':')[1]?.trim() ?? '';
       } else if (part.includes(':')) {
-        // Attribute — e.g. "Color: Red" or "Size: L"
+        // Attribute Ã¢â‚¬â€ e.g. "Color: Red" or "Size: L"
         const colonIdx = part.indexOf(':');
         const attrName = part.slice(0, colonIdx).trim();
         const isColorAttr = attrName.toLowerCase() === 'color';
         const vals = part.slice(colonIdx + 1).split(',').map(v => v.trim()).filter(Boolean);
-        // Color is single-select — only restore the first value
+        // Color is single-select Ã¢â‚¬â€ only restore the first value
         if (attrName && vals.length) restoredAttrs[attrName] = isColorAttr ? [vals[0]] : vals;
       }
     }
@@ -427,7 +430,7 @@ export default function ProductDetailView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount only
 
-  // ── Live data from WP ────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Live data from WP Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [reviews,        setReviews]        = useState<WPProductReview[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<WPProduct[]>([]);
   const [reviewsLoading,  setReviewsLoading]  = useState(true);
@@ -454,7 +457,7 @@ export default function ProductDetailView({
       .finally(() => setRelatedLoading(false));
   }, [product.related_ids]);
 
-  // ── Materials ─────────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Materials Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const materialAttr = product.attributes.find(a =>
     a.name.toLowerCase().includes('material') || a.name.toLowerCase().includes('fabric')
   );
@@ -465,7 +468,7 @@ export default function ProductDetailView({
 
   const printAreas = ['Front', 'Back', 'Front and Back'];
 
-  // ── Price ─────────────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Price Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const getBasePrice = () => {
     let price = parseFloat(product.price || '0');
     if (product.acf?.bulk_pricing) {
@@ -489,14 +492,14 @@ export default function ProductDetailView({
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
-  // ── Flags ─────────────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Flags Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const enableDesigner = product.acf?.enable_designer === true;
   const enableUpload   = product.acf?.enable_upload   === true;
   const buyAsIs        = product.acf?.buy_as_is       === true;
   const showUploadBtn  = enableUpload || (!enableDesigner && !buyAsIs);
   const showDesignBtn  = enableDesigner;
 
-  // ── Attribute toggles ─────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Attribute toggles Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const toggleAttr = (name: string, val: string, multi: boolean) => {
     setValidationErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
     setSelectedAttributes(prev => {
@@ -508,7 +511,7 @@ export default function ProductDetailView({
     });
   };
 
-  // ── Validation state ──────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Validation state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Required attributes: everything that isn't material/fabric
@@ -516,7 +519,7 @@ export default function ProductDetailView({
     a => !a.name.toLowerCase().includes('material') && !a.name.toLowerCase().includes('fabric')
   );
 
-  // ── Add to cart ───────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Add to cart Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handleAddToCart = () => {
     // Validate required attributes
     const errors: Record<string, string> = {};
@@ -553,7 +556,7 @@ export default function ProductDetailView({
       `Print Area: ${selectedPrintArea}`,
       selectedMaterial ? `Material: ${selectedMaterial}` : null,
       selectedProduction === 'urgent' ? 'Urgent Production' : 'Standard Production',
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join(' Ã‚Â· ');
 
     addToCart({
       id:       product.id,
@@ -576,7 +579,7 @@ export default function ProductDetailView({
     showNotification({ title: 'Review Submitted', message: 'Thanks for your review!', type: 'cart' });
   }, [showNotification]);
 
-  // ── Rating breakdown from actual review data ──────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Rating breakdown from actual review data Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const avgRating   = parseFloat(product.average_rating || '0');
   const ratingCount = product.rating_count || 0;
   const breakdown = [5, 4, 3, 2, 1].map(stars => ({
@@ -586,7 +589,7 @@ export default function ProductDetailView({
       (ratingCount > 0 ? Math.round(ratingCount * [0.787, 0.149, 0.040, 0.015, 0.010][5 - stars]) : 0),
   }));
 
-  // ── Tabs ──────────────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Tabs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const TABS = ['Description', 'Print Guidelines', 'Ordering information', 'File Setup', 'Template'];
 
   const tabContent = () => {
@@ -617,9 +620,9 @@ export default function ProductDetailView({
         return (
           <div className="flex flex-col gap-4 text-slate-600 text-sm sm:text-base font-inter leading-7">
             <ul className="list-disc pl-5 flex flex-col gap-2">
-              <li>Standard Production: 3–5 business days.</li>
-              <li>Express Production: 1–2 business days (additional fee).</li>
-              <li>Shipping: USPS Priority Mail (1–3 days) or Ground (2–5 days).</li>
+              <li>Standard Production: 3Ã¢â‚¬â€œ5 business days.</li>
+              <li>Express Production: 1Ã¢â‚¬â€œ2 business days (additional fee).</li>
+              <li>Shipping: USPS Priority Mail (1Ã¢â‚¬â€œ3 days) or Ground (2Ã¢â‚¬â€œ5 days).</li>
             </ul>
           </div>
         );
@@ -644,14 +647,14 @@ export default function ProductDetailView({
               <div className="flex flex-wrap gap-4">
                 {product.acf.download_templates.map((tpl, i) => {
                   const meta: Record<string, { color: string; emoji: string }> = {
-                    PDF: { color: 'text-red-600 border-red-200 bg-red-50',          emoji: '📄' },
-                    AI:  { color: 'text-orange-500 border-orange-200 bg-orange-50', emoji: '✏️' },
-                    PSD: { color: 'text-blue-600 border-blue-200 bg-blue-50',       emoji: '🖼️' },
-                    EPS: { color: 'text-purple-600 border-purple-200 bg-purple-50', emoji: '🎨' },
-                    PNG: { color: 'text-green-600 border-green-200 bg-green-50',    emoji: '🖼️' },
-                    SVG: { color: 'text-teal-600 border-teal-200 bg-teal-50',       emoji: '🔷' },
+                    PDF: { color: 'text-red-600 border-red-200 bg-red-50',          emoji: 'Ã°Å¸â€œâ€ž' },
+                    AI:  { color: 'text-orange-500 border-orange-200 bg-orange-50', emoji: 'Ã¢Å“ÂÃ¯Â¸Â' },
+                    PSD: { color: 'text-blue-600 border-blue-200 bg-blue-50',       emoji: 'Ã°Å¸â€“Â¼Ã¯Â¸Â' },
+                    EPS: { color: 'text-purple-600 border-purple-200 bg-purple-50', emoji: 'Ã°Å¸Å½Â¨' },
+                    PNG: { color: 'text-green-600 border-green-200 bg-green-50',    emoji: 'Ã°Å¸â€“Â¼Ã¯Â¸Â' },
+                    SVG: { color: 'text-teal-600 border-teal-200 bg-teal-50',       emoji: 'Ã°Å¸â€Â·' },
                   };
-                  const m = meta[tpl.label?.toUpperCase()] ?? { color: 'text-gray-600 border-gray-200 bg-gray-50', emoji: '📁' };
+                  const m = meta[tpl.label?.toUpperCase()] ?? { color: 'text-gray-600 border-gray-200 bg-gray-50', emoji: 'Ã°Å¸â€œÂ' };
                   return (
                     <a key={i} href={tpl.url} target="_blank" rel="noopener noreferrer" download
                       className={`px-4 py-3 border rounded-xl hover:opacity-80 flex items-center gap-2 font-bold text-sm transition-all font-inter ${m.color}`}>
@@ -670,7 +673,7 @@ export default function ProductDetailView({
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   return (
     <div className="w-full flex flex-col items-center bg-white">
 
@@ -709,22 +712,27 @@ export default function ProductDetailView({
         </div>
       </section>
 
-      {/* ── Main product section ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Main product section Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="w-full px-4 md:px-20 py-6 md:py-10">
         <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* LEFT — Images */}
+          {/* LEFT Ã¢â‚¬â€ Images */}
           <div className="w-full lg:w-1/2 flex flex-row gap-2.5">
 
-            {/* Vertical thumbnail strip — shown when there are multiple images */}
+            {/* Vertical thumbnail strip Ã¢â‚¬â€ shown when there are multiple images */}
             {uniqueImages.length > 1 && (
               <div className="flex flex-col gap-2 overflow-y-auto no-scrollbar shrink-0" style={{ maxHeight: '520px' }}>
                 {uniqueImages.map((img, idx) => (
-                  <button key={`${img.id}-${idx}`} onClick={() => setMainImage(img.src)}
+                  <button key={`${img.id}-${idx}`} onClick={() => { if (hasMultipleImages && img.src !== mainImage) { setPendingImageSrc(img.src); setMainImage(img.src); } }}
                     className={`relative w-16 h-16 shrink-0 rounded-[10px] overflow-hidden border-2 transition-all ${
                       mainImage === img.src ? 'border-green-700' : 'border-gray-100 hover:border-gray-300'
                     }`}>
                     <Image src={img.src} alt={img.alt || product.name} fill className="object-cover" sizes="64px" />
+                    {pendingImageSrc === img.src && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-[8px]">
+                        <Loader2 className="w-4 h-4 text-green-700 animate-spin" />
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -734,12 +742,20 @@ export default function ProductDetailView({
             <div className="relative flex-1 aspect-square bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(15,81,50,0.06)] border border-green-900/5 overflow-hidden">
               {mainImage ? (
                 <Image src={mainImage} alt={decodeHTMLEntities(product.name)} fill
-                  className="object-contain p-6" sizes="(max-width:1024px) 100vw,640px" priority />
+                  className="object-contain p-6" sizes="(max-width:1024px) 100vw,640px" priority
+                  onLoad={() => setPendingImageSrc(null)} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="w-16 h-16 text-gray-200" />
                 </div>
               )}
+              {/* Image transition loading overlay */}
+              {pendingImageSrc && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-[1px] pointer-events-none">
+                  <Loader2 className="w-8 h-8 text-green-700 animate-spin" />
+                </div>
+              )}
+
               <button onClick={() => setLightboxOpen(true)}
                 className="absolute top-3 right-3 w-9 h-9 bg-white/90 hover:bg-white rounded-2xl flex items-center justify-center shadow-sm"
                 aria-label="View full size">
@@ -748,7 +764,7 @@ export default function ProductDetailView({
             </div>
           </div>
 
-          {/* RIGHT — Info & Config */}
+          {/* RIGHT Ã¢â‚¬â€ Info & Config */}
           <div className="w-full lg:w-1/2 flex flex-col gap-4">
 
             {/* Title + rating */}
@@ -846,7 +862,7 @@ export default function ProductDetailView({
               <div className="px-4 py-3 bg-green-50/50 rounded-xl flex flex-wrap items-baseline gap-2">
                 <span className="text-green-700 text-xl sm:text-2xl font-extrabold font-outfit">{fmt(unitPrice)}</span>
                 <span className="text-zinc-500 text-xs font-inter leading-5">
-                  per unit (With your Logo) · Total:{' '}
+                  per unit (With your Logo) Ã‚Â· Total:{' '}
                   <span className="text-green-700 font-bold">{fmt(unitPrice * quantity)}</span>
                 </span>
                 {isOnSale && <span className="text-gray-400 text-xs line-through font-inter">{fmt(regularUnitPrice)}</span>}
@@ -912,7 +928,7 @@ export default function ProductDetailView({
               </div>
             </div>
 
-            {/* Material — only show when there are options */}
+            {/* Material Ã¢â‚¬â€ only show when there are options */}
             {materials.length > 0 && (
               <div className="flex flex-col gap-2">
                 <span className="text-neutral-900 text-sm font-bold font-inter">Material:</span>
@@ -958,7 +974,7 @@ export default function ProductDetailView({
         </div>
       </section>
 
-      {/* ── Tabs ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Tabs Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="w-full px-4 md:px-20 py-8 md:py-10">
         <div className="max-w-[1280px] mx-auto bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 flex flex-col gap-6 shadow-sm">
           <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar -mx-1">
@@ -975,14 +991,14 @@ export default function ProductDetailView({
         </div>
       </section>
 
-      {/* ── Reviews ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Reviews Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="w-full px-4 md:px-20 py-8 md:py-10">
         <div className="max-w-[1280px] mx-auto flex flex-col gap-6">
           <h2 className="text-slate-900 text-2xl sm:text-4xl font-semibold font-outfit leading-tight">Reviews</h2>
 
           <div className="bg-white flex flex-col gap-6">
 
-            {/* Rating summary — only shown when product has ratings */}
+            {/* Rating summary Ã¢â‚¬â€ only shown when product has ratings */}
             {ratingCount > 0 && (
               <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
                 {/* Score card */}
@@ -1015,7 +1031,7 @@ export default function ProductDetailView({
               </button>
             </div>
 
-            {/* Review list — live from WC */}
+            {/* Review list Ã¢â‚¬â€ live from WC */}
             {reviewsLoading ? (
               <div className="flex flex-col gap-3">
                 {[1, 2].map(i => (
@@ -1035,7 +1051,7 @@ export default function ProductDetailView({
               </div>
             ) : reviews.length === 0 ? (
               <p className="text-gray-400 text-sm font-inter italic py-4">
-                No reviews yet — be the first to review this product!
+                No reviews yet Ã¢â‚¬â€ be the first to review this product!
               </p>
             ) : (
               <div className="flex flex-col gap-4">
@@ -1064,7 +1080,7 @@ export default function ProductDetailView({
                               <StarRow rating={review.rating} size="sm" />
                               {review.verified && (
                                 <span className="text-green-700 text-[10px] font-semibold font-inter bg-green-50 border border-green-100 px-2 py-0.5 rounded-full tracking-tight">
-                                  ✓ Verified Purchase
+                                  Ã¢Å“â€œ Verified Purchase
                                 </span>
                               )}
                             </div>
@@ -1082,7 +1098,7 @@ export default function ProductDetailView({
         </div>
       </section>
 
-      {/* ── Related Products ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Related Products Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {(relatedLoading || relatedProducts.length > 0) && (
         <section className="w-full px-4 md:px-20 py-8 md:py-10">
           <div className="max-w-[1280px] mx-auto flex flex-col gap-6 sm:gap-8">
@@ -1116,3 +1132,7 @@ export default function ProductDetailView({
     </div>
   );
 }
+
+
+
+
