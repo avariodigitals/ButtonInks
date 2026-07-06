@@ -221,15 +221,6 @@ export default function CategoryNav() {
         {categories.map((cat) => (
           <NavItem key={cat.label} cat={cat} />
         ))}
-
-        <Link
-          href="/designs"
-          className="px-3 py-2 rounded-md flex items-center gap-1 hover:bg-gray-50 group transition-colors shrink-0"
-        >
-          <span className="text-gray-700 text-sm font-medium leading-5 whitespace-nowrap group-hover:text-green-700 transition-colors font-inter">
-            Ready-Made Designs
-          </span>
-        </Link>
       </div>
     </div>
   );

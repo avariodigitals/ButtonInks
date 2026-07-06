@@ -110,14 +110,6 @@ function MobileCatRow({ cat, onClose }: { cat: MobileCategory; onClose: () => vo
       {/* Subcategory list */}
       {open && (
         <div className="bg-gray-50 border-t border-gray-100">
-          {/* "View all" shortcut */}
-          <Link
-            href={cat.href}
-            onClick={onClose}
-            className="px-8 py-3 flex items-center justify-between text-xs font-semibold text-green-700 hover:bg-green-50 transition-colors border-b border-gray-100"
-          >
-            View all {cat.label} <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
           {cat.subcategories!.map(sub => (
             <Link
               key={sub.label}
@@ -302,17 +294,6 @@ export default function Navbar() {
             {/* Categories List */}
             <div className="flex flex-col py-4">
               <span className="px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 font-['Inter']">Shop Categories</span>
-              {/* Ready-Made Designs — plain row */}
-              <Link
-                href="/designs"
-                onClick={() => setIsMenuOpen(false)}
-                className="px-6 py-4 flex justify-between items-center hover:bg-green-50 group border-b border-gray-50"
-              >
-                <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700 transition-colors font-inter">
-                  Ready-Made Designs
-                </span>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-green-500" />
-              </Link>
               {mobileCategories.map((cat) => (
                 <MobileCatRow key={cat.label} cat={cat} onClose={() => setIsMenuOpen(false)} />
               ))}

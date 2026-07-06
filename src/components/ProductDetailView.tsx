@@ -14,6 +14,21 @@ import { useNotification } from '@/context/NotificationContext';
 import { colorNameToHex } from '@/lib/colorLookup';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
+
+/**
+ * Expand common size abbreviations that customers may not recognise.
+ * Add more entries here as needed.
+ */
+const SIZE_LABEL_MAP: Record<string, string> = {
+  'osfa':    'One Size Fits All',
+  'os':      'One Size',
+  'osfm':    'One Size Fits Most',
+  'ns':      'No Size',
+};
+
+function normalizeSizeLabel(value: string): string {
+  return SIZE_LABEL_MAP[value.toLowerCase().trim()] ?? value;
+}
 function isLightColor(hex: string): boolean {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -549,7 +564,9 @@ export default function ProductDetailView({
 
     const attrParts = requiredAttrs.flatMap(a => {
       const vals = selectedAttributes[a.name] ?? [];
-      return vals.length ? [`${a.name}: ${vals.join(', ')}`] : [];
+      if (!vals.length) return [];
+      const displayVals = vals.map(v => normalizeSizeLabel(v));
+      return [`${a.name}: ${displayVals.join(', ')}`];
     });
 
     const extras = [
@@ -822,10 +839,11 @@ export default function ProductDetailView({
                         }
                         return (
                           <button key={opt} onClick={() => toggleAttr(attr.name, opt, false)}
-                            className={`flex-1 min-w-[40px] h-9 px-2 rounded-[8px] font-bold font-inter text-xs border-[1.31px] transition-all ${
+                            title={opt}
+                            className={`min-w-[40px] h-9 px-2 rounded-[8px] font-bold font-inter text-xs border-[1.31px] transition-all ${
                               isSel ? 'bg-green-700 text-white border-green-700' : 'bg-white text-gray-700 border-gray-300 hover:border-green-700'
                             }`}>
-                            {opt}
+                            {normalizeSizeLabel(opt)}
                           </button>
                         );
                       })}

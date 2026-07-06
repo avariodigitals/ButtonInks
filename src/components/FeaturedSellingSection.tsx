@@ -46,6 +46,7 @@ const FeaturedSellingSection = ({ products }: FeaturedSellingSectionProps) => {
               productId={p.id}
               rawPrice={parseFloat(p.price || '0')}
               slug={p.slug}
+              colors={p.attributes.find(a => a.name.toLowerCase() === 'color')?.options}
             />
           ))}
         </div>
