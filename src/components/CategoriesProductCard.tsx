@@ -5,34 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Star, Heart, Loader2 } from 'lucide-react';
 import { WPProduct, decodeHTMLEntities } from '@/lib/wordpress';
-import { colorNameToHex } from '@/lib/colorLookup';
+import { SwatchRow } from '@/components/ColorSwatch';
 
-// â”€â”€ Brand-accurate overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const COLOR_MAP_OVERRIDES: Record<string, string> = {
-  white: '#FFFFFF', black: '#000000', red: '#EF4444', blue: '#3B82F6',
-  green: '#22C55E', yellow: '#EAB308', orange: '#F97316', purple: '#A855F7',
-  pink: '#F9A8D4', coral: '#F87171', lime: '#84CC16', teal: '#0D9488',
-  cyan: '#06B6D4', brown: '#92400E', tan: '#D2B48C', mint: '#6EE7B7',
-};
 
-function resolveColor(name: string): string | null {
-  const key = name.toLowerCase().trim();
-  if (COLOR_MAP_OVERRIDES[key]) return COLOR_MAP_OVERRIDES[key];
-  return colorNameToHex(name);
-}
-
-function isLightColor(hex: string): boolean {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 180;
-}
 
 function getToken(): string | null {
   try { return localStorage.getItem('bi_token'); } catch { return null; }
 }
 
-// â”€â”€ Price helpers (same logic as ProductCard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Price helpers (same logic as ProductCard) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 function stripTags(html: string): string {
   return html.replace(/<[^>]*>/g, '');
 }
@@ -139,38 +120,12 @@ export default function CategoriesProductCard({
           <span className="text-zinc-500 text-xs font-bold font-['Inter']">{product.average_rating || '4.5'}</span>
         </div>
 
-        {/* Color swatches */}
+                {/* Color swatches */}
         {(() => {
           const colorAttr = product.attributes.find(a => a.name.toLowerCase() === 'color');
           const swatchColors = colorAttr?.options ?? [];
           if (!swatchColors.length) return null;
-          const MAX_VISIBLE = 6;
-          const visible = swatchColors.slice(0, MAX_VISIBLE);
-          const overflow = swatchColors.length - MAX_VISIBLE;
-          return (
-            <div className="flex items-center gap-1 flex-wrap">
-              {visible.map((colorName) => {
-                const hex = resolveColor(colorName);
-                if (!hex) {
-                  return (
-                    <span key={colorName} title={colorName}
-                      className="px-1.5 py-0.5 rounded border border-gray-200 text-gray-400 text-[10px] font-['Inter'] leading-none">
-                      {colorName}
-                    </span>
-                  );
-                }
-                const light = isLightColor(hex);
-                return (
-                  <span key={colorName} title={colorName} aria-label={colorName}
-                    className={`w-4 h-4 rounded-full border shrink-0 ${light ? 'border-gray-300' : 'border-transparent'}`}
-                    style={{ backgroundColor: hex }} />
-                );
-              })}
-              {overflow > 0 && (
-                <span className="text-gray-400 text-[10px] font-['Inter'] leading-none">+{overflow}</span>
-              )}
-            </div>
-          );
+          return <SwatchRow colors={swatchColors} maxVisible={6} size={16} />;
         })()}
 
         <div className="flex justify-between items-end mt-1">
@@ -203,5 +158,8 @@ export default function CategoriesProductCard({
     </Link>
   );
 }
+
+
+
 
 

@@ -11,7 +11,7 @@ import {
 import { WPProduct, WPProductReview, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
-import { colorNameToHex } from '@/lib/colorLookup';
+import ColorSwatch from '@/components/ColorSwatch';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
@@ -29,12 +29,7 @@ const SIZE_LABEL_MAP: Record<string, string> = {
 function normalizeSizeLabel(value: string): string {
   return SIZE_LABEL_MAP[value.toLowerCase().trim()] ?? value;
 }
-function isLightColor(hex: string): boolean {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 160;
-}
+
 
 function StarRow({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' | 'lg' }) {
   const cls = size === 'lg' ? 'w-5 h-5' : size === 'md' ? 'w-4 h-4' : 'w-3 h-3';
@@ -269,23 +264,7 @@ function ReviewFormModal({
   );
 }
 
-// ── Color map — replaced by colorNameToHex() from color-name-list ────────────
-// Kept as a thin fallback for common names that need specific brand-accurate hex values.
-const COLOR_MAP_OVERRIDES: Record<string, string> = {
-  'black': '#111827', 'white': '#F9FAFB', 'grey': '#9CA3AF', 'gray': '#9CA3AF',
-  'charcoal': '#374151', 'navy': '#1E3A5F', 'red': '#DC2626', 'orange': '#EA580C',
-  'gold': '#D97706', 'yellow': '#FBBF24', 'purple': '#7C3AED', 'violet': '#8B5CF6',
-  'pink': '#F9A8D4', 'coral': '#F87171', 'lime': '#84CC16', 'teal': '#0D9488',
-  'cyan': '#06B6D4', 'brown': '#92400E', 'tan': '#D2B48C', 'mint': '#6EE7B7',
-};
 
-function resolveColorName(name: string): string | null {
-  const key = name.toLowerCase().trim();
-  // 1. Check our brand overrides first
-  if (COLOR_MAP_OVERRIDES[key]) return COLOR_MAP_OVERRIDES[key];
-  // 2. Fall back to the 35,000-name database
-  return colorNameToHex(name);
-}
 
 // ── Related product card (live WP data) ───────────────────────────────────────
 function RelatedCard({ product }: { product: WPProduct }) {
@@ -818,23 +797,14 @@ export default function ProductDetailView({
                         };
 
                         if (isColor) {
-                          const hex   = resolveColorName(opt);
-                          const light = hex ? isLightColor(hex) : false;
-                          return hex ? (
-                            <button key={opt} title={opt} onClick={handleColorClick}
-                              aria-label={opt} aria-pressed={isSel}
-                              className={`relative w-6 h-6 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
-                                isSel ? 'border-transparent ring-[3px] ring-green-500 scale-110' : 'border-gray-200 hover:scale-110'
-                              }`}
-                              style={{ backgroundColor: hex }}>
-                              {isSel && <span className={`absolute inset-0 flex items-center justify-center text-[8px] font-black ${light ? 'text-gray-800' : 'text-white'}`}>✓</span>}
-                              {light && <span className="absolute inset-0 rounded-full ring-1 ring-gray-200" />}
-                            </button>
-                          ) : (
-                            <button key={opt} onClick={handleColorClick}
-                              className={`px-2.5 py-1 rounded-lg border text-xs font-inter font-medium transition-all ${isSel ? 'border-green-700 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:border-green-700'}`}>
-                              {opt}
-                            </button>
+                          return (
+                            <ColorSwatch
+                              key={opt}
+                              colorName={opt}
+                              size={24}
+                              selected={isSel}
+                              onClick={handleColorClick}
+                            />
                           );
                         }
                         return (
