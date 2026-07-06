@@ -144,7 +144,7 @@ const categories: Category[] = [
     ],
   },
 
-  { label: "Personalization Center", href: "/categories?category=personalization-center" },
+  { label: "Personalization Center", href: "/design" },
 ];
 
 // ── Portal Mega-Menu ──────────────────────────────────────────────────────────

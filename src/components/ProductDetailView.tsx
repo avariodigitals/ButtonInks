@@ -590,7 +590,7 @@ export default function ProductDetailView({
   }));
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Tabs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-  const TABS = ['Description', 'Print Guidelines', 'Ordering information', 'File Setup', 'Template'];
+  const TABS = ['Description', 'Print Guidelines', 'Ordering Information', 'File Setup', 'Template'];
 
   const tabContent = () => {
     switch (activeTab) {
@@ -620,9 +620,9 @@ export default function ProductDetailView({
         return (
           <div className="flex flex-col gap-4 text-slate-600 text-sm sm:text-base font-inter leading-7">
             <ul className="list-disc pl-5 flex flex-col gap-2">
-              <li>Standard Production: 3Ã¢â‚¬â€œ5 business days.</li>
-              <li>Express Production: 1Ã¢â‚¬â€œ2 business days (additional fee).</li>
-              <li>Shipping: USPS Priority Mail (1Ã¢â‚¬â€œ3 days) or Ground (2Ã¢â‚¬â€œ5 days).</li>
+              <li>Standard Production: 3–5 business days.</li>
+              <li>Express Production: 1–2 business days (additional fee).</li>
+              <li>Shipping: USPS Priority Mail (1–3 days) or Ground (2–5 days).</li>
             </ul>
           </div>
         );
@@ -647,14 +647,14 @@ export default function ProductDetailView({
               <div className="flex flex-wrap gap-4">
                 {product.acf.download_templates.map((tpl, i) => {
                   const meta: Record<string, { color: string; emoji: string }> = {
-                    PDF: { color: 'text-red-600 border-red-200 bg-red-50',          emoji: 'Ã°Å¸â€œâ€ž' },
-                    AI:  { color: 'text-orange-500 border-orange-200 bg-orange-50', emoji: 'Ã¢Å“ÂÃ¯Â¸Â' },
-                    PSD: { color: 'text-blue-600 border-blue-200 bg-blue-50',       emoji: 'Ã°Å¸â€“Â¼Ã¯Â¸Â' },
-                    EPS: { color: 'text-purple-600 border-purple-200 bg-purple-50', emoji: 'Ã°Å¸Å½Â¨' },
-                    PNG: { color: 'text-green-600 border-green-200 bg-green-50',    emoji: 'Ã°Å¸â€“Â¼Ã¯Â¸Â' },
-                    SVG: { color: 'text-teal-600 border-teal-200 bg-teal-50',       emoji: 'Ã°Å¸â€Â·' },
+                    PDF: { color: 'text-red-600 border-red-200 bg-red-50',          emoji: '📄' },
+                    AI:  { color: 'text-orange-500 border-orange-200 bg-orange-50', emoji: '✏️' },
+                    PSD: { color: 'text-blue-600 border-blue-200 bg-blue-50',       emoji: '🖼️' },
+                    EPS: { color: 'text-purple-600 border-purple-200 bg-purple-50', emoji: '🎨' },
+                    PNG: { color: 'text-green-600 border-green-200 bg-green-50',    emoji: '🖼️' },
+                    SVG: { color: 'text-teal-600 border-teal-200 bg-teal-50',       emoji: '🔷' },
                   };
-                  const m = meta[tpl.label?.toUpperCase()] ?? { color: 'text-gray-600 border-gray-200 bg-gray-50', emoji: 'Ã°Å¸â€œÂ' };
+                  const m = meta[tpl.label?.toUpperCase()] ?? { color: 'text-gray-600 border-gray-200 bg-gray-50', emoji: '📁' };
                   return (
                     <a key={i} href={tpl.url} target="_blank" rel="noopener noreferrer" download
                       className={`px-4 py-3 border rounded-xl hover:opacity-80 flex items-center gap-2 font-bold text-sm transition-all font-inter ${m.color}`}>
@@ -783,55 +783,6 @@ export default function ProductDetailView({
                 dangerouslySetInnerHTML={{ __html: product.short_description }} />
             </div>
 
-            {/* ── Product specs pills (Print Style + Clothing Specs) ── */}
-            {(product.acf?.print_style || product.acf?.clothing_specs) && (() => {
-              const PRINT_STYLE_LABELS: Record<string, string> = {
-                embroidery:      'Embroidery',
-                heat_transfer:   'Heat Transfer',
-                dtg:             'Direct-to-Garment (DTG)',
-                screen_printing: 'Screen Printing',
-                sublimation:     'Sublimation',
-                vinyl_cut:       'Vinyl Cut',
-                laser_engraving: 'Laser Engraving',
-                uv_print:        'UV Printing',
-              };
-              const printLabel = product.acf?.print_style
-                ? (PRINT_STYLE_LABELS[product.acf.print_style] ?? product.acf.print_style)
-                : null;
-              const specs = product.acf?.clothing_specs;
-              const pills = [
-                specs?.fabric  && { label: 'Fabric',       value: specs.fabric },
-                specs?.fit     && { label: 'Fit',          value: specs.fit },
-                specs?.gender  && { label: 'Gender',       value: specs.gender },
-              ].filter(Boolean) as { label: string; value: string }[];
-
-              if (!printLabel && pills.length === 0) return null;
-
-              return (
-                <div className="flex flex-col gap-2">
-                  {printLabel && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-slate-700 font-['Inter']">Decoration:</span>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-bold text-green-800 font-['Inter']">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0" />
-                        {printLabel}
-                      </span>
-                    </div>
-                  )}
-                  {pills.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {pills.map(p => (
-                        <span key={p.label} className="inline-flex items-center gap-1 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs font-['Inter'] text-slate-700">
-                          <span className="text-slate-400 font-normal">{p.label}:</span>
-                          <span className="font-bold">{p.value}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
             {/* Attributes */}
             {product.attributes
               .filter(a => !a.name.toLowerCase().includes('material') && !a.name.toLowerCase().includes('fabric'))
@@ -935,6 +886,55 @@ export default function ProductDetailView({
                 </div>
               </div>
             )}
+
+            {/* ── Product specs pills (Print Style + Clothing Specs) ── */}
+            {(product.acf?.print_style || product.acf?.clothing_specs) && (() => {
+              const PRINT_STYLE_LABELS: Record<string, string> = {
+                embroidery:      'Embroidery',
+                heat_transfer:   'Heat Transfer',
+                dtg:             'Direct-to-Garment (DTG)',
+                screen_printing: 'Screen Printing',
+                sublimation:     'Sublimation',
+                vinyl_cut:       'Vinyl Cut',
+                laser_engraving: 'Laser Engraving',
+                uv_print:        'UV Printing',
+              };
+              const printLabel = product.acf?.print_style
+                ? (PRINT_STYLE_LABELS[product.acf.print_style] ?? product.acf.print_style)
+                : null;
+              const specs = product.acf?.clothing_specs;
+              const pills = [
+                specs?.fabric  && { label: 'Fabric',       value: specs.fabric },
+                specs?.fit     && { label: 'Fit',          value: specs.fit },
+                specs?.gender  && { label: 'Gender',       value: specs.gender },
+              ].filter(Boolean) as { label: string; value: string }[];
+
+              if (!printLabel && pills.length === 0) return null;
+
+              return (
+                <div className="flex flex-col gap-2">
+                  {printLabel && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-slate-700 font-['Inter']">Decoration:</span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-bold text-green-800 font-['Inter']">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0" />
+                        {printLabel}
+                      </span>
+                    </div>
+                  )}
+                  {pills.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {pills.map(p => (
+                        <span key={p.label} className="inline-flex items-center gap-1 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs font-['Inter'] text-slate-700">
+                          <span className="text-slate-400 font-normal">{p.label}:</span>
+                          <span className="font-bold">{p.value}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Print Area */}
             <div className="flex flex-col gap-2">

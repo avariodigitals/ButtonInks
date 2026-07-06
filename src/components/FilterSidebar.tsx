@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Filter, ChevronDown, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Filter, ChevronDown, ChevronUp, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { WPCategory, decodeHTMLEntities } from '@/lib/wordpress';
+import { getFiltersForCategory, matchAttributeToGroup } from '@/lib/categoryConfig';
 
 const SORT_OPTIONS = [
   'Most Popular', 'Newest', 'Price: Low to High', 'Price: High to Low', 'Best Rated',
@@ -16,8 +17,24 @@ interface FilterSidebarProps {
 }
 
 export default function FilterSidebar({ categories, activeCategory, attributes }: FilterSidebarProps) {
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [sortOpen,   setSortOpen]   = useState(false);
+  const [filterOpen,        setFilterOpen]        = useState(false);
+  const [sortOpen,          setSortOpen]          = useState(false);
+  const [openSections,      setOpenSections]      = useState<Record<string, boolean>>({});
+
+  const toggleSection = (key: string) =>
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Build the scoped attribute sections for the active category
+  const categoryFilterGroups = getFiltersForCategory(activeCategory);
+
+  // Match each WC attribute to a category filter group label
+  const scopedAttributes: { label: string; attr: any }[] = categoryFilterGroups
+    .map(group => {
+      const match = attributes.find(a =>
+        matchAttributeToGroup(a.name, [group]) !== null
+      );
+      return { label: group.label, attr: match ?? null };
+    });
 
   const FilterContent = ({ onClose }: { onClose: () => void }) => (
     <div className="w-full flex flex-col gap-6">
@@ -53,20 +70,32 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
         </div>
       </div>
 
-      {/* Dynamic Attributes */}
-      {attributes.slice(0, 3).map((attr) => (
-        <div key={attr.id} className="py-2 border-t border-green-900/5 flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">{attr.name}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+      {/* Category-scoped attribute filters */}
+      {scopedAttributes.length > 0 && scopedAttributes.map(({ label }) => {
+        const isOpen = openSections[label] !== false; // default open
+        return (
+          <div key={label} className="py-2 border-t border-green-900/5 flex flex-col gap-3">
+            <button
+              onClick={() => toggleSection(label)}
+              className="flex justify-between items-center w-full text-left"
+            >
+              <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">
+                {label}
+              </span>
+              {isOpen
+                ? <ChevronUp className="w-3.5 h-3.5 text-gray-500" />
+                : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}
+            </button>
+            {isOpen && (
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] text-gray-400 italic">Options coming soon…</span>
+              </div>
+            )}
           </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-gray-400 italic">Options coming soon...</span>
-          </div>
-        </div>
-      ))}
+        );
+      })}
 
-      {/* Price Range */}
+      {/* Price Range — always shown */}
       <div className="py-2 border-t border-green-900/5 flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">Price Range (USD)</span>

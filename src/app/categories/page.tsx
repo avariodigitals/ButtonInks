@@ -16,6 +16,11 @@ import CategoriesProductCard from '@/components/CategoriesProductCard';
 
 const PER_PAGE = 24;
 
+// Title-case: capitalise the first letter of every word
+function toTitleCase(str: string) {
+  return str.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
@@ -95,8 +100,8 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
           {categorySlug && (
             <>
               <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span className="text-zinc-900 text-sm font-bold font-['Inter'] capitalize">
-                {decodeHTMLEntities(categorySlug.replace(/-/g, ' '))}
+              <span className="text-zinc-900 text-sm font-bold font-['Inter']">
+                {toTitleCase(decodeHTMLEntities(categorySlug.replace(/-/g, ' ')))}
               </span>
             </>
           )}
@@ -107,7 +112,7 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
       <section className="self-stretch px-4 md:px-20 py-10 md:py-16 bg-emerald-50 border-b border-gray-200">
         <div className="max-w-[1280px] mx-auto flex flex-col justify-center items-center gap-4 text-center">
           <h1 className="text-green-500 text-3xl sm:text-5xl font-bold font-['Outfit'] leading-tight">
-            {categorySlug ? decodeHTMLEntities(categorySlug.replace(/-/g, ' ')) : 'Product Categories'}
+            {categorySlug ? toTitleCase(decodeHTMLEntities(categorySlug.replace(/-/g, ' '))) : 'Product Categories'}
           </h1>
           <p className="max-w-[480px] text-zinc-500/90 text-sm sm:text-base font-normal font-['Inter'] leading-6">
             Professionally printed custom products. Premium quality, bulk pricing, and fast delivery guaranteed.

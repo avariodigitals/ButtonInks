@@ -70,7 +70,7 @@ const mobileCategories: MobileCategory[] = [
       { label: "Hoodies", href: "/categories?category=ready_made_hoodies" },
     ],
   },
-  { label: "Personalization Center", href: "/categories?category=personalization-center" },
+  { label: "Personalization Center", href: "/design" },
 ];
 
 // ── Mobile category row (expandable if has subcategories) ────────────────────
