@@ -1,86 +1,141 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 
-interface SubCategory {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface SubLink {
   label: string;
   href: string;
+}
+
+interface SubGroup {
+  heading: string;
+  links: SubLink[];
 }
 
 interface Category {
   label: string;
   href: string;
-  subcategories?: SubCategory[];
+  /** Static preview image shown on the right side of the mega menu */
+  previewImage?: string;
+  /** Simple flat list — renders as a single-column dropdown */
+  subcategories?: SubLink[];
+  /** Grouped columns — renders as a mega-menu panel */
+  megaMenu?: SubGroup[];
 }
 
-/**
- * WP parent → child mapping (from /wc/v3/products/categories):
- *   Embroidery (73)         → Cap (103), Hoodie (104), Long Sleeve Polo (105), Polo (102)
- *   Apparel (57)            → Bags (61), Custom Hoodies (93), Tshirts (58)
- *   Drinkware (55)          → Custom Coffee Mugs (56), Personalized Mugs (92)
- *   Gifts & Decor (75)      → Birthday Gifts (87), Corporate Gifts (88), Wedding Gifts (86)
- *   Banners (80)            → Promotional Banners (84), Rollup Banners (82), Table Banners (83), Other Banners (85)
- *   Retail (78)             → Hoodies (98)
- *   DTF Prints (74)         → no children
- *   Events Merchandize (77) → no children
- *   Office Supplies (76)    → no children
- *   Personalization Center  → no children
- */
+// ── Category data ─────────────────────────────────────────────────────────────
+
 const categories: Category[] = [
   { label: "All", href: "/categories" },
+
   {
     label: "Embroidery",
     href: "/categories?category=embroidery",
-    subcategories: [
-      { label: "Polo Shirts",      href: "/categories?category=polo" },
-      { label: "Caps",             href: "/categories?category=cap" },
-      { label: "Hoodies",          href: "/categories?category=hoodie" },
-      { label: "Long Sleeve Polo", href: "/categories?category=long-sleeve-polo" },
+    previewImage: "https://central.buttoninks.com/wp-content/uploads/2026/07/toa-heftiba-ScuVVivQPTc-unsplash-scaled.jpg",
+    megaMenu: [
+      {
+        heading: "Tops",
+        links: [
+          { label: "Polo Shirts",      href: "/categories?category=polo" },
+          { label: "Hoodies",          href: "/categories?category=hoodie" },
+          { label: "Long Sleeve Polo", href: "/categories?category=long-sleeve-polo" },
+        ],
+      },
+      {
+        heading: "Accessories",
+        links: [
+          { label: "Caps", href: "/categories?category=cap" },
+        ],
+      },
     ],
   },
+
   { label: "DTF Prints", href: "/categories?category=dtf-direct-to-filmprints" },
+
   {
-    label: "Apparel",
+    label: "Clothing & Bags",
     href: "/categories?category=apparel",
-    subcategories: [
-      { label: "T-Shirts",        href: "/categories?category=tshirts" },
-      { label: "Custom Hoodies",  href: "/categories?category=custom-hoodies" },
-      { label: "Bags",            href: "/categories?category=bags" },
+    previewImage: "https://central.buttoninks.com/wp-content/uploads/2026/07/thom-bradley-WeG2bHKSUo0-unsplash-scaled.jpg",
+    megaMenu: [
+      {
+        heading: "Tops",
+        links: [
+          { label: "T-Shirts",       href: "/categories?category=tshirts" },
+          { label: "Custom Hoodies", href: "/categories?category=custom-hoodies" },
+        ],
+      },
+      {
+        heading: "Bags",
+        links: [
+          { label: "All Bags", href: "/categories?category=bags" },
+        ],
+      },
     ],
   },
+
   {
     label: "Drinkware",
     href: "/categories?category=best-custom-drinkware",
-    subcategories: [
-      { label: "Custom Coffee Mugs", href: "/categories?category=custom-coffee-mugs" },
-      { label: "Personalized Mugs",  href: "/categories?category=personalized-mugs" },
+    previewImage: "https://central.buttoninks.com/wp-content/uploads/2025/02/images-3.jpg",
+    megaMenu: [
+      {
+        heading: "Mugs",
+        links: [
+          { label: "Custom Coffee Mugs", href: "/categories?category=custom-coffee-mugs" },
+          { label: "Personalized Mugs",  href: "/categories?category=personalized-mugs" },
+        ],
+      },
     ],
   },
+
   {
     label: "Gifts & Decor",
     href: "/categories?category=gifts-decor",
-    subcategories: [
-      { label: "Birthday Gifts",  href: "/categories?category=birthday-gifts" },
-      { label: "Corporate Gifts", href: "/categories?category=corporate-gifts" },
-      { label: "Wedding Gifts",   href: "/categories?category=wedding-gifts" },
+    previewImage: "https://central.buttoninks.com/wp-content/uploads/2025/04/corporate-gifts.png",
+    megaMenu: [
+      {
+        heading: "By Occasion",
+        links: [
+          { label: "Birthday Gifts",  href: "/categories?category=birthday-gifts" },
+          { label: "Wedding Gifts",   href: "/categories?category=wedding-gifts" },
+        ],
+      },
+      {
+        heading: "Business",
+        links: [
+          { label: "Corporate Gifts", href: "/categories?category=corporate-gifts" },
+        ],
+      },
     ],
   },
+
   {
     label: "Banners",
     href: "/categories?category=banners",
-    subcategories: [
-      { label: "Promotional Banners", href: "/categories?category=promotional-banners" },
-      { label: "Rollup Banners",      href: "/categories?category=rollupbanners" },
-      { label: "Table Banners",       href: "/categories?category=table-banners" },
-      { label: "Other Banners",       href: "/categories?category=other-banners" },
+    previewImage: "https://central.buttoninks.com/wp-content/uploads/2025/04/banners.png",
+    megaMenu: [
+      {
+        heading: "Banner Types",
+        links: [
+          { label: "Promotional Banners", href: "/categories?category=promotional-banners" },
+          { label: "Rollup Banners",      href: "/categories?category=rollupbanners" },
+          { label: "Table Banners",       href: "/categories?category=table-banners" },
+          { label: "Other Banners",       href: "/categories?category=other-banners" },
+        ],
+      },
     ],
   },
-  { label: "Office Supplies",        href: "/categories?category=office-supplies" },
-  { label: "Event Merchandize",      href: "/categories?category=event-merchandize" },
+
+  { label: "Office Supplies",    href: "/categories?category=office-supplies" },
+  { label: "Event Merchandize",  href: "/categories?category=event-merchandize" },
+
   {
     label: "Retail",
     href: "/categories?category=retail",
@@ -88,14 +143,13 @@ const categories: Category[] = [
       { label: "Hoodies", href: "/categories?category=ready_made_hoodies" },
     ],
   },
+
   { label: "Personalization Center", href: "/categories?category=personalization-center" },
 ];
 
-// ─── Portal Dropdown ──────────────────────────────────────────────────────────
-// Renders directly into document.body so it escapes every stacking context
-// and overflow:hidden/auto ancestor.
+// ── Portal Mega-Menu ──────────────────────────────────────────────────────────
 
-interface PortalDropdownProps {
+interface PortalMenuProps {
   cat: Category;
   anchorRef: React.RefObject<HTMLDivElement | null>;
   open: boolean;
@@ -103,63 +157,134 @@ interface PortalDropdownProps {
   onMouseLeave: () => void;
 }
 
-function PortalDropdown({ cat, anchorRef, open, onMouseEnter, onMouseLeave }: PortalDropdownProps) {
+function PortalMenu({ cat, anchorRef, open, onMouseEnter, onMouseLeave }: PortalMenuProps) {
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Recompute position every time it opens
   useEffect(() => {
     if (open && anchorRef.current) {
       const rect = anchorRef.current.getBoundingClientRect();
-      setPos({
-        top:  rect.bottom + window.scrollY,  // flush against the bottom edge — bridge div covers the gap
-        left: rect.left   + window.scrollX,
-      });
+      setPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
     }
   }, [open, anchorRef]);
 
-  if (!mounted || !cat.subcategories?.length) return null;
+  if (!mounted) return null;
+
+  const isMega   = !!cat.megaMenu?.length;
+  const isSimple = !isMega && !!cat.subcategories?.length;
+  if (!isMega && !isSimple) return null;
+
+  const previewImg = cat.previewImage;
 
   return createPortal(
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      style={{ top: pos.top, left: pos.left, position: "absolute" }}
-      className={`min-w-[220px] bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden z-[99999] transition-all duration-150 origin-top ${
-        open
-          ? "opacity-100 scale-y-100 pointer-events-auto"
-          : "opacity-0 scale-y-95 pointer-events-none"
-      }`}
+      style={{ top: pos.top, left: isMega ? 0 : pos.left, position: "absolute" }}
+      className={`z-[99999] transition-all duration-150 origin-top ${
+        open ? "opacity-100 scale-y-100 pointer-events-auto" : "opacity-0 scale-y-95 pointer-events-none"
+      } ${isMega ? "w-full" : "min-w-[200px]"}`}
     >
-      {/* Invisible bridge fills the gap between nav bar and panel so the
-          cursor doesn't trigger mouseleave while moving down to the panel */}
-      <div className="absolute -top-2 left-0 right-0 h-2" />
+      {/* Invisible bridge */}
+      <div className="h-1" />
 
-      <div className="py-1">
-        {cat.subcategories.map((sub) => (
-          <Link
-            key={sub.label}
-            href={sub.href}
-            className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-green-700 transition-colors whitespace-nowrap"
-          >
-            {sub.label}
-          </Link>
-        ))}
-      </div>
+      {/* ── Mega menu ── */}
+      {isMega && (
+        <div className="w-full bg-white border-t border-gray-100 shadow-2xl">
+          <div className="max-w-[1280px] mx-auto px-8 py-8 flex gap-12">
+
+            {/* Left: groups */}
+            <div className="flex-1">
+              {/* Category title row */}
+              <div className="mb-6 pb-4 border-b border-gray-100">
+                <Link
+                  href={cat.href}
+                  className="text-xs font-bold uppercase tracking-widest text-green-700 hover:underline font-['Inter']"
+                >
+                  {cat.label} — View All
+                </Link>
+              </div>
+
+              <div className="flex gap-12 flex-wrap">
+                {cat.megaMenu!.map((group) => (
+                  <div key={group.heading} className="min-w-[140px]">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-3 font-['Inter']">
+                      {group.heading}
+                    </p>
+                    <ul className="flex flex-col gap-2">
+                      {group.links.map((link) => (
+                        <li key={link.label}>
+                          <Link
+                            href={link.href}
+                            className="text-sm text-gray-700 hover:text-green-700 transition-colors font-['Inter']"
+                          >
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: product preview image — always reserve space */}
+            <div className="shrink-0 w-[240px] flex flex-col gap-3">
+              <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
+                {previewImg ? (
+                  <Image
+                    src={previewImg}
+                    alt={cat.label}
+                    fill
+                    className="object-cover"
+                    sizes="240px"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gray-100 rounded-xl" />
+                )}
+              </div>
+              <Link
+                href={cat.href}
+                className="text-xs font-bold text-green-700 hover:underline font-['Inter'] text-center"
+              >
+                Browse {cat.label}
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Simple dropdown ── */}
+      {isSimple && (
+        <div className="bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden">
+          <div className="py-1">
+            {cat.subcategories!.map((sub) => (
+              <Link
+                key={sub.label}
+                href={sub.href}
+                className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-green-700 transition-colors whitespace-nowrap font-['Inter']"
+              >
+                {sub.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
 }
 
-// ─── NavItem ──────────────────────────────────────────────────────────────────
+// ── NavItem ───────────────────────────────────────────────────────────────────
 
 function NavItem({ cat }: { cat: Category }) {
   const [open, setOpen] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const anchorRef  = useRef<HTMLDivElement>(null);
-  const hasDropdown = !!cat.subcategories?.length;
+  const hasMenu = !!(cat.megaMenu?.length || cat.subcategories?.length);
 
   const show = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -167,7 +292,6 @@ function NavItem({ cat }: { cat: Category }) {
   }, []);
 
   const hide = useCallback(() => {
-    // 300ms gives enough time to move cursor from trigger into the dropdown panel
     timeoutRef.current = setTimeout(() => setOpen(false), 300);
   }, []);
 
@@ -175,17 +299,17 @@ function NavItem({ cat }: { cat: Category }) {
     <div
       ref={anchorRef}
       className="relative shrink-0"
-      onMouseEnter={hasDropdown ? show : undefined}
-      onMouseLeave={hasDropdown ? hide : undefined}
+      onMouseEnter={hasMenu ? show : undefined}
+      onMouseLeave={hasMenu ? hide : undefined}
     >
       <Link
         href={cat.href}
         className="px-3 py-2 rounded-md flex items-center gap-1 hover:bg-gray-50 group transition-colors"
       >
-        <span className="text-gray-700 text-sm font-medium leading-5 whitespace-nowrap group-hover:text-green-700 transition-colors font-inter">
+        <span className="text-gray-700 text-sm font-medium leading-5 whitespace-nowrap group-hover:text-green-700 transition-colors font-['Inter']">
           {cat.label}
         </span>
-        {hasDropdown && (
+        {hasMenu && (
           <ChevronDown
             className={`w-3.5 h-3.5 text-gray-500 group-hover:text-green-700 transition-transform duration-200 shrink-0 ${
               open ? "rotate-180" : "rotate-0"
@@ -195,8 +319,8 @@ function NavItem({ cat }: { cat: Category }) {
         )}
       </Link>
 
-      {hasDropdown && (
-        <PortalDropdown
+      {hasMenu && (
+        <PortalMenu
           cat={cat}
           anchorRef={anchorRef}
           open={open}
@@ -208,11 +332,10 @@ function NavItem({ cat }: { cat: Category }) {
   );
 }
 
-// ─── CategoryNav ──────────────────────────────────────────────────────────────
+// ── CategoryNav ───────────────────────────────────────────────────────────────
 
 export default function CategoryNav() {
   const pathname = usePathname();
-
   if (pathname?.startsWith("/design")) return null;
 
   return (

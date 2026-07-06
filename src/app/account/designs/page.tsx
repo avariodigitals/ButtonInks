@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -61,7 +61,31 @@ export default function SavedDesignsPage() {
     }
   }, [router, showNotification]);
 
-  useEffect(() => { loadDesigns(); }, [loadDesigns]);
+  useEffect(() => {
+    const token = getToken();
+    if (!token) { router.push('/login?redirect=/account/designs'); return; }
+
+    let cancelled = false;
+
+    fetch('/api/designs', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    })
+      .then(res => {
+        if (res.status === 401) { router.push('/login'); return null; }
+        return res.json();
+      })
+      .then(data => {
+        if (cancelled || data == null) return;
+        setDesigns(Array.isArray(data) ? data : (data?.designs ?? []));
+      })
+      .catch(() => {
+        if (!cancelled) showNotification({ title: 'Error', message: 'Could not load your saved designs.', type: 'error' });
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [router, showNotification]);
 
   const handleDelete = async (id: number) => {
     const token = getToken();
@@ -151,7 +175,7 @@ export default function SavedDesignsPage() {
             <div className="flex flex-col gap-2">
               <h2 className="text-2xl font-bold text-slate-900 font-['Outfit']">No saved designs yet</h2>
               <p className="text-slate-500 max-w-sm font-['Inter']">
-                Start designing and save your work — it'll appear here so you can continue anytime.
+                Start designing and save your work — it&apos;ll appear here so you can continue anytime.
               </p>
             </div>
             <Link

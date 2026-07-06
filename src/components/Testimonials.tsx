@@ -6,19 +6,19 @@ const testimonials = [
     text: "ButtonInks completely transformed how we handle branded merchandise. The quality is outstanding and delivery is always on time. Our team loves the new uniforms.",
     author: "Sarah Chen",
     role: "Marketing Director · TechCorp Inc.",
-    image: "https://placehold.co/44x44"
+    image: "https://central.buttoninks.com/wp-content/uploads/2022/10/team-about-24.jpg"
   },
   {
     text: "Ordered 200 shirts for our summer retreat and the process was seamless. The design tool made it easy to create something our youth group is proud to wear.",
     author: "Marcus Johnson",
     role: "Youth Pastor · Grace Community Church",
-    image: "https://placehold.co/44x44"
+    image: "https://central.buttoninks.com/wp-content/uploads/2022/10/catetory-35.jpg"
   },
   {
     text: "We've used ButtonInks for 3 major corporate events. The bulk pricing is unbeatable and their rush printing saved us when we had a last-minute order change.",
     author: "Lisa Rodriguez",
     role: "Event Coordinator · Premier Events Co.",
-    image: "https://placehold.co/44x44"
+    image: "https://central.buttoninks.com/wp-content/uploads/2022/10/team-about-4.jpg"
   }
 ];
 

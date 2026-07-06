@@ -757,11 +757,33 @@ class ButtonInks_Core {
             }
         }
 
+        // Print style & clothing/paper/stationery specs
+        $print_style        = get_post_meta($id, '_bi_print_style',   true) ?: '';
+        $product_type       = get_post_meta($id, '_bi_product_type',  true) ?: '';
+
+        $clothing_specs_raw = get_post_meta($id, '_bi_clothing_specs', true) ?: '{}';
+        $clothing_specs     = json_decode($clothing_specs_raw, true) ?: [];
+
+        $paper_specs_raw    = get_post_meta($id, '_bi_paper_specs', true) ?: '{}';
+        $paper_specs        = json_decode($paper_specs_raw, true) ?: [];
+
+        $stationery_raw     = get_post_meta($id, '_bi_stationery_specs', true) ?: '{}';
+        $stationery_specs   = json_decode($stationery_raw, true) ?: [];
+
         $response->data['acf'] = [
             'enable_designer'      => get_post_meta($id, '_bi_enable_designer', true) === '1',
             'enable_upload'        => get_post_meta($id, '_bi_enable_upload',   true) === '1',
             'buy_as_is'            => get_post_meta($id, '_bi_buy_as_is',       true) === '1',
             'available_colors'     => [],  // Deprecated — use WC Color attribute
+            'print_style'          => $print_style,
+            'product_type'         => $product_type,
+            'clothing_specs'       => [
+                'fabric' => $clothing_specs['fabric'] ?? '',
+                'fit'    => $clothing_specs['fit']    ?? '',
+                'gender' => $clothing_specs['gender'] ?? '',
+            ],
+            'paper_specs'          => $paper_specs,
+            'stationery_specs'     => $stationery_specs,
             'production_options'   => $production_options,
             'bulk_pricing'         => $bulk_pricing,
             'print_notes'          => get_post_meta($id, '_bi_print_notes', true) ?: '',
@@ -1070,6 +1092,56 @@ class ButtonInks_Core {
                 'args'                => [ 'id' => [ 'validate_callback' => 'is_numeric' ] ],
             ],
         ]);
+
+        // ── Contact / Enquiry email ───────────────────────────────────────────
+        register_rest_route('buttoninks/v1', '/contact', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'handle_contact_form'],
+            'permission_callback' => '__return_true',
+        ]);
+    }
+
+    public function handle_contact_form( WP_REST_Request $request ) {
+        $params = $request->get_json_params();
+
+        $type    = sanitize_text_field( $params['type']    ?? '' ); // 'corporate' | 'design'
+        $name    = sanitize_text_field( $params['name']    ?? '' );
+        $email   = sanitize_email(      $params['email']   ?? '' );
+        $phone   = sanitize_text_field( $params['phone']   ?? '' );
+        $company = sanitize_text_field( $params['company'] ?? '' );
+        $message = sanitize_textarea_field( $params['message'] ?? '' );
+
+        if ( empty($name) || empty($email) || empty($message) ) {
+            return new WP_Error( 'missing_fields', 'Name, email, and message are required.', ['status' => 400] );
+        }
+        if ( ! is_email( $email ) ) {
+            return new WP_Error( 'invalid_email', 'Please provide a valid email address.', ['status' => 400] );
+        }
+
+        $to      = 'sales@buttoninks.com';
+        $subject = $type === 'design'
+            ? "[Design Request] New enquiry from {$name}"
+            : "[Corporate Sales] New enquiry from {$name}";
+
+        $body  = "Type: " . ( $type === 'design' ? 'Graphics Design Request' : 'Corporate Sales' ) . "\n\n";
+        $body .= "Name:    {$name}\n";
+        $body .= "Email:   {$email}\n";
+        if ( $phone )   $body .= "Phone:   {$phone}\n";
+        if ( $company ) $body .= "Company: {$company}\n";
+        $body .= "\nMessage:\n{$message}\n";
+
+        $headers = [
+            'Content-Type: text/plain; charset=UTF-8',
+            "Reply-To: {$name} <{$email}>",
+        ];
+
+        $sent = wp_mail( $to, $subject, $body, $headers );
+
+        if ( ! $sent ) {
+            return new WP_Error( 'mail_failed', 'Failed to send email. Please try again.', ['status' => 500] );
+        }
+
+        return rest_ensure_response( ['success' => true, 'message' => 'Your enquiry has been sent. We\'ll be in touch soon!'] );
     }
 
     public function is_user_logged_in() {

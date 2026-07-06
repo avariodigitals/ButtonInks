@@ -14,6 +14,7 @@ export interface WPPost {
   content: { rendered: string };
   excerpt: { rendered: string };
   date: string;
+  modified?: string;
   featured_media: number;
   _embedded?: {
     "wp:featuredmedia"?: [{ source_url: string; alt_text: string }];

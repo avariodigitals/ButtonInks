@@ -6,6 +6,7 @@ import FeaturedSellingSection from "@/components/FeaturedSellingSection";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import Testimonials from "@/components/Testimonials";
 import SimpleProcess from "@/components/SimpleProcess";
+import EnquirySections from "@/components/EnquirySections";
 import { getProductCategories, getProducts } from "@/lib/wordpress";
 
 export default async function HomePage() {
@@ -41,7 +42,10 @@ export default async function HomePage() {
       {/* ⑦ Why Choose Us */}
       <WhyChooseUs />
 
-      {/* ⑧ Testimonials */}
+      {/* ⑧ Corporate Sales + Graphics Design Request */}
+      <EnquirySections />
+
+      {/* ⑨ Testimonials */}
       <Testimonials />
     </main>
   );

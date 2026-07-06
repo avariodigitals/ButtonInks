@@ -159,6 +159,9 @@ export default function Navbar() {
               className="object-contain"
             />
           </div>
+          <span className="text-slate-900 font-bold text-lg leading-none font-['Outfit'] hidden sm:block">
+            ButtonInks
+          </span>
         </Link>
 
         {/* ── Search (Desktop) ── */}

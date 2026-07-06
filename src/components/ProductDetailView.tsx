@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import {
   ChevronRight, Star, Minus, Plus, Upload, Maximize2,
-  FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, LayoutGrid, Send, Loader2,
+  FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, Send, Loader2,
 } from 'lucide-react';
 import { WPProduct, WPProductReview, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
@@ -768,20 +768,69 @@ export default function ProductDetailView({
           <div className="w-full lg:w-1/2 flex flex-col gap-4">
 
             {/* Title + rating */}
-            <div className="flex flex-col gap-1.5">
-              <h1 className="text-slate-900 text-xl sm:text-2xl font-semibold font-outfit leading-tight">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-slate-900 text-2xl sm:text-3xl font-bold font-outfit leading-tight">
                 {decodeHTMLEntities(product.name)}
               </h1>
               {avgRating > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <StarRow rating={avgRating} size="sm" />
-                  <span className="text-neutral-900 text-xs font-semibold font-inter">{avgRating.toFixed(1)}</span>
-                  <span className="text-gray-500 text-xs font-inter">({ratingCount.toLocaleString()} reviews)</span>
+                  <span className="text-neutral-900 text-sm font-semibold font-inter">{avgRating.toFixed(1)}</span>
+                  <span className="text-gray-500 text-sm font-inter">({ratingCount.toLocaleString()} reviews)</span>
                 </div>
               )}
-              <div className="text-gray-500 text-xs font-inter leading-5"
+              <div className="text-gray-600 text-sm font-inter leading-6"
                 dangerouslySetInnerHTML={{ __html: product.short_description }} />
             </div>
+
+            {/* ── Product specs pills (Print Style + Clothing Specs) ── */}
+            {(product.acf?.print_style || product.acf?.clothing_specs) && (() => {
+              const PRINT_STYLE_LABELS: Record<string, string> = {
+                embroidery:      'Embroidery',
+                heat_transfer:   'Heat Transfer',
+                dtg:             'Direct-to-Garment (DTG)',
+                screen_printing: 'Screen Printing',
+                sublimation:     'Sublimation',
+                vinyl_cut:       'Vinyl Cut',
+                laser_engraving: 'Laser Engraving',
+                uv_print:        'UV Printing',
+              };
+              const printLabel = product.acf?.print_style
+                ? (PRINT_STYLE_LABELS[product.acf.print_style] ?? product.acf.print_style)
+                : null;
+              const specs = product.acf?.clothing_specs;
+              const pills = [
+                specs?.fabric  && { label: 'Fabric',       value: specs.fabric },
+                specs?.fit     && { label: 'Fit',          value: specs.fit },
+                specs?.gender  && { label: 'Gender',       value: specs.gender },
+              ].filter(Boolean) as { label: string; value: string }[];
+
+              if (!printLabel && pills.length === 0) return null;
+
+              return (
+                <div className="flex flex-col gap-2">
+                  {printLabel && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-slate-700 font-['Inter']">Decoration:</span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-bold text-green-800 font-['Inter']">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0" />
+                        {printLabel}
+                      </span>
+                    </div>
+                  )}
+                  {pills.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {pills.map(p => (
+                        <span key={p.label} className="inline-flex items-center gap-1 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs font-['Inter'] text-slate-700">
+                          <span className="text-slate-400 font-normal">{p.label}:</span>
+                          <span className="font-bold">{p.value}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Attributes */}
             {product.attributes
@@ -793,7 +842,7 @@ export default function ProductDetailView({
                 return (
                   <div key={`${attr.name}-${idx}`} id={`attr-${attr.name}`} className={`flex flex-col gap-2 ${error ? 'p-2.5 rounded-xl border border-red-200 bg-red-50/40' : ''}`}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-slate-900 text-sm font-semibold font-inter">
+                      <span className="text-slate-900 text-sm font-bold font-inter">
                         {isColor
                           ? <>Choose Color <span className="text-red-500 text-xs">*</span></>
                           : <>Choose {attr.name} <span className="text-red-500 text-xs">*</span></>}
@@ -839,10 +888,10 @@ export default function ProductDetailView({
               })}
 
             {/* Quantity */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-neutral-900 text-xs font-bold font-inter">Quantity:</span>
-                <span className="text-gray-500 text-xs font-inter">Min. 1</span>
+                <span className="text-slate-900 text-sm font-bold font-inter">Quantity:</span>
+                <span className="text-gray-500 text-sm font-inter">Min. 1</span>
               </div>
               <div className="w-32 h-9 bg-white rounded-lg border border-green-900/10 flex items-center overflow-hidden">
                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -860,14 +909,14 @@ export default function ProductDetailView({
             {/* Price */}
             <div className="flex flex-col gap-1.5">
               <div className="px-4 py-3 bg-green-50/50 rounded-xl flex flex-wrap items-baseline gap-2">
-                <span className="text-green-700 text-xl sm:text-2xl font-extrabold font-outfit">{fmt(unitPrice)}</span>
-                <span className="text-zinc-500 text-xs font-inter leading-5">
-                  per unit (With your Logo) Ã‚Â· Total:{' '}
+                <span className="text-green-700 text-2xl sm:text-3xl font-extrabold font-outfit">{fmt(unitPrice)}</span>
+                <span className="text-zinc-500 text-sm font-inter leading-5">
+                  per unit (With your Logo) · Total:{' '}
                   <span className="text-green-700 font-bold">{fmt(unitPrice * quantity)}</span>
                 </span>
-                {isOnSale && <span className="text-gray-400 text-xs line-through font-inter">{fmt(regularUnitPrice)}</span>}
+                {isOnSale && <span className="text-gray-400 text-sm line-through font-inter">{fmt(regularUnitPrice)}</span>}
               </div>
-              <p className="text-green-700 text-xs font-inter">Shipping and final pricing is calculated at checkout</p>
+              <p className="text-green-700 text-sm font-inter">Shipping and final pricing is calculated at checkout</p>
             </div>
 
             {/* Bulk pricing */}
@@ -889,7 +938,7 @@ export default function ProductDetailView({
 
             {/* Print Area */}
             <div className="flex flex-col gap-2">
-              <span className="text-slate-900 text-sm font-semibold font-inter">Print Area</span>
+              <span className="text-slate-900 text-sm font-bold font-inter">Print Area</span>
               <div className="grid grid-cols-3 gap-2">
                 {printAreas.map(area => (
                   <button key={area} onClick={() => setSelectedPrintArea(area)}
@@ -904,7 +953,7 @@ export default function ProductDetailView({
 
             {/* Production Options */}
             <div className="flex flex-col gap-2">
-              <span className="text-slate-900 text-sm font-semibold font-inter">Production Options</span>
+              <span className="text-slate-900 text-sm font-bold font-inter">Production Options</span>
               <div className="grid grid-cols-2 gap-2">
                 {(product.acf?.production_options?.length
                   ? product.acf.production_options.map(opt => ({
@@ -921,8 +970,8 @@ export default function ProductDetailView({
                     className={`px-3 py-2 rounded-[8px] border-[1.31px] flex flex-col items-center gap-0.5 transition-all ${
                       selectedProduction === opt.key ? 'border-green-700 text-green-700 bg-white' : 'border-gray-300 text-gray-700 bg-white hover:border-green-700'
                     }`}>
-                    <span className="text-xs font-bold font-inter">{opt.label}</span>
-                    <span className={`text-[10px] font-inter ${selectedProduction === opt.key ? 'text-green-700' : 'text-gray-500'}`}>{opt.subtitle}</span>
+                    <span className="text-sm font-bold font-inter">{opt.label}</span>
+                    <span className={`text-xs font-inter ${selectedProduction === opt.key ? 'text-green-700' : 'text-gray-500'}`}>{opt.subtitle}</span>
                   </button>
                 ))}
               </div>
@@ -947,12 +996,6 @@ export default function ProductDetailView({
 
             {/* CTAs */}
             <div className="flex flex-col gap-2.5 pt-1">
-              {buyAsIs && (
-                <Link href={`/products/${categorySlug}/${product.slug}/designs`}
-                  className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm">
-                  <LayoutGrid className="w-4 h-4" /> Choose a Ready-Made Design
-                </Link>
-              )}
               {showUploadBtn && (
                 <Link href={`/upload?product=${product.id}`}
                   className="w-full bg-green-700 hover:bg-green-800 text-white font-inter font-medium py-3 rounded-[10px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-sm">
