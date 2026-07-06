@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Palette, Send, CheckCircle2, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Building2, Palette, Send, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 
 type FormType = "corporate" | "design";
 
@@ -210,7 +211,7 @@ export default function EnquirySections() {
         <div className="border-t border-gray-200" />
 
         {/* ── Graphics Design Request ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           {/* Left — copy */}
           <div className="flex flex-col gap-5">
             <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
@@ -242,10 +243,28 @@ export default function EnquirySections() {
             </ul>
           </div>
 
-          {/* Right — form */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8">
-            <h3 className="text-lg font-bold font-['Outfit'] text-slate-900 mb-5">Request a Design</h3>
-            <EnquiryForm type="design" />
+          {/* Right — CTA card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex flex-col items-center text-center gap-6">
+            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
+              <Palette className="w-8 h-8 text-green-700" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <h3 className="text-xl font-bold font-['Outfit'] text-slate-900">
+                Ready to bring your vision to life?
+              </h3>
+              <p className="text-slate-500 font-['Inter'] text-sm leading-6 max-w-xs mx-auto">
+                Tell us about your project — our design team will get back to you within 1 business day with a proposal.
+              </p>
+            </div>
+            <Link
+              href="/design-request"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-green-700 hover:bg-green-800 text-white text-sm font-bold font-['Inter'] rounded-xl transition-all active:scale-[0.98]"
+            >
+              Request a Design <ArrowRight className="w-4 h-4" />
+            </Link>
+            <p className="text-xs text-slate-400 font-['Inter']">
+              No commitment required — free initial consultation
+            </p>
           </div>
         </div>
 
