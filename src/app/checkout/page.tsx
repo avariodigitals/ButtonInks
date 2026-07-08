@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronRight, Loader2, ShoppingBag, Truck, Info, AlertCircle, Building2, HandCoins, FileCheck } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
+import AddressAutocomplete, { type ParsedAddress } from "@/components/AddressAutocomplete";
 
 // ── Payment gateway type (matches /api/payment-gateways response) ─────────────
 interface WCGateway {
@@ -313,8 +314,20 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-zinc-900 text-xs font-medium font-['Inter']">Street Address *</label>
-                      <input type="text" name="address" required value={formData.address} onChange={handleInputChange} placeholder="123 Main St"
-                        className="w-full h-12 px-4 bg-white rounded-[10px] border border-gray-200 focus:outline-none focus:border-green-700 text-sm" />
+                      <AddressAutocomplete
+                        id="address"
+                        required
+                        value={formData.address}
+                        onChange={(val) => setFormData(prev => ({ ...prev, address: val }))}
+                        onSelect={(parsed: ParsedAddress) => setFormData(prev => ({
+                          ...prev,
+                          address: parsed.address || prev.address,
+                          city:    parsed.city    || prev.city,
+                          state:   parsed.state   || prev.state,
+                          zipCode: parsed.zipCode || prev.zipCode,
+                        }))}
+                        placeholder="123 Main St"
+                      />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="flex flex-col gap-1">

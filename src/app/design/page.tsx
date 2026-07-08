@@ -79,6 +79,9 @@ function DesignContent() {
 
   const [activePropertyTab, setActivePropertyTab] = useState('Type');
 
+  // Product color/image swatch selection
+  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+
   // Always start with the default element on the server — restore from storage after hydration
   const defaultElements: DesignElement[] = [
     { id: '1', type: 'text', content: 'Your Design Here', x: 175, y: 270, width: 200, height: 36, rotation: 0, opacity: 1, color: '#171717', fontFamily: 'Outfit', fontSize: 18, fontWeight: '700', textAlign: 'center', side: 'front' }
@@ -134,7 +137,7 @@ function DesignContent() {
     const snapshot = {
       productId:          selectedProduct?.id ?? null,
       productName:        selectedProduct?.name ?? 'Custom Design',
-      productImage:       selectedProduct?.images[0]?.src ?? null,
+      productImage:       selectedProduct?.images[selectedColorIndex]?.src ?? selectedProduct?.images[0]?.src ?? null,
       productPrice:       selectedProduct?.price ?? '23.95',
       designFee:          selectedProduct?.acf?.design_fee ?? 0,
       bulkPricing:        selectedProduct?.acf?.bulk_pricing ?? [],
@@ -150,7 +153,7 @@ function DesignContent() {
     } catch { /* storage quota */ }
 
     router.push('/design/review');
-  }, [elements, selectedProduct, router]);
+  }, [elements, selectedProduct, selectedColorIndex, router]);
 
   // ── Design persistence ────────────────────────────────────────────────────
   // Signed-in users: auto-save to WP (debounced, 2 s after last change).
@@ -764,7 +767,7 @@ function DesignContent() {
                       {paginated.map((p) => (
                         <div
                           key={p.id}
-                          onClick={() => { setSelectedProduct(p); setActiveTool(null); }}
+                          onClick={() => { setSelectedProduct(p); setSelectedColorIndex(0); setActiveTool(null); }}
                           className={`p-3 rounded-2xl border-2 transition-all cursor-pointer group ${
                             selectedProduct?.id === p.id
                               ? 'border-green-700 bg-green-50'
@@ -1312,17 +1315,27 @@ function DesignContent() {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Product Base — opacity raised to 50% so users can see what they're designing on */}
+              {/* Product Base — full opacity so users can clearly see what they're designing on */}
               <div className="absolute inset-0 flex items-center justify-center p-12 bg-stone-50/50 pointer-events-none">
                 <div className="relative w-full h-full">
                   <Image
-                    src={selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
+                    src={selectedProduct?.images[selectedColorIndex]?.src || selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
                     fill
-                    className="object-contain opacity-50"
+                    className="object-contain"
                     sizes="600px"
                     alt="Base Product"
                   />
                 </div>
+              </div>
+
+              {/* Print area boundary — dashed box showing the safe design zone */}
+              <div
+                className="absolute border-2 border-dashed border-green-400/60 pointer-events-none rounded"
+                style={{ left: 100, top: 140, width: 400, height: 400 }}
+              >
+                <span className="absolute -top-5 left-0 text-[9px] font-bold text-green-500/80 uppercase tracking-widest whitespace-nowrap">
+                  Print Area
+                </span>
               </div>
 
               {/* Dynamic Elements */}
@@ -1440,6 +1453,50 @@ function DesignContent() {
                 </div>
               ))}
             </div>
+
+            {/* Product color swatches — shown when a product with color variants is selected */}
+            {(() => {
+              if (!selectedProduct) return null;
+              const colorAttr = selectedProduct.attributes.find(
+                a => a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colour'
+              );
+              if (!colorAttr || colorAttr.options.length < 2) return null;
+              return (
+                <div className={`absolute top-3 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-2xl shadow-md border border-gray-100 flex items-center gap-2 px-3 py-2 z-30 transition-all duration-200 ${activeTool ? 'md:flex hidden' : 'flex'}`}>
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">Color</span>
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[240px]">
+                    {colorAttr.options.map((color, idx) => {
+                      const imgSrc = selectedProduct.images[idx]?.src;
+                      return (
+                        <button
+                          key={color}
+                          title={color}
+                          onClick={() => setSelectedColorIndex(idx)}
+                          className={`shrink-0 w-6 h-6 rounded-full border-2 transition-all overflow-hidden ${
+                            selectedColorIndex === idx
+                              ? 'border-green-600 scale-110 shadow-md'
+                              : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          {imgSrc ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={imgSrc} alt={color} className="w-full h-full object-cover" />
+                          ) : (
+                            <span
+                              className="block w-full h-full rounded-full"
+                              style={{ backgroundColor: color.toLowerCase() }}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[9px] text-gray-500 font-medium shrink-0 max-w-[60px] truncate">
+                    {colorAttr.options[selectedColorIndex]}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Floating Zoom Bar — hidden on mobile when a tool panel is open */}
             <div className={`absolute left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-[0px_24px_48px_-12px_rgba(0,0,0,0.18)] border border-gray-100 flex items-center p-2 gap-1 z-30 transition-all duration-200 ${activeTool ? 'md:flex hidden' : 'flex'}`}
