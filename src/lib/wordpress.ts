@@ -212,7 +212,18 @@ async function wpFetch<T>(path: string, params?: Record<string, string>, useWooC
     } catch { }
     throw new Error(message);
   }
-  return res.json() as Promise<T>;
+
+  // WordPress always stores & as &amp; in post titles.
+  // Decode HTML entities in the raw JSON text before parsing so every
+  // consumer automatically receives clean strings — no per-component fix needed.
+  const rawText = await res.text();
+  const cleanText = rawText
+    .replace(/&amp;amp;/g, '&')   // triple-encoded first
+    .replace(/&amp;/g, '&')       // double-encoded second
+    .replace(/&#038;/g, '&')      // numeric form
+    .replace(/&#38;/g, '&');      // numeric form (no leading zero)
+
+  return JSON.parse(cleanText) as T;
 }
 
 // ── Posts (Blog) ──────────────────────────────────────────────────────────────

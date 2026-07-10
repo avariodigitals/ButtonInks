@@ -37,7 +37,13 @@ export async function GET(req: Request) {
       return NextResponse.json(products);
     }
 
-    const products   = await wpRes.json();
+    const rawText    = await wpRes.text();
+    const cleanText  = rawText
+      .replace(/&amp;amp;/g, '&')
+      .replace(/&amp;/g, '&')
+      .replace(/&#038;/g, '&')
+      .replace(/&#38;/g, '&');
+    const products   = JSON.parse(cleanText);
     const totalPages = wpRes.headers.get('X-WP-TotalPages') ?? '1';
     const total      = wpRes.headers.get('X-WP-Total')      ?? String(products.length);
 
