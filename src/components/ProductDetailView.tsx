@@ -804,12 +804,23 @@ export default function ProductDetailView({
                       {attr.options.map((opt, colorIdx) => {
                         const isSel = selected.includes(opt);
 
-                        // When a color is clicked, also swap the main image to the
-                        // product image at the same index (if one exists).
+                        // When a color is clicked, swap the main image.
+                        // Strategy:
+                        //   1. Exact alt-text match (WooCommerce stores the color name as image alt)
+                        //   2. Partial alt-text match (handles slight name differences)
+                        //   3. Positional fallback — same index as the color option
                         const handleColorClick = () => {
                           toggleAttr(attr.name, opt, false);
-                          const matchedImg = uniqueImages[colorIdx];
-                          if (matchedImg) setMainImage(matchedImg.src);
+                          const optLower = opt.toLowerCase().trim();
+                          const matchedImg =
+                            uniqueImages.find(img => img.alt?.toLowerCase().trim() === optLower) ??
+                            uniqueImages.find(img => img.alt?.toLowerCase().includes(optLower)) ??
+                            uniqueImages.find(img => optLower.includes(img.alt?.toLowerCase().trim() ?? '___')) ??
+                            uniqueImages[colorIdx];
+                          if (matchedImg && matchedImg.src !== mainImage) {
+                            setPendingImageSrc(matchedImg.src);
+                            setMainImage(matchedImg.src);
+                          }
                         };
 
                         if (isColor) {

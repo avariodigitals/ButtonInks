@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Filter, ChevronDown, ChevronUp, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { WPCategory, decodeHTMLEntities } from '@/lib/wordpress';
 import { getFiltersForCategory, matchAttributeToGroup } from '@/lib/categoryConfig';
@@ -10,26 +11,60 @@ const SORT_OPTIONS = [
   'Most Popular', 'Newest', 'Price: Low to High', 'Price: High to Low', 'Best Rated',
 ];
 
+interface AttributeWithTerms {
+  id:    number;
+  name:  string;
+  slug:  string;
+  terms: { id: number; name: string; slug: string; count: number }[];
+}
+
 interface FilterSidebarProps {
-  categories: WPCategory[];
+  categories:     WPCategory[];
   activeCategory?: string;
-  attributes: any[];
+  attributes:     AttributeWithTerms[];
 }
 
 export default function FilterSidebar({ categories, activeCategory, attributes }: FilterSidebarProps) {
-  const [filterOpen,        setFilterOpen]        = useState(false);
-  const [sortOpen,          setSortOpen]          = useState(false);
-  const [openSections,      setOpenSections]      = useState<Record<string, boolean>>({});
+  const router       = useRouter();
+  const pathname     = usePathname();
+  const searchParams = useSearchParams();
+
+  const [filterOpen,   setFilterOpen]   = useState(false);
+  const [sortOpen,     setSortOpen]     = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   const toggleSection = (key: string) =>
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
+  // Read selected attribute filters from the URL  (?attr_Size=S,M&attr_Color=Black)
+  const getSelected = (label: string): string[] => {
+    const raw = searchParams.get(`attr_${label}`);
+    return raw ? raw.split(',').filter(Boolean) : [];
+  };
+
+  const toggleTerm = (label: string, termSlug: string) => {
+    const current = getSelected(label);
+    const next = current.includes(termSlug)
+      ? current.filter(s => s !== termSlug)
+      : [...current, termSlug];
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (next.length === 0) {
+      params.delete(`attr_${label}`);
+    } else {
+      params.set(`attr_${label}`, next.join(','));
+    }
+    // Reset to page 1 when filters change
+    params.delete('page');
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   // Build the scoped attribute sections for the active category
   const categoryFilterGroups = getFiltersForCategory(activeCategory);
 
-  // Match each WC attribute to a category filter group label
-  const scopedAttributes: { label: string; attr: any }[] = categoryFilterGroups
-    .map(group => {
+  // Match each filter group to a real WC attribute (with its terms)
+  const scopedAttributes: { label: string; attr: AttributeWithTerms | null }[] =
+    categoryFilterGroups.map(group => {
       const match = attributes.find(a =>
         matchAttributeToGroup(a.name, [group]) !== null
       );
@@ -48,7 +83,7 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
         </button>
       </div>
 
-      {/* Categories Filter */}
+      {/* Categories */}
       <div className="py-2 border-t border-green-900/5 flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">Categories</span>
@@ -70,9 +105,12 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
         </div>
       </div>
 
-      {/* Category-scoped attribute filters */}
-      {scopedAttributes.length > 0 && scopedAttributes.map(({ label }) => {
-        const isOpen = openSections[label] !== false; // default open
+      {/* Category-scoped attribute filters with real terms */}
+      {scopedAttributes.map(({ label, attr }) => {
+        const isOpen   = openSections[label] !== false; // default open
+        const terms    = attr?.terms.filter(t => t.count > 0) ?? [];
+        const selected = getSelected(label);
+
         return (
           <div key={label} className="py-2 border-t border-green-900/5 flex flex-col gap-3">
             <button
@@ -86,16 +124,44 @@ export default function FilterSidebar({ categories, activeCategory, attributes }
                 ? <ChevronUp className="w-3.5 h-3.5 text-gray-500" />
                 : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}
             </button>
+
             {isOpen && (
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] text-gray-400 italic">Options coming soon…</span>
+                {terms.length === 0 ? (
+                  <span className="text-[10px] text-gray-400 italic">No options available</span>
+                ) : (
+                  terms.map(term => {
+                    const isSel = selected.includes(term.slug);
+                    return (
+                      <button
+                        key={term.id}
+                        onClick={() => toggleTerm(label, term.slug)}
+                        className="flex items-center gap-2 group text-left"
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                          isSel ? 'bg-green-700 border-green-700' : 'border-zinc-400 bg-white group-hover:border-green-600'
+                        }`}>
+                          {isSel && (
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10">
+                              <path d="M1.5 5l2.5 2.5 4.5-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className={`text-xs font-medium leading-5 ${isSel ? 'text-green-700' : 'text-neutral-700 group-hover:text-green-700'} transition-colors`}>
+                          {decodeHTMLEntities(term.name)}
+                          <span className="text-gray-400 font-normal ml-1">({term.count})</span>
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>
         );
       })}
 
-      {/* Price Range — always shown */}
+      {/* Price Range */}
       <div className="py-2 border-t border-green-900/5 flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <span className="text-neutral-900 text-xs font-bold font-['Inter'] uppercase tracking-wider">Price Range (USD)</span>

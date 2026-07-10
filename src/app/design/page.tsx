@@ -1315,13 +1315,13 @@ function DesignContent() {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Product Base — full opacity so users can clearly see what they're designing on */}
+              {/* Product Base — full opacity for real products, very faint for the fallback watermark */}
               <div className="absolute inset-0 flex items-center justify-center p-12 bg-stone-50/50 pointer-events-none">
                 <div className="relative w-full h-full">
                   <Image
                     src={selectedProduct?.images[selectedColorIndex]?.src || selectedProduct?.images[0]?.src || `${WP_URL}/wp-content/uploads/2022/08/cropped-Screenshot_3.png`}
                     fill
-                    className="object-contain"
+                    className={`object-contain ${selectedProduct ? '' : 'opacity-[0.08]'}`}
                     sizes="600px"
                     alt="Base Product"
                   />

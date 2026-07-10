@@ -5,6 +5,7 @@ import {
   getProductCategories,
   getProducts,
   getProductAttributes,
+  getAttributeTerms,
   decodeHTMLEntities,
   WP_BASE_URL,
 } from '@/lib/wordpress';
@@ -41,7 +42,35 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
     if (currentCat) currentCategoryId = currentCat.id;
   }
 
-  // Fetch products with real pagination from WP headers
+  // Fetch attributes + terms early — needed both for sidebar and for filter resolution
+  const rawAttributes = await getProductAttributes().catch(() => []);
+  const attributes = await Promise.all(
+    rawAttributes.map(async (attr) => {
+      const terms = await getAttributeTerms(attr.id).catch(() => []);
+      return { ...attr, terms };
+    })
+  );
+
+  // Parse active attribute filters from URL params (?attr_Size=s,m&attr_Color=black)
+  // and resolve term slugs → term IDs for the WC API
+  const attrFilters: { attributeId: number; termIds: number[] }[] = [];
+  for (const [key, val] of Object.entries(params)) {
+    if (!key.startsWith('attr_') || !val) continue;
+    const label     = key.replace('attr_', '');
+    const slugs     = (Array.isArray(val) ? val[0] : val).split(',').filter(Boolean);
+    const attrMatch = attributes.find(a =>
+      a.name.toLowerCase() === label.toLowerCase()
+    );
+    if (!attrMatch || slugs.length === 0) continue;
+    const termIds = slugs
+      .map(slug => attrMatch.terms.find(t => t.slug === slug)?.id)
+      .filter((id): id is number => id !== undefined);
+    if (termIds.length > 0) {
+      attrFilters.push({ attributeId: attrMatch.id, termIds });
+    }
+  }
+
+  // Fetch products with real pagination + attribute filtering
   let products: Awaited<ReturnType<typeof getProducts>> = [];
   let totalPages = 1;
   try {
@@ -51,15 +80,45 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
     url.searchParams.set('status',   'publish');
     if (currentCategoryId) url.searchParams.set('category', String(currentCategoryId));
 
+    // WooCommerce supports one attribute filter at a time via attribute + attribute_term.
+    // When multiple attributes are filtered, apply the first one via the API and
+    // client-filter the rest in JS (WC REST v3 limitation).
+    if (attrFilters.length > 0) {
+      const first = attrFilters[0];
+      url.searchParams.set('attribute',      `pa_${rawAttributes.find(a => a.id === first.attributeId)?.slug ?? first.attributeId}`);
+      url.searchParams.set('attribute_term', first.termIds.join(','));
+    }
+
     const auth = Buffer.from(
       `${process.env.WOOCOMMERCE_CONSUMER_KEY}:${process.env.WOOCOMMERCE_CONSUMER_SECRET}`
     ).toString('base64');
     const wpRes = await fetch(url.toString(), {
       headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
-      next: { revalidate: 60 },
+      next: { revalidate: 0 }, // always fresh when filters are active
     });
     if (wpRes.ok) {
-      products   = await wpRes.json();
+      const rawText   = await wpRes.text();
+      const cleanText = rawText.replace(/&amp;amp;/g, '&').replace(/&amp;/g, '&').replace(/&#038;/g, '&').replace(/&#38;/g, '&');
+      let fetched     = JSON.parse(cleanText) as Awaited<ReturnType<typeof getProducts>>;
+
+      // Client-side filter for additional attribute filters (WC limitation)
+      if (attrFilters.length > 1) {
+        fetched = fetched.filter(product =>
+          attrFilters.slice(1).every(f =>
+            product.attributes.some(pa =>
+              pa.id === f.attributeId &&
+              pa.options.some(opt => {
+                const termName = attributes
+                  .find(a => a.id === f.attributeId)?.terms
+                  .find(t => f.termIds.includes(t.id))?.name;
+                return termName && opt.toLowerCase() === termName.toLowerCase();
+              })
+            )
+          )
+        );
+      }
+
+      products   = fetched;
       totalPages = parseInt(wpRes.headers.get('X-WP-TotalPages') ?? '1') || 1;
     } else {
       products = await getProducts(page, PER_PAGE, currentCategoryId ? { category: String(currentCategoryId) } : {});
@@ -67,7 +126,6 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
   } catch {
     products = await getProducts(page, PER_PAGE, currentCategoryId ? { category: String(currentCategoryId) } : {});
   }
-  const attributes = await getProductAttributes().catch(() => []);
 
   // ALL categories ordered by config, then any extras
   const orderedCategories = CATEGORY_CONFIG.reduce<typeof rootCategories>((acc, cfg) => {

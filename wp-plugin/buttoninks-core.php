@@ -20,6 +20,8 @@ class ButtonInks_Core {
         add_action('woocommerce_process_product_meta', [$this, 'save_product_meta']);
         add_action('save_post_bi_design_template',     [$this, 'save_design_template_meta']);
         add_filter('woocommerce_rest_prepare_product_object', [$this, 'append_acf_to_rest'], 10, 3);
+        add_action('admin_menu',                 [$this, 'register_admin_pages']);
+        add_action('admin_enqueue_scripts',      [$this, 'enqueue_admin_media']);
     }
 
     // =========================================================================
@@ -819,7 +821,7 @@ class ButtonInks_Core {
             ],
             'public'              => false,
             'show_ui'             => true,
-            'show_in_menu'        => true,
+            'show_in_menu'        => 'buttoninks-settings',
             'menu_icon'           => 'dashicons-art',
             'supports'            => ['title', 'thumbnail'],
             'show_in_rest'        => false, // We expose via custom endpoint
@@ -1099,6 +1101,66 @@ class ButtonInks_Core {
             'callback'            => [$this, 'handle_contact_form'],
             'permission_callback' => '__return_true',
         ]);
+
+        // ── Promotional Banners ───────────────────────────────────────────────
+        register_rest_route('buttoninks/v1', '/promo-banners', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_promo_banners'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        register_rest_route('buttoninks/v1', '/promo-banners', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'save_promo_banners'],
+            'permission_callback' => function() { return current_user_can('manage_options'); },
+        ]);
+    }
+
+    // ── Promotional Banners ───────────────────────────────────────────────────
+
+    private function get_default_banners(): array {
+        return [
+            [
+                'id'    => 1,
+                'url'   => 'https://central.buttoninks.com/wp-content/uploads/2026/07/Apparel.png',
+                'link'  => '/categories?category=apparel',
+                'alt'   => 'Apparel Collection',
+            ],
+            [
+                'id'    => 2,
+                'url'   => 'https://central.buttoninks.com/wp-content/uploads/2026/07/Vehicle.png',
+                'link'  => '/categories?category=vehicle-branding',
+                'alt'   => 'Vehicle Branding',
+            ],
+        ];
+    }
+
+    public function get_promo_banners(): WP_REST_Response {
+        $stored = get_option('bi_promo_banners', '');
+        if ( $stored ) {
+            $decoded = json_decode( $stored, true );
+            if ( is_array($decoded) && count($decoded) > 0 ) {
+                return rest_ensure_response( $decoded );
+            }
+        }
+        return rest_ensure_response( $this->get_default_banners() );
+    }
+
+    public function save_promo_banners( WP_REST_Request $request ): WP_REST_Response {
+        $banners = $request->get_json_params();
+        if ( ! is_array($banners) ) {
+            return new WP_Error('invalid_data', 'Banners must be an array.', ['status' => 400]);
+        }
+        $sanitized = array_map(function($b) {
+            return [
+                'id'   => absint($b['id'] ?? 0),
+                'url'  => esc_url_raw($b['url'] ?? ''),
+                'link' => sanitize_text_field($b['link'] ?? '/'),
+                'alt'  => sanitize_text_field($b['alt'] ?? ''),
+            ];
+        }, $banners);
+        update_option('bi_promo_banners', wp_json_encode($sanitized));
+        return rest_ensure_response(['success' => true, 'banners' => $sanitized]);
     }
 
     public function handle_contact_form( WP_REST_Request $request ) {
@@ -1346,6 +1408,212 @@ class ButtonInks_Core {
 
         wp_delete_post($post->ID, true);
         return rest_ensure_response(['success' => true]);
+    }
+
+    // =========================================================================
+    // ADMIN: Promotional Banners Settings Page
+    // =========================================================================
+
+    public function enqueue_admin_media( string $hook ): void {
+        // Only load on our settings page
+        if ( $hook !== 'toplevel_page_buttoninks-settings' ) return;
+        wp_enqueue_media();
+    }
+
+    public function register_admin_pages(): void {
+        add_menu_page(
+            'ButtonInks Settings',
+            'ButtonInks',
+            'manage_options',
+            'buttoninks-settings',
+            [$this, 'render_promo_banners_page'],
+            'dashicons-art',
+            58
+        );
+        add_submenu_page(
+            'buttoninks-settings',
+            'Promotional Banners',
+            'Promo Banners',
+            'manage_options',
+            'buttoninks-settings',
+            [$this, 'render_promo_banners_page']
+        );
+        // Note: Design Templates submenu is added automatically via show_in_menu on the CPT
+    }
+
+    public function render_promo_banners_page(): void {
+        if ( ! current_user_can('manage_options') ) return;
+
+        $saved   = get_option('bi_promo_banners', '');
+        $banners = $saved ? json_decode($saved, true) : $this->get_default_banners();
+        if ( ! is_array($banners) ) $banners = $this->get_default_banners();
+
+        $msg = '';
+        if ( isset($_POST['bi_save_banners']) && check_admin_referer('bi_save_banners_nonce') ) {
+            $new_banners = [];
+            $urls  = array_map('esc_url_raw',          $_POST['banner_url']   ?? []);
+            $links = array_map('sanitize_text_field',  $_POST['banner_link']  ?? []);
+            $alts  = array_map('sanitize_text_field',  $_POST['banner_alt']   ?? []);
+            foreach ( $urls as $i => $url ) {
+                if ( empty($url) ) continue;
+                $new_banners[] = [
+                    'id'   => $i + 1,
+                    'url'  => $url,
+                    'link' => $links[$i] ?? '/',
+                    'alt'  => $alts[$i]  ?? '',
+                ];
+            }
+            if ( ! empty($new_banners) ) {
+                update_option('bi_promo_banners', wp_json_encode($new_banners));
+                $banners = $new_banners;
+                $msg = '<div class="notice notice-success is-dismissible"><p>Banners saved successfully.</p></div>';
+            }
+        }
+        ?>
+        <div class="wrap">
+            <h1 style="display:flex;align-items:center;gap:10px;">
+                <span class="dashicons dashicons-art" style="font-size:28px;margin-top:2px;"></span>
+                ButtonInks — Promotional Banners
+            </h1>
+            <?php echo $msg; ?>
+            <p style="color:#666;max-width:700px;margin-bottom:20px;">
+                Manage the promotional banners shown in the popup on the storefront homepage.
+                Click <strong>Choose Image</strong> to pick from your Media Library, or paste a URL directly.
+                Click <strong>Remove</strong> to delete a banner row. Leave URL blank to skip that slot.
+            </p>
+
+            <form method="post" style="max-width:860px;">
+                <?php wp_nonce_field('bi_save_banners_nonce'); ?>
+                <table class="widefat fixed" cellspacing="0" id="bi_banners_table">
+                    <thead>
+                        <tr>
+                            <th style="width:36px;">#</th>
+                            <th>Image <small>(click Choose to pick from Media Library)</small></th>
+                            <th style="width:200px;">Link (relative URL)</th>
+                            <th style="width:160px;">Alt Text</th>
+                            <th style="width:64px;">Preview</th>
+                            <th style="width:72px;">Remove</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bi_banner_rows">
+                        <?php
+                        while ( count($banners) < 5 ) $banners[] = ['id'=>count($banners)+1,'url'=>'','link'=>'/','alt'=>''];
+                        foreach ( $banners as $i => $b ): ?>
+                        <tr id="bi_row_<?php echo $i; ?>">
+                            <td style="vertical-align:middle;"><?php echo $i + 1; ?></td>
+                            <td style="vertical-align:middle;">
+                                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                                    <input type="text" name="banner_url[]"
+                                        id="bi_url_<?php echo $i; ?>"
+                                        value="<?php echo esc_attr($b['url']); ?>"
+                                        placeholder="https://..."
+                                        style="flex:1;min-width:160px;"
+                                        oninput="biPreview(this, <?php echo $i; ?>)" />
+                                    <button type="button"
+                                        class="button"
+                                        onclick="biOpenMedia(<?php echo $i; ?>)"
+                                        style="white-space:nowrap;">
+                                        📁 Choose Image
+                                    </button>
+                                </div>
+                            </td>
+                            <td style="vertical-align:middle;">
+                                <input type="text" name="banner_link[]"
+                                    value="<?php echo esc_attr($b['link']); ?>"
+                                    placeholder="/categories"
+                                    style="width:100%;" />
+                            </td>
+                            <td style="vertical-align:middle;">
+                                <input type="text" name="banner_alt[]"
+                                    value="<?php echo esc_attr($b['alt']); ?>"
+                                    placeholder="Description"
+                                    style="width:100%;" />
+                            </td>
+                            <td style="vertical-align:middle;text-align:center;">
+                                <img id="bi_preview_<?php echo $i; ?>"
+                                    src="<?php echo esc_url($b['url']); ?>"
+                                    style="max-width:54px;max-height:38px;object-fit:cover;border-radius:4px;border:1px solid #ddd;<?php echo empty($b['url']) ? 'display:none;' : ''; ?>" />
+                            </td>
+                            <td style="vertical-align:middle;text-align:center;">
+                                <button type="button" class="button button-small" style="color:#a00;"
+                                    onclick="biClearRow(<?php echo $i; ?>)">✕ Remove</button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <input type="submit" name="bi_save_banners" value="💾 Save Banners" class="button button-primary button-large" />
+                    <button type="button" onclick="biAddRow()" class="button button-large" style="background:#2271b1;color:#fff;border-color:#2271b1;">
+                        ＋ Add Banner
+                    </button>
+                    <span style="color:#888;font-size:12px;">Changes go live immediately after saving.</span>
+                </p>
+            </form>
+        </div>
+
+        <script>
+        var biRowCount = <?php echo count($banners); ?>;
+
+        // Live preview when URL typed manually
+        function biPreview(input, idx) {
+            var img = document.getElementById('bi_preview_' + idx);
+            if (!img) return;
+            if (input.value) { img.src = input.value; img.style.display = 'inline-block'; }
+            else { img.src = ''; img.style.display = 'none'; }
+        }
+
+        // Remove entire row from DOM
+        function biClearRow(idx) {
+            var row = document.getElementById('bi_row_' + idx);
+            if (row) row.parentNode.removeChild(row);
+        }
+
+        // Add a new empty banner row
+        function biAddRow() {
+            var idx  = biRowCount++;
+            var tbody = document.getElementById('bi_banner_rows');
+            var tr   = document.createElement('tr');
+            tr.id    = 'bi_row_' + idx;
+            tr.innerHTML =
+                '<td style="vertical-align:middle;">' + (tbody.rows.length + 1) + '</td>' +
+                '<td style="vertical-align:middle;">' +
+                '  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+                '    <input type="text" name="banner_url[]" id="bi_url_' + idx + '" value="" placeholder="https://..." style="flex:1;min-width:160px;" oninput="biPreview(this,' + idx + ')" />' +
+                '    <button type="button" class="button" onclick="biOpenMedia(' + idx + ')" style="white-space:nowrap;">📁 Choose Image</button>' +
+                '  </div>' +
+                '</td>' +
+                '<td style="vertical-align:middle;"><input type="text" name="banner_link[]" value="/" placeholder="/categories" style="width:100%;" /></td>' +
+                '<td style="vertical-align:middle;"><input type="text" name="banner_alt[]" value="" placeholder="Description" style="width:100%;" /></td>' +
+                '<td style="vertical-align:middle;text-align:center;"><img id="bi_preview_' + idx + '" src="" style="max-width:54px;max-height:38px;object-fit:cover;border-radius:4px;border:1px solid #ddd;display:none;" /></td>' +
+                '<td style="vertical-align:middle;text-align:center;"><button type="button" class="button button-small" style="color:#a00;" onclick="biClearRow(' + idx + ')">✕ Remove</button></td>';
+            tbody.appendChild(tr);
+        }
+
+        // Open WP Media Library picker
+        function biOpenMedia(idx) {
+            if (typeof wp === 'undefined' || !wp.media) {
+                alert('Media library not available. Please paste the URL manually.');
+                return;
+            }
+            var frame = wp.media({
+                title:    'Select Promotional Banner Image',
+                button:   { text: 'Use this image' },
+                multiple: false,
+                library:  { type: 'image' },
+            });
+            frame.on('select', function() {
+                var attachment = frame.state().get('selection').first().toJSON();
+                var urlInput   = document.getElementById('bi_url_' + idx);
+                if (urlInput) {
+                    urlInput.value = attachment.url;
+                    biPreview(urlInput, idx);
+                }
+            });
+            frame.open();
+        }
+        </script>
+        <?php
     }
 }
 

@@ -7,6 +7,7 @@ import WhyChooseUs from "@/components/WhyChooseUs";
 import Testimonials from "@/components/Testimonials";
 import SimpleProcess from "@/components/SimpleProcess";
 import EnquirySections from "@/components/EnquirySections";
+import PromoBannerPopup from "@/components/PromoBannerPopup";
 import { getProductCategories, getProducts } from "@/lib/wordpress";
 
 export default async function HomePage() {
@@ -21,6 +22,9 @@ export default async function HomePage() {
 
   return (
     <main>
+      {/* Promotional popup — shows once per browser session, auto-dismissed */}
+      <PromoBannerPopup />
+
       {/* ① Hero */}
       <HeroSection />
 

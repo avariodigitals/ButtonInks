@@ -30,7 +30,7 @@ const steps = [
     badgeBg:     "bg-emerald-500",
     circleBg:    "bg-green-50",
     circleRing:  "outline-emerald-500/10",
-    title:       "Review 3D Mockup",
+    title:       "Preview Your Design",
     description: "See exactly how your product will look with our real-time preview tool.",
   },
   {
