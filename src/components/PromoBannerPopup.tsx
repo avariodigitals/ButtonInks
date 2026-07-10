@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { X, Tag } from "lucide-react";
+import { X } from "lucide-react";
 
 const STORAGE_KEY    = "bi_promo_dismissed_v1";
 const SHOW_DELAY_MS  = 2500;
@@ -65,9 +65,6 @@ export default function PromoBannerPopup() {
     }, AUTO_ROTATE_MS);
   }, [banners.length, goTo]);
 
-  const prev = () => { resetTimer(); goTo((p) => (p - 1 + banners.length) % banners.length); };
-  const next = () => { resetTimer(); goTo((p) => (p + 1) % banners.length); };
-
   const dismiss = () => {
     setVisible(false);
     try { localStorage.setItem(STORAGE_KEY, "1"); } catch { /* private mode */ }
@@ -86,58 +83,43 @@ export default function PromoBannerPopup() {
         aria-hidden="true"
       />
 
-      {/* ── Modal shell ── */}
+      {/* ── Centering wrapper — centered on ALL screen sizes ── */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Promotional offer"
-        className="fixed inset-0 z-[501] flex items-end sm:items-center justify-center sm:p-6 pointer-events-none"
+        className="fixed inset-0 z-[501] flex items-center justify-center p-4 sm:p-6 pointer-events-none"
       >
         {/*
-          Mobile  → slides up from bottom, nearly full-width, rounded top corners
-          Desktop → centered card, very wide (up to 960px), rounded all sides
+          Card — max-w-4xl on desktop, full-width minus padding on mobile.
+          overflow-hidden + rounded on all sides everywhere.
         */}
         <div
           className={[
             "relative pointer-events-auto",
-            "w-full sm:w-auto sm:max-w-4xl",
-            // Mobile: bottom sheet feel
-            "rounded-t-[28px] sm:rounded-[20px]",
-            // Size
+            // Mobile: full width minus padding. Desktop: ~600px sweet spot
+            "w-full sm:w-[min(60vw,620px)]",
+            "rounded-2xl sm:rounded-[20px]",
             "overflow-hidden",
-            // Shadow + bg
-            "shadow-[0_32px_80px_rgba(0,0,0,0.45)] bg-white",
-            // Entrance animation
-            "animate-in fade-in slide-in-from-bottom-8 sm:zoom-in-95 duration-350",
+            "shadow-[0_32px_80px_rgba(0,0,0,0.50)]",
+            "animate-in fade-in zoom-in-95 duration-300",
           ].join(" ")}
         >
-
-          {/* ── Drag pill (mobile only) ── */}
-          <div className="sm:hidden flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 rounded-full bg-gray-300" />
-          </div>
-
           {/* ── Close button ── */}
           <button
             onClick={dismiss}
             aria-label="Close promotion"
-            className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white transition-all hover:scale-110 active:scale-95"
+            className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-black/45 hover:bg-black/65 text-white transition-all hover:scale-110 active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
 
-          {/* ── Promo badge ── */}
-          <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-600 text-white text-xs font-bold font-['Inter'] shadow-md">
-            <Tag className="w-3 h-3" />
-            Special Offer
-          </div>
-
-          {/* ── Banner image area ── */}
+          {/* ── Banner image ── */}
           <Link href={banner.link} onClick={dismiss} className="block">
             <div
               className={[
-                "relative w-full overflow-hidden",
-                "transition-opacity duration-220",
+                "relative w-full",
+                "transition-opacity duration-200",
                 animating ? "opacity-0" : "opacity-100",
               ].join(" ")}
             >
@@ -145,21 +127,23 @@ export default function PromoBannerPopup() {
               <img
                 src={banner.url}
                 alt={banner.alt}
-                className={[
-                  "w-full object-cover block",
-                  // Mobile: tall portrait; Desktop: cinematic landscape
-                  "max-h-[58dvh] sm:max-h-[540px]",
-                  "min-h-[220px]",
-                ].join(" ")}
-                style={{ objectPosition: "center top" }}
+                className="w-full block"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "auto",
+                  maxHeight: "70dvh",
+                  objectFit: "cover",
+                  objectPosition: "center top",
+                }}
               />
 
-              {/* Subtle bottom gradient so nav dots have contrast */}
-              <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+              {/* Gradient for control legibility */}
+              <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
-              {/* Dot navigation — overlaid on the image bottom */}
+              {/* Dot indicators */}
               {banners.length > 1 && (
-                <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-2 z-10">
+                <div className="absolute bottom-11 inset-x-0 flex items-center justify-center gap-2 z-10">
                   {banners.map((_, i) => (
                     <button
                       key={i}
@@ -169,35 +153,24 @@ export default function PromoBannerPopup() {
                         "rounded-full transition-all duration-200",
                         i === current
                           ? "w-6 h-2 bg-white"
-                          : "w-2 h-2 bg-white/50 hover:bg-white/80",
+                          : "w-2 h-2 bg-white/45 hover:bg-white/75",
                       ].join(" ")}
                     />
                   ))}
                 </div>
               )}
+
+              {/* "Don't show again" pill on the image */}
+              <div className="absolute bottom-3.5 inset-x-0 flex justify-center z-10">
+                <button
+                  onClick={(e) => { e.preventDefault(); dismiss(); }}
+                  className="px-5 py-1.5 rounded-full border border-white/50 bg-black/30 hover:bg-black/50 backdrop-blur-sm text-white/80 hover:text-white text-xs font-medium font-['Inter'] transition-all active:scale-95"
+                >
+                  Don&apos;t show again
+                </button>
+              </div>
             </div>
           </Link>
-
-          {/* ── Footer bar ── */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-white">
-
-            {/* Counter */}
-            {banners.length > 1 ? (
-              <span className="text-xs text-gray-400 font-['Inter'] tabular-nums">
-                {current + 1} / {banners.length}
-              </span>
-            ) : (
-              <div /> /* spacer */
-            )}
-
-            {/* Dismiss */}
-            <button
-              onClick={dismiss}
-              className="text-xs text-gray-400 hover:text-gray-700 transition-colors underline underline-offset-2 font-['Inter']"
-            >
-              Don&apos;t show again
-            </button>
-          </div>
         </div>
       </div>
     </>
