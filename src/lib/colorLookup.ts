@@ -25,128 +25,150 @@ import { colornames } from 'color-name-list';
 export const BRAND_COLOR_OVERRIDES: Record<string, string | [string, string]> = {
 
   // ── Core basics ──────────────────────────────────────────────────────────────
-  'black':              '#111827',
-  'white':              '#F9FAFB',
+  'black':              '#1C1C1C',  // garment black — not pure #000
+  'white':              '#F5F5F5',  // garment white — off-white cotton
   'grey':               '#9CA3AF',
   'gray':               '#9CA3AF',
+  'light grey':         '#D1D5DB',
+  'light gray':         '#D1D5DB',
+  'dark grey':          '#4B5563',
+  'dark gray':          '#4B5563',
   'charcoal':           '#374151',
   'dark charcoal':      '#2D3748',
-  'ash':                '#B0BEC5',
-  'ash grey':           '#B2B8BE',
-  'ash gray':           '#B2B8BE',
-  'natural':            '#F5F0E8',
-  'cream':              '#FFFDD0',
-  'ivory':              '#FFFFF0',
-  'off white':          '#FAF9F6',
+  'ash':                '#B5BEC6',  // Gildan Ash — warm light grey
+  'ash grey':           '#B5BEC6',
+  'ash gray':           '#B5BEC6',
+  'natural':            '#EDE8DC',  // unbleached cotton — warm off-white
+  'cream':              '#F5EDD6',
+  'ivory':              '#F8F4E8',
+  'off white':          '#F0EDE6',
+  'antique white':      '#FAEBD7',
 
   // ── Heather / Marl variants ───────────────────────────────────────────────────
-  'heather grey':       '#8E9BA8',
-  'heather gray':       '#8E9BA8',
-  'sport grey':         '#8E9BA8',
-  'sport gray':         '#8E9BA8',
-  'dark heather':       '#4A5568',
-  'graphite heather':   '#4B5563',
-  'graphite':           '#4B5563',
-  'carbon heather':     '#3A3F47',  // Carhartt — very dark charcoal heather
-  'heather charcoal':   '#3D4A52',
-  'heather navy':       '#2C3E6B',
-  'heather red':        '#C0392B',
-  'heather royal':      '#2E5FA3',
-  'heather blue':       '#5B8AC6',
-  'heather green':      '#4A7C59',
-  'heather purple':     '#7B5EA7',
-  'heather orange':     '#D2622A',
-  'heather cardinal':   '#8C2332',
-  'heather military':   '#5A6644',
-  'heather dark grey':  '#4A525A',
-  'heather indigo':     '#4B5B9A',
+  // Heather colors are a lighter, mixed-yarn look — slightly muted/washed vs solid
+  'heather grey':          '#8D9DA8',  // Gildan/Port & Co standard heather grey
+  'heather gray':          '#8D9DA8',
+  'sport grey':            '#9AA0A6',  // Gildan Sport Grey — slightly warmer tone
+  'sport gray':            '#9AA0A6',
+  'light heather grey':    '#BEC4CA',  // lighter marl
+  'dark heather':          '#4B5563',  // Gildan Dark Heather — charcoal mix
+  'dark heather grey':     '#4B5563',
+  'heather charcoal':      '#4B5563',
+  'graphite heather':      '#4B5563',
+  'graphite':              '#525B64',
+  'carbon heather':        '#3A3F47',  // Carhartt — near-black charcoal heather
+  'heather navy':          '#2E4470',  // navy with heather softness
+  'heather red':           '#B83232',  // red marl — slightly muted vs solid red
+  'heather scarlet':       '#B83232',
+  'heather royal':         '#3362B0',  // royal blue heather
+  'heather blue':          '#5B8AC6',  // medium blue heather
+  'heather sapphire':      '#3A6FA0',
+  'heather green':         '#5A8A5E',  // Gildan/Port & Co — muted sage-green heather
+  'heather forest':        '#3D6B45',  // darker forest-green heather
+  'heather kelly':         '#4E9A56',
+  'heather military green':'#5B6B45',  // olive-military heather
+  'heather purple':        '#7B5EA7',  // medium purple heather
+  'heather maroon':        '#7A2B35',
+  'heather cardinal':      '#8C2332',
+  'heather orange':        '#D26A2A',  // burnt-orange heather
+  'heather gold':          '#C8932A',
+  'heather indigo':        '#4B5B9A',
+  'heather black':         '#2D2D2D',  // very dark near-black heather
 
   // ── Blues ────────────────────────────────────────────────────────────────────
-  'navy':               '#1E3A5F',
-  'navy blue':          '#1E3A5F',
-  'dark navy':          '#0D1B2A',  // Carhartt — near-black navy
-  'new navy':           '#1A2B5E',  // Carhartt — bright deep navy
-  'mid-night navy':     '#1C2951',  // hyphenated variant of Midnight Navy
+  'navy':               '#1B2F4E',  // Gildan/Port & Co navy — deep ink blue
+  'navy blue':          '#1B2F4E',
+  'dark navy':          '#0D1B2A',  // near-black navy
+  'new navy':           '#1A2B5E',  // Carhartt
+  'mid-night navy':     '#1C2951',
   'midnight navy':      '#1C2951',
   'midnight':           '#1A1A2E',
-  'royal':              '#2850A0',
-  'royal blue':         '#2850A0',
-  'royalnavy':          '#2850A0',  // no-space WC typo → treat as Royal
-  'tour blue':          '#5B8DB8',  // Carhartt medium blue
-  'carolina blue':      '#7BAFD4',
-  'sky blue':           '#7EC8E3',
-  'light blue':         '#ADD8E6',
+  'royal':              '#1F4FA0',  // Gildan Royal — vivid true royal blue
+  'royal blue':         '#1F4FA0',
+  'royalnavy':          '#1F4FA0',
+  'tour blue':          '#5B8DB8',
+  'carolina blue':      '#7BAFD4',  // light sky blue
+  'sky blue':           '#87CEEB',
+  'light blue':         '#AED6F1',
+  'baby blue':          '#C9E4F5',
+  'powder blue':        '#B0D4E8',
   'indigo':             '#3F51B5',
-  'sapphire':           '#1B4F8A',
+  'sapphire':           '#1A4F8A',
   'cobalt':             '#0047AB',
   'denim':              '#1560BD',
-  'columbia blue':      '#9BDDFF',
+  'columbia blue':      '#78B9D5',  // slightly darker than most libraries show
   'athletic navy':      '#1A2E5A',
-  'oxford':             '#4E5D6C',  // grey-blue Oxford (Carhartt/Hanes)
+  'oxford':             '#4E5D6C',
+  'steel blue':         '#4A7FA5',
+  'slate blue':         '#6A7BA2',
+  'pacific blue':       '#2E7FAD',
 
   // ── Reds & Pinks ─────────────────────────────────────────────────────────────
-  'red':                '#DC2626',
-  'true red':           '#CC0000',  // pure print red
-  'cardinal':           '#8C2332',
-  'crimson':            '#BE0032',
-  'maroon':             '#800000',
-  'burgundy':           '#800020',
-  'wine':               '#722F37',
+  'red':                '#CC1F1F',  // Gildan Red — slightly darker than CSS red
+  'true red':           '#CC0000',
+  'bright red':         '#E8231E',
+  'cardinal':           '#8C1A2E',  // darker, more burgundy-red cardinal
+  'crimson':            '#A50024',
+  'maroon':             '#6B0F1A',  // deep maroon — darker than web standard
+  'burgundy':           '#6E1020',
+  'wine':               '#5C1A22',
   'cherry red':         '#C0002A',
   'fire red':           '#CE1620',
   'red daisy':          '#E8373B',
   'antique cherry red': '#9E2020',
+  'sport scarlet red':  '#CC1B1B',  // Gildan Sport Scarlet
+  'safety red':         '#EE2024',
   'pink':               '#F472B6',
-  'ribbon pink':        '#F4A7B9',  // Carhartt — soft dusty pink
+  'ribbon pink':        '#F4A7B9',
   'light pink':         '#FFB6C1',
-  'hot pink':           '#FF69B4',
+  'hot pink':           '#FF1493',
+  'neon pink':          '#FF006E',
   'coral':              '#FF6B6B',
   'coral silk':         '#FF7F7F',
   'azalea':             '#E87BB1',
-  'heliconia':          '#E84A8E',
-  'safety pink':        '#FF6EB4',
-  'neon pink':          '#FF00AF',
+  'heliconia':          '#D62E8A',  // Gildan Heliconia — deep fuchsia pink
+  'safety pink':        '#FF69B4',
 
   // ── Greens ───────────────────────────────────────────────────────────────────
-  'green':              '#16A34A',
-  'dark green':         '#14532D',
-  'forest green':       '#228B22',
-  'forest':             '#228B22',
-  'kelly green':        '#4CBB17',
-  'kelly':              '#4CBB17',
-  'military green':     '#4B5320',
-  'moss':               '#8A9A5B',  // Carhartt Moss — muted yellow-green
-  'putting green':      '#4C7A34',  // Golf green
-  'olive':              '#808000',
+  'green':              '#1E8A3C',  // Gildan Green — rich mid-green
+  'dark green':         '#1A4D2E',  // Gildan Dark Green — very deep
+  'forest green':       '#2D6A35',  // Forest — medium-dark natural green
+  'forest':             '#2D6A35',
+  'kelly green':        '#2FAD4A',  // bright vivid Kelly
+  'kelly':              '#2FAD4A',
+  'military green':     '#4B5320',  // OD green
+  'moss':               '#8A9A5B',
+  'putting green':      '#4C7A34',
+  'olive':              '#6B6B2A',  // true olive — more brownish than web standard
   'olive green':        '#6B7B3A',
-  'bottle green':       '#006A4E',
-  'sage':               '#BCB88A',
-  'mint':               '#98FF98',
-  'mint green':         '#98FF98',
+  'bottle green':       '#1A5C3A',
+  'sage':               '#8DAA7E',  // Gildan Sage — muted green-grey
+  'mint':               '#98E8B0',
+  'mint green':         '#98E8B0',
   'lime':               '#84CC16',
-  'lime green':         '#32CD32',
-  'brite lime':         '#C5E800',  // Carhartt high-vis yellow-green
+  'lime green':         '#3CB843',  // brighter than CSS lime
+  'brite lime':         '#C5E800',
   'safety green':       '#7FC42F',
   'neon green':         '#39FF14',
   'jade dome':          '#00A86B',
   'irish green':        '#008940',
-  'teal':               '#008080',
-  'dark teal':          '#003C3C',
+  'teal':               '#007070',  // deeper teal for garments
+  'dark teal':          '#004040',
 
   // ── Oranges & Yellows ────────────────────────────────────────────────────────
-  'orange':             '#EA580C',
-  'brite orange':       '#FF6B00',  // Carhartt high-vis orange
-  'burnt orange':       '#CC5500',
-  'texas orange':       '#CC5500',
-  'gold':               '#D97706',
-  'old gold':           '#CFB53B',
-  'yellow':             '#FBBF24',
+  'orange':             '#E85D0A',  // Gildan Orange — vivid burnt orange
+  'brite orange':       '#FF5F00',  // Carhartt high-vis
+  'burnt orange':       '#BF4F0F',
+  'texas orange':       '#BF4F0F',
+  'gold':               '#C8901A',  // Gildan Gold — deeper than CSS gold
+  'old gold':           '#B8820A',
+  'yellow':             '#F5C518',  // garment yellow — slightly amber
   'yellow haze':        '#F5E47A',
-  'daisy':              '#FCD34D',
-  'neon yellow':        '#FFFF00',
-  'safety orange':      '#FF6600',
-  'sport orange':       '#FF5F1F',
-  'tangerine':          '#F28500',
+  'daisy':              '#F5C630',  // Gildan Daisy — warm yellow
+  'neon yellow':        '#E8FF00',
+  'safety orange':      '#FF5C00',
+  'sport orange':       '#F04A10',
+  'tangerine':          '#E87A00',
 
   // ── Purples ──────────────────────────────────────────────────────────────────
   'purple':             '#7C3AED',
@@ -161,25 +183,24 @@ export const BRAND_COLOR_OVERRIDES: Record<string, string | [string, string]> = 
   'dark purple':        '#4B0082',
 
   // ── Browns & Neutrals ────────────────────────────────────────────────────────
-  'brown':              '#92400E',
-  'chocolate':          '#7B3F00',
-  'dark chocolate':     '#3D1F0D',  // Carhartt — deep espresso brown
-  'mocha':              '#6F4E37',
-  'tan':                '#D2B48C',
-  'sand':               '#C2B280',
-  'khaki':              '#F0E68C',
-  'stone':              '#928E85',
-  'titan':              '#6B7280',  // Carhartt Titan — medium grey
-  'taupe':              '#483C32',
-  'linen':              '#FAF0E6',
-  'antique white':      '#FAEBD7',
+  'brown':              '#7A3214',  // Gildan Brown — warm dark brown
+  'chocolate':          '#5C2900',
+  'dark chocolate':     '#3D1F0D',
+  'mocha':              '#6B4226',
+  'tan':                '#C8A87A',  // garment tan — slightly muted vs CSS tan
+  'sand':               '#C4AA7A',
+  'khaki':              '#B5A26A',  // garment khaki — more green-brown than CSS
+  'stone':              '#9E9580',
+  'titan':              '#6B7280',
+  'taupe':              '#8B7B6A',  // warm taupe
+  'linen':              '#F0E8D8',
   'antique sapphire':   '#3A5F8A',
   'antique jade':       '#3A6B4A',
   'antique gold':       '#B8960C',
   'antique cherry':     '#9E2020',
   'camo':               '#78866B',
   'military camo':      '#6B6B47',
-  'royalsteel grey':    '#4A6080',  // no-space WC typo — Royal + Steel Grey blend
+  'royalsteel grey':    '#4A6080',
 
   // ── Metallics / Special ───────────────────────────────────────────────────────
   'silver':             '#C0C0C0',
