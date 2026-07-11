@@ -36,8 +36,9 @@ export default function BrandsSection() {
       </div>
 
       {/* ── Mobile View (Marquee) ── */}
-      <div className="md:hidden w-full relative overflow-hidden h-28">
-        <div className="flex w-fit animate-marquee">
+      <div className="md:hidden w-full relative h-28 marquee-viewport">
+        <div className="absolute inset-0 overflow-hidden">
+        <div className="flex w-max animate-marquee">
           {/* First set */}
           {brands.map((brand, idx) => (
             <div
@@ -65,9 +66,10 @@ export default function BrandsSection() {
             </div>
           ))}
         </div>
+        </div>
         {/* Fades for smooth look */}
-        <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white to-transparent z-10" />
-        <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white to-transparent z-10" />
+        <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
       </div>
     </section>
   );

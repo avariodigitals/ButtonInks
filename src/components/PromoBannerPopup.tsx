@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 
@@ -22,6 +22,16 @@ export default function PromoBannerPopup() {
   const [animating, setAnimating] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const goTo = (indexOrUpdater: number | ((p: number) => number)) => {
+    setAnimating(true);
+    setTimeout(() => {
+      setCurrent(prev =>
+        typeof indexOrUpdater === "function" ? indexOrUpdater(prev) : indexOrUpdater
+      );
+      setAnimating(false);
+    }, 220);
+  };
+
   useEffect(() => {
     try {
       if (localStorage.getItem(STORAGE_KEY) === "1") return;
@@ -42,28 +52,25 @@ export default function PromoBannerPopup() {
   useEffect(() => {
     if (!visible || banners.length <= 1) return;
     timerRef.current = setInterval(() => {
-      goTo((prev) => (prev + 1) % banners.length);
+      setAnimating(true);
+      setTimeout(() => {
+        setCurrent(prev => (prev + 1) % banners.length);
+        setAnimating(false);
+      }, 220);
     }, AUTO_ROTATE_MS);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, banners.length]);
 
-  const goTo = useCallback((indexOrUpdater: number | ((p: number) => number)) => {
-    setAnimating(true);
-    setTimeout(() => {
-      setCurrent(prev =>
-        typeof indexOrUpdater === "function" ? indexOrUpdater(prev) : indexOrUpdater
-      );
-      setAnimating(false);
-    }, 220);
-  }, []);
-
-  const resetTimer = useCallback(() => {
+  const resetTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      goTo((prev) => (prev + 1) % banners.length);
+      setAnimating(true);
+      setTimeout(() => {
+        setCurrent(prev => (prev + 1) % banners.length);
+        setAnimating(false);
+      }, 220);
     }, AUTO_ROTATE_MS);
-  }, [banners.length, goTo]);
+  };
 
   const dismiss = () => {
     setVisible(false);
@@ -88,7 +95,7 @@ export default function PromoBannerPopup() {
         role="dialog"
         aria-modal="true"
         aria-label="Promotional offer"
-        className="fixed inset-0 z-[501] flex items-center justify-center p-4 sm:p-6 pointer-events-none"
+        className="fixed inset-0 z-[501] flex items-center justify-center p-2 sm:p-6 pointer-events-none"
       >
         {/*
           Card — max-w-4xl on desktop, full-width minus padding on mobile.
@@ -97,11 +104,11 @@ export default function PromoBannerPopup() {
         <div
           className={[
             "relative pointer-events-auto",
-            // Mobile: full width minus padding. Desktop: ~600px sweet spot
-            "w-full sm:w-[min(60vw,620px)]",
-            "rounded-2xl sm:rounded-[20px]",
+            // Mobile stays as-is; desktop gets a larger presence.
+            "w-[min(100vw-1rem,780px)] sm:w-[min(72vw,920px)]",
+            "rounded-3xl sm:rounded-[22px]",
             "overflow-hidden",
-            "shadow-[0_32px_80px_rgba(0,0,0,0.50)]",
+            "shadow-[0_36px_90px_rgba(0,0,0,0.52)]",
             "animate-in fade-in zoom-in-95 duration-300",
           ].join(" ")}
         >
@@ -109,9 +116,9 @@ export default function PromoBannerPopup() {
           <button
             onClick={dismiss}
             aria-label="Close promotion"
-            className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-black/45 hover:bg-black/65 text-white transition-all hover:scale-110 active:scale-95"
+            className="absolute top-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-all hover:scale-110 hover:bg-black/70 active:scale-95 sm:top-4 sm:right-4"
           >
-            <X className="w-4 h-4" />
+            <X className="h-5 w-5" />
           </button>
 
           {/* ── Banner image ── */}
@@ -127,23 +134,23 @@ export default function PromoBannerPopup() {
               <img
                 src={banner.url}
                 alt={banner.alt}
-                className="w-full block"
+                className="block w-full"
                 style={{
                   display: "block",
                   width: "100%",
                   height: "auto",
-                  maxHeight: "70dvh",
+                  maxHeight: "84dvh",
                   objectFit: "cover",
                   objectPosition: "center top",
                 }}
               />
 
               {/* Gradient for control legibility */}
-              <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black/75 to-transparent pointer-events-none" />
 
               {/* Dot indicators */}
               {banners.length > 1 && (
-                <div className="absolute bottom-11 inset-x-0 flex items-center justify-center gap-2 z-10">
+                <div className="absolute bottom-12 inset-x-0 z-10 flex items-center justify-center gap-2">
                   {banners.map((_, i) => (
                     <button
                       key={i}
@@ -152,8 +159,8 @@ export default function PromoBannerPopup() {
                       className={[
                         "rounded-full transition-all duration-200",
                         i === current
-                          ? "w-6 h-2 bg-white"
-                          : "w-2 h-2 bg-white/45 hover:bg-white/75",
+                          ? "h-2.5 w-7 bg-white"
+                          : "h-2.5 w-2.5 bg-white/40 hover:bg-white/75",
                       ].join(" ")}
                     />
                   ))}
@@ -161,10 +168,10 @@ export default function PromoBannerPopup() {
               )}
 
               {/* "Don't show again" pill on the image */}
-              <div className="absolute bottom-3.5 inset-x-0 flex justify-center z-10">
+              <div className="absolute bottom-3 inset-x-0 z-10 flex justify-center">
                 <button
                   onClick={(e) => { e.preventDefault(); dismiss(); }}
-                  className="px-5 py-1.5 rounded-full border border-white/50 bg-black/30 hover:bg-black/50 backdrop-blur-sm text-white/80 hover:text-white text-xs font-medium font-['Inter'] transition-all active:scale-95"
+                  className="rounded-full border border-white/45 bg-black/35 px-5 py-2 text-xs font-medium text-white/90 backdrop-blur-sm transition-all active:scale-95 hover:bg-black/55 hover:text-white sm:px-6 sm:py-2.5"
                 >
                   Don&apos;t show again
                 </button>

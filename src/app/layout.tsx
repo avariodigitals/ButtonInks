@@ -22,8 +22,6 @@ const inter = Inter({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export const metadata: Metadata = {
@@ -57,8 +55,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-white touch-pan-y" suppressHydrationWarning>
+    <html lang="en" className={`${outfit.variable} ${inter.variable} h-full antialiased overflow-x-clip`}>
+      <body className="min-h-full flex flex-col bg-white touch-pan-y overflow-x-clip" suppressHydrationWarning>
         <NotificationProvider>
           <CartProvider>
             <ShellWrapper>

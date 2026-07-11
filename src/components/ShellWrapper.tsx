@@ -14,7 +14,7 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
   return (
     <>
       {!hideShell && <Header />}
-      <div id="shell-main" className={hideShell ? "overflow-hidden" : "flex-1"} style={hideShell ? { height: '100dvh' } : undefined}>
+      <div id="shell-main" className={hideShell ? "overflow-hidden min-w-0" : "flex-1 min-w-0 overflow-x-clip"} style={hideShell ? { height: '100dvh' } : undefined}>
         {children}
       </div>
       {!hideShell && <Footer />}

@@ -21,7 +21,7 @@ export default async function HomePage() {
   const rootCategories = categories.filter(c => c.parent === 0 && c.slug !== 'uncategorized');
 
   return (
-    <main>
+    <main className="w-full overflow-x-clip">
       {/* Promotional popup — shows once per browser session, auto-dismissed */}
       <PromoBannerPopup />
 

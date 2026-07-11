@@ -9,6 +9,13 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   font-family: var(--font-inter);
 }
@@ -47,4 +54,11 @@ body {
 
 .animate-marquee {
   animation: marquee 20s linear infinite;
+  will-change: transform;
+}
+
+/* Keep marquee tracks from expanding page scroll width on mobile */
+.marquee-viewport {
+  overflow: hidden;
+  contain: layout paint;
 }
