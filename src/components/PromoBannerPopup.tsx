@@ -104,9 +104,11 @@ export default function PromoBannerPopup() {
         <div
           className={[
             "relative pointer-events-auto",
-            // Mobile stays as-is; desktop gets a larger presence.
-            "w-[min(100vw-1rem,780px)] sm:w-[min(72vw,920px)]",
+            // Mobile: nearly full screen but safely inset. Desktop stays wide.
+            "w-[calc(100vw-1rem)] sm:w-[min(72vw,920px)]",
+            "max-w-[780px] sm:max-w-none",
             "rounded-3xl sm:rounded-[22px]",
+            "max-h-[88dvh] sm:max-h-none",
             "overflow-hidden",
             "shadow-[0_36px_90px_rgba(0,0,0,0.52)]",
             "animate-in fade-in zoom-in-95 duration-300",
@@ -134,7 +136,7 @@ export default function PromoBannerPopup() {
               <img
                 src={banner.url}
                 alt={banner.alt}
-                className="block w-full"
+                className="block w-full h-[72dvh] object-cover object-top sm:h-auto"
                 style={{
                   display: "block",
                   width: "100%",
@@ -150,7 +152,7 @@ export default function PromoBannerPopup() {
 
               {/* Dot indicators */}
               {banners.length > 1 && (
-                <div className="absolute bottom-12 inset-x-0 z-10 flex items-center justify-center gap-2">
+                <div className="absolute bottom-12 inset-x-0 z-10 flex items-center justify-center gap-2 px-3">
                   {banners.map((_, i) => (
                     <button
                       key={i}
@@ -168,10 +170,10 @@ export default function PromoBannerPopup() {
               )}
 
               {/* "Don't show again" pill on the image */}
-              <div className="absolute bottom-3 inset-x-0 z-10 flex justify-center">
+              <div className="absolute bottom-3 inset-x-0 z-10 flex justify-center px-3">
                 <button
                   onClick={(e) => { e.preventDefault(); dismiss(); }}
-                  className="rounded-full border border-white/45 bg-black/35 px-5 py-2 text-xs font-medium text-white/90 backdrop-blur-sm transition-all active:scale-95 hover:bg-black/55 hover:text-white sm:px-6 sm:py-2.5"
+                  className="max-w-full rounded-full border border-white/45 bg-black/35 px-5 py-2 text-xs font-medium text-white/90 backdrop-blur-sm transition-all active:scale-95 hover:bg-black/55 hover:text-white sm:px-6 sm:py-2.5"
                 >
                   Don&apos;t show again
                 </button>
