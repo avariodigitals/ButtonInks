@@ -55,8 +55,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${inter.variable} h-full antialiased overflow-x-clip`}>
-      <body className="min-h-full flex flex-col bg-white touch-pan-y overflow-x-clip" suppressHydrationWarning>
+    <html lang="en" className={`${outfit.variable} ${inter.variable} h-full antialiased overflow-x-hidden`}>
+      <body className="min-h-full flex flex-col bg-white touch-pan-y overflow-x-hidden" suppressHydrationWarning>
         <NotificationProvider>
           <CartProvider>
             <ShellWrapper>

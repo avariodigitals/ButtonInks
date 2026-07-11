@@ -104,11 +104,10 @@ export default function PromoBannerPopup() {
         <div
           className={[
             "relative pointer-events-auto",
-            // Mobile: nearly full screen but safely inset. Desktop stays wide.
-            "w-[calc(100vw-1rem)] sm:w-[min(72vw,920px)]",
-            "max-w-[780px] sm:max-w-none",
+            // Mobile: wide and centered without using viewport-width math that can overflow.
+            "w-full max-w-[96vw] sm:w-[min(72vw,920px)] sm:max-w-none",
             "rounded-3xl sm:rounded-[22px]",
-            "max-h-[88dvh] sm:max-h-none",
+            "max-h-[calc(100dvh-1rem)] sm:max-h-none",
             "overflow-hidden",
             "shadow-[0_36px_90px_rgba(0,0,0,0.52)]",
             "animate-in fade-in zoom-in-95 duration-300",
@@ -136,7 +135,7 @@ export default function PromoBannerPopup() {
               <img
                 src={banner.url}
                 alt={banner.alt}
-                className="block w-full h-[72dvh] object-cover object-top sm:h-auto"
+                className="block w-full h-[clamp(420px,72dvh,760px)] object-cover object-top sm:h-auto"
                 style={{
                   display: "block",
                   width: "100%",
