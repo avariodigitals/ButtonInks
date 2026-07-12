@@ -9,11 +9,17 @@
   box-sizing: border-box;
 }
 
-html,
+html {
+  width: 100%;
+  max-width: 100%;
+  /* Do NOT set overflow-x: hidden on <html> — it breaks position:sticky
+     on Chrome Android and causes the whole page to shift sideways. */
+}
+
 body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden !important;
+  overflow-x: hidden;
 }
 
 body {

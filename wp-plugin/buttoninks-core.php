@@ -1114,6 +1114,36 @@ class ButtonInks_Core {
             'callback'            => [$this, 'save_promo_banners'],
             'permission_callback' => function() { return current_user_can('manage_options'); },
         ]);
+
+        register_rest_route('buttoninks/v1', '/announcement', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'get_announcement'],
+                'permission_callback' => '__return_true',
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'save_announcement'],
+                'permission_callback' => function() { return current_user_can('manage_options'); },
+            ],
+        ]);
+    }
+
+    // ── Announcement Bar ─────────────────────────────────────────────────────
+
+    public function get_announcement(): WP_REST_Response {
+        $stored = get_option('bi_announcement_text', '');
+        if ( ! $stored ) {
+            $stored = 'Free shipping on orders over $75 · Use code PRINT15 for 15% off your first order';
+        }
+        return rest_ensure_response( ['text' => $stored] );
+    }
+
+    public function save_announcement( WP_REST_Request $request ): WP_REST_Response {
+        $params = $request->get_json_params();
+        $text   = sanitize_text_field($params['text'] ?? '');
+        update_option('bi_announcement_text', $text);
+        return rest_ensure_response(['success' => true, 'text' => $text]);
     }
 
     // ── Promotional Banners ───────────────────────────────────────────────────
@@ -1450,6 +1480,11 @@ class ButtonInks_Core {
 
         $msg = '';
         if ( isset($_POST['bi_save_banners']) && check_admin_referer('bi_save_banners_nonce') ) {
+            // Save announcement first
+            if ( isset($_POST['bi_announcement_text']) ) {
+                update_option('bi_announcement_text', sanitize_text_field($_POST['bi_announcement_text']));
+            }
+
             $new_banners = [];
             $urls  = array_map('esc_url_raw',          $_POST['banner_url']   ?? []);
             $links = array_map('sanitize_text_field',  $_POST['banner_link']  ?? []);
@@ -1473,17 +1508,29 @@ class ButtonInks_Core {
         <div class="wrap">
             <h1 style="display:flex;align-items:center;gap:10px;">
                 <span class="dashicons dashicons-art" style="font-size:28px;margin-top:2px;"></span>
-                ButtonInks — Promotional Banners
+                ButtonInks — Settings
             </h1>
             <?php echo $msg; ?>
-            <p style="color:#666;max-width:700px;margin-bottom:20px;">
-                Manage the promotional banners shown in the popup on the storefront homepage.
-                Click <strong>Choose Image</strong> to pick from your Media Library, or paste a URL directly.
-                Click <strong>Remove</strong> to delete a banner row. Leave URL blank to skip that slot.
-            </p>
 
             <form method="post" style="max-width:860px;">
                 <?php wp_nonce_field('bi_save_banners_nonce'); ?>
+
+                <!-- SECTION: Announcement Bar -->
+                <div style="background:#fff; border:1px solid #ccd0d4; padding:20px; margin-bottom:30px; border-radius:4px;">
+                    <h2 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Top Announcement Bar</h2>
+                    <p style="color:#666; margin-bottom:15px;">This text is shown at the very top of every page. Keep it short for the best look.</p>
+                    <input type="text" name="bi_announcement_text"
+                           value="<?php echo esc_attr(get_option('bi_announcement_text', 'Free shipping on orders over $75 · Use code PRINT15 for 15% off your first order')); ?>"
+                           style="width:100%; font-size:14px; padding:10px;"
+                           placeholder="Enter announcement text..." />
+                </div>
+
+                <h2 style="margin-bottom:10px;">Promotional Banners</h2>
+                <p style="color:#666;max-width:700px;margin-bottom:20px;">
+                    Manage the promotional banners shown in the popup on the storefront homepage.
+                    Click <strong>Choose Image</strong> to pick from your Media Library, or paste a URL directly.
+                    Click <strong>Remove</strong> to delete a banner row. Leave URL blank to skip that slot.
+                </p>
                 <table class="widefat fixed" cellspacing="0" id="bi_banners_table">
                     <thead>
                         <tr>
