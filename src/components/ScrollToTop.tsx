@@ -35,21 +35,21 @@ const ScrollToTop = () => {
 
   return (
     <div
-      className={`fixed z-[100] transition-all duration-300 ease-in-out
-        ${isDesignPage ? 'bottom-20 md:bottom-8' : 'bottom-6 md:bottom-8'}
-        right-4 md:right-8
+      className={`fixed z-[1000] transition-all duration-300 ease-in-out
+        ${isDesignPage ? 'bottom-24 sm:bottom-8' : 'bottom-6 sm:bottom-8'}
+        right-4 sm:right-8
       `}
     >
       <button
         type="button"
         onClick={scrollToTop}
         className={`
-          w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-green-700 text-white shadow-2xl transition-all duration-300 hover:bg-green-800 active:scale-95 border border-white/20
+          w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-green-700 text-white shadow-2xl transition-all duration-300 hover:bg-green-800 active:scale-95 border border-white/20
           ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}
         `}
         aria-label="Scroll to top"
       >
-        <ArrowUp className="w-5 h-5 md:w-6 md:h-6" strokeWidth={3} />
+        <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
       </button>
     </div>
   );
