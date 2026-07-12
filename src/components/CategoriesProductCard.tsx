@@ -46,7 +46,9 @@ export default function CategoriesProductCard({
   index: number;
 }) {
   const router = useRouter();
-  const href   = `/products/${product.categories[0]?.slug || 'all'}/${product.slug}`;
+  const href   = product.slug && product.categories[0]?.slug
+    ? `/products/${product.categories[0].slug}/${product.slug}`
+    : null;
 
   const [wishlisted,       setWishlisted]       = useState(false);
   const [wishlistLoading,  setWishlistLoading]  = useState(false);
@@ -55,7 +57,7 @@ export default function CategoriesProductCard({
     e.preventDefault();
     e.stopPropagation();
     const token = getToken();
-    if (!token) { router.push(`/login?redirect=${encodeURIComponent(href)}`); return; }
+    if (!token) { router.push(`/login?redirect=${encodeURIComponent(href ?? '/categories')}`); return; }
     setWishlistLoading(true);
     try {
       await fetch('/api/wishlist', {
@@ -66,6 +68,8 @@ export default function CategoriesProductCard({
       setWishlisted(v => !v);
     } finally { setWishlistLoading(false); }
   };
+
+  if (!href) return null;
 
   return (
     <Link

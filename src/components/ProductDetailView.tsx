@@ -269,7 +269,9 @@ function ReviewFormModal({
 // Ã¢â€â‚¬Ã¢â€â‚¬ Related product card (live WP data) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function RelatedCard({ product }: { product: WPProduct }) {
   const categorySlug = product.categories?.[0]?.slug ?? 'all';
-  const href  = `/products/${categorySlug}/${product.slug}`;
+  const href  = product.slug && product.categories?.[0]?.slug
+    ? `/products/${categorySlug}/${product.slug}`
+    : null;
   const image = product.images?.[0]?.src;
   const rating = parseFloat(product.average_rating || '0');
   const isActuallyOnSale = product.on_sale === true
@@ -294,6 +296,8 @@ function RelatedCard({ product }: { product: WPProduct }) {
   const currentPrice2 = ins ? extractAmt(ins[1]) : extractAmt(product.price_html || '');
   const displayPrice = currentPrice2 ?? (parseFloat(product.price || '0') > 0 ? parseFloat(product.price) : null);
   const fmtR = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
+  if (!href) return null;
 
   return (
     <Link
@@ -805,18 +809,99 @@ export default function ProductDetailView({
                         const isSel = selected.includes(opt);
 
                         // When a color is clicked, swap the main image.
-                        // Strategy:
-                        //   1. Exact alt-text match (WooCommerce stores the color name as image alt)
-                        //   2. Partial alt-text match (handles slight name differences)
-                        //   3. Positional fallback — same index as the color option
+                        //
+                        // Core insight: WooCommerce filenames encode the color like
+                        //   "Sport-Tek-Cap-True-NavyWhite-OSFA-5"
+                        // while the color option is "True Navy/White".
+                        //
+                        // Strategy — normalized slug matching beats word matching:
+                        //   1. Exact alt match (rare but best)
+                        //   2. Exact filename match
+                        //   3. Normalized slug: strip all non-alpha chars from both
+                        //      option and filename, then check containment.
+                        //      e.g. "True Navy/White" → "truenavywhite"
+                        //           filename → "truenavywhite" ✓
+                        //   4. Scored keyword match — rank images by how many
+                        //      UNIQUE non-generic words from the color name appear
+                        //      in the filename. Pick highest score. This handles
+                        //      cases where multiple filenames share "true" or "white".
+                        //   5. Positional fallback.
                         const handleColorClick = () => {
                           toggleAttr(attr.name, opt, false);
-                          const optLower = opt.toLowerCase().trim();
-                          const matchedImg =
-                            uniqueImages.find(img => img.alt?.toLowerCase().trim() === optLower) ??
-                            uniqueImages.find(img => img.alt?.toLowerCase().includes(optLower)) ??
-                            uniqueImages.find(img => optLower.includes(img.alt?.toLowerCase().trim() ?? '___')) ??
-                            uniqueImages[colorIdx];
+
+                          // Normalize: lowercase, remove everything non-alpha
+                          const normalize = (s: string) =>
+                            s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                          const optNorm = normalize(opt);
+
+                          // Words that appear in almost every color name → skip for scoring
+                          const GENERIC = new Set(['true', 'white', 'black', 'color', 'the', 'and']);
+
+                          // Specific words only (filter generic + short ones)
+                          const optWords = opt.toLowerCase()
+                            .split(/[\s/\-_]+/)
+                            .map(w => w.replace(/[^a-z0-9]/g, ''))
+                            .filter(w => w.length > 2 && !GENERIC.has(w));
+
+                          // All words including generic (used as tiebreaker)
+                          const allOptWords = opt.toLowerCase()
+                            .split(/[\s/\-_]+/)
+                            .map(w => w.replace(/[^a-z0-9]/g, ''))
+                            .filter(w => w.length > 1);
+
+                          const imgHaystack = (img: { alt?: string; name?: string }) => {
+                            const altN = normalize(img.alt ?? '');
+                            const nameN = normalize(img.name ?? '');
+                            return { altN, nameN, combined: altN + ' ' + nameN };
+                          };
+
+                          // Step 1: exact alt
+                          let matchedImg = uniqueImages.find(img =>
+                            normalize(img.alt ?? '') === optNorm
+                          );
+
+                          // Step 2: exact filename
+                          if (!matchedImg) {
+                            matchedImg = uniqueImages.find(img =>
+                              normalize(img.name ?? '') === optNorm
+                            );
+                          }
+
+                          // Step 3: normalized slug containment (handles "True Navy/White" → "truenavywhite")
+                          if (!matchedImg) {
+                            matchedImg = uniqueImages.find(img => {
+                              const { altN, nameN } = imgHaystack(img);
+                              return altN.includes(optNorm) || nameN.includes(optNorm);
+                            });
+                          }
+
+                          // Step 4: scored keyword match — most specific words matched wins
+                          if (!matchedImg && optWords.length > 0) {
+                            let bestScore = 0;
+                            let bestImg: typeof uniqueImages[0] | undefined;
+
+                            for (const img of uniqueImages) {
+                              const { combined } = imgHaystack(img);
+                              // Score by specific words first
+                              const specificScore = optWords.filter(w => combined.includes(w)).length;
+                              // Tiebreak by total word matches
+                              const totalScore = allOptWords.filter(w => combined.includes(w)).length;
+                              const score = specificScore * 100 + totalScore;
+                              if (score > bestScore) {
+                                bestScore = score;
+                                bestImg = img;
+                              }
+                            }
+                            // Only use if at least one specific word matched
+                            if (bestScore >= 100) matchedImg = bestImg;
+                          }
+
+                          // Step 5: positional fallback
+                          if (!matchedImg) {
+                            matchedImg = uniqueImages[colorIdx];
+                          }
+
                           if (matchedImg && matchedImg.src !== mainImage) {
                             setPendingImageSrc(matchedImg.src);
                             setMainImage(matchedImg.src);

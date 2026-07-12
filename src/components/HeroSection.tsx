@@ -30,7 +30,7 @@ export default function HeroSection() {
             <span className="text-white">Custom Printing</span>
             <br className="hidden md:block" />
             <span className="text-green-500"> That Works</span>
-            <span className="text-white"> as Hard</span>
+            <span className="text-white"> as Hard </span>
             <br className="hidden md:block" />
             <span className="text-white">as Your Brand</span>
           </h1>

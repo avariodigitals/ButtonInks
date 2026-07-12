@@ -173,11 +173,15 @@ export default function WishlistPage() {
 
           /* ── Product grid ── */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map(product => (
+            {products
+              .filter(product => product.slug && product.categories?.[0]?.slug)
+              .map(product => {
+              const productHref = `/products/${product.categories![0].slug}/${product.slug}`;
+              return (
               <div key={product.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md hover:border-green-200 transition-all flex flex-col">
 
                 {/* Image */}
-                <Link href={`/products/${product.categories?.[0]?.slug ?? 'all'}/${product.slug}`} className="relative aspect-square bg-gray-50 overflow-hidden block">
+                <Link href={productHref} className="relative aspect-square bg-gray-50 overflow-hidden block">
                   {product.images?.[0]?.src ? (
                     <Image
                       src={product.images[0].src}
@@ -201,7 +205,7 @@ export default function WishlistPage() {
                 {/* Info */}
                 <div className="p-4 flex flex-col gap-3 flex-1">
                   <div className="flex-1">
-                    <Link href={`/products/${product.categories?.[0]?.slug ?? 'all'}/${product.slug}`}>
+                    <Link href={productHref}>
                       <h3 className="font-bold text-zinc-900 text-sm leading-snug hover:text-green-700 transition-colors line-clamp-2">{product.name}</h3>
                     </Link>
                     {product.categories?.[0] && (
@@ -246,7 +250,8 @@ export default function WishlistPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

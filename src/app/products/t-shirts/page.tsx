@@ -129,9 +129,13 @@ function SkeletonCard() {
 // ── Live product card ─────────────────────────────────────────────────────────
 function ProductCard({ product }: { product: WPProduct }) {
   const categorySlug = product.categories?.[0]?.slug ?? 'all';
-  const href = `/products/${categorySlug}/${product.slug}`;
+  const href = product.slug && product.categories?.[0]?.slug
+    ? `/products/${categorySlug}/${product.slug}`
+    : null;
   const image = product.images?.[0]?.src;
   const isNew = product.acf?.enable_designer || product.acf?.enable_upload;
+
+  if (!href) return null;
 
   return (
     <Link

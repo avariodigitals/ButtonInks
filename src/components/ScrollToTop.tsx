@@ -35,10 +35,7 @@ const ScrollToTop = () => {
 
   return (
     <div
-      className={`fixed z-[1000] transition-all duration-300 ease-in-out
-        ${isDesignPage ? 'bottom-24 sm:bottom-8' : 'bottom-6 sm:bottom-8'}
-        right-4 sm:right-8
-      `}
+      className={`fixed z-[1000] transition-all duration-300 ease-in-out bottom-6 sm:bottom-8 right-4 sm:right-8`}
     >
       <button
         type="button"

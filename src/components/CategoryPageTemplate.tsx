@@ -125,7 +125,9 @@ function FilterPanel({ groups, onClose }: { groups: FilterGroup[]; onClose?: () 
 function ProductCard({ product }: { product: WPProduct }) {
   const router = useRouter();
   const categorySlug = product.categories?.[0]?.slug ?? 'all';
-  const href  = `/products/${categorySlug}/${product.slug}`;
+  const href  = product.slug && product.categories?.[0]?.slug
+    ? `/products/${categorySlug}/${product.slug}`
+    : null;
   const image = product.images?.[0]?.src;
   const rating = parseFloat(product.average_rating);
 
@@ -135,12 +137,14 @@ function ProductCard({ product }: { product: WPProduct }) {
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    try { const t = localStorage.getItem('bi_token'); if (!t) { router.push(`/login?redirect=${encodeURIComponent(href)}`); return; }
+    try { const t = localStorage.getItem('bi_token'); if (!t) { router.push(`/login?redirect=${encodeURIComponent(href ?? '/categories')}`); return; }
       setWishlistLoading(true);
       await fetch('/api/wishlist', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ product_id: product.id, action: wishlisted ? 'remove' : 'add' }) });
       setWishlisted(v => !v);
     } finally { setWishlistLoading(false); }
   };
+
+  if (!href) return null;
 
   return (
     <Link
