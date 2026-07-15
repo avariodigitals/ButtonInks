@@ -1127,9 +1127,47 @@ class ButtonInks_Core {
                 'permission_callback' => function() { return current_user_can('manage_options'); },
             ],
         ]);
+
+        // ── Square public config (Application ID + Location ID only — no secrets) ──
+        register_rest_route('buttoninks/v1', '/square-config', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_square_config'],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     // ── Announcement Bar ─────────────────────────────────────────────────────
+
+    // ── Square public config ──────────────────────────────────────────────────
+    // Returns only the Application ID and Location ID — safe to expose publicly.
+    // The Access Token / secret keys are NEVER returned.
+    public function get_square_config(): WP_REST_Response {
+        // WooCommerce Square stores its settings under these option keys
+        $settings     = get_option( 'wc_square_settings', [] );
+        $is_sandbox   = isset( $settings['enable_sandbox'] ) && $settings['enable_sandbox'] === 'yes';
+
+        $application_id = $is_sandbox
+            ? ( $settings['sandbox_application_id'] ?? '' )
+            : ( $settings['application_id'] ?? '' );
+
+        $location_id = $is_sandbox
+            ? ( $settings['sandbox_location_id'] ?? '' )
+            : ( $settings['location_id'] ?? '' );
+
+        // Fallback: try the per-gateway settings
+        if ( empty( $application_id ) ) {
+            $cc_settings    = get_option( 'woocommerce_square_credit_card_settings', [] );
+            $application_id = $cc_settings['application_id'] ?? '';
+            $location_id    = $cc_settings['location_id']    ?? $location_id;
+            $is_sandbox     = isset( $cc_settings['sandbox_mode'] ) && $cc_settings['sandbox_mode'] === 'yes';
+        }
+
+        return rest_ensure_response([
+            'application_id' => $application_id,
+            'location_id'    => $location_id,
+            'is_sandbox'     => $is_sandbox,
+        ]);
+    }
 
     public function get_announcement(): WP_REST_Response {
         $stored = get_option('bi_announcement_text', '');

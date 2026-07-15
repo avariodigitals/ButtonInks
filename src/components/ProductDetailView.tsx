@@ -224,7 +224,7 @@ function ReviewFormModal({
                 rows={4}
                 value={body}
                 onChange={e => setBody(e.target.value)}
-                placeholder="Share your experience with this productÃ¢â‚¬Â¦"
+                placeholder="Share your experience with this product…"
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-inter text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-green-600 transition-colors resize-none"
               />
             </div>
@@ -248,7 +248,7 @@ function ReviewFormModal({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  SubmittingÃ¢â‚¬Â¦
+                  Submitting&hellip;
                 </span>
               ) : (
                 <>
@@ -346,7 +346,7 @@ function RelatedCard({ product }: { product: WPProduct }) {
               </span>
             </div>
             {product.acf?.bulk_pricing?.[0] && (
-              <span className="text-gray-400 text-xs font-inter leading-4"> Ã‚Â· min {product.acf.bulk_pricing[0].min_qty}</span>
+              <span className="text-gray-400 text-xs font-inter leading-4"> · min {product.acf.bulk_pricing[0].min_qty}</span>
             )}
           </div>
           <span className="px-3 py-1.5 bg-green-700 rounded-lg text-white text-xs font-bold font-inter leading-4 group-hover:bg-green-800 transition-colors">
@@ -374,7 +374,7 @@ export default function ProductDetailView({
   );
 
   const [mainImage,          setMainImage]          = useState(uniqueImages[0]?.src || '');
-  // Track which image src is being loaded Ã¢â‚¬â€ null when not transitioning or when only 1 image
+  // Track which image src is being loaded ’ null when not transitioning or when only 1 image
   const [pendingImageSrc,    setPendingImageSrc]    = useState<string | null>(null);
   const hasMultipleImages = uniqueImages.length > 1;
   const [lightboxOpen,       setLightboxOpen]       = useState(false);
@@ -400,8 +400,8 @@ export default function ProductDetailView({
 
     if (!sel) return;
 
-    // Parse "Color: Red, Blue Ã‚Â· Size: L Ã‚Â· Print Area: Front Ã‚Â· Urgent Production"
-    const parts = sel.split('Ã‚Â·').map(s => s.trim());
+    // Parse "Color: Red, Blue · Size: L · Print Area: Front · Urgent Production"
+    const parts = sel.split('·').map(s => s.trim());
     const restoredAttrs: Record<string, string[]> = {};
     let restoredPrintArea = '';
     let restoredProduction = '';
@@ -417,12 +417,12 @@ export default function ProductDetailView({
       } else if (part.toLowerCase().startsWith('material:')) {
         restoredMaterial = part.split(':')[1]?.trim() ?? '';
       } else if (part.includes(':')) {
-        // Attribute Ã¢â‚¬â€ e.g. "Color: Red" or "Size: L"
+        // Attribute ’ e.g. "Color: Red" or "Size: L"
         const colonIdx = part.indexOf(':');
         const attrName = part.slice(0, colonIdx).trim();
         const isColorAttr = attrName.toLowerCase() === 'color';
         const vals = part.slice(colonIdx + 1).split(',').map(v => v.trim()).filter(Boolean);
-        // Color is single-select Ã¢â‚¬â€ only restore the first value
+        // Color is single-select ’ only restore the first value
         if (attrName && vals.length) restoredAttrs[attrName] = isColorAttr ? [vals[0]] : vals;
       }
     }
@@ -560,7 +560,7 @@ export default function ProductDetailView({
       `Print Area: ${selectedPrintArea}`,
       selectedMaterial ? `Material: ${selectedMaterial}` : null,
       selectedProduction === 'urgent' ? 'Urgent Production' : 'Standard Production',
-    ].filter(Boolean).join(' Ã‚Â· ');
+    ].filter(Boolean).join(' · ');
 
     addToCart({
       id:       product.id,
@@ -720,10 +720,10 @@ export default function ProductDetailView({
       <section className="w-full px-4 md:px-20 py-6 md:py-10">
         <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* LEFT Ã¢â‚¬â€ Images */}
+          {/* LEFT ’ Images */}
           <div className="w-full lg:w-1/2 flex flex-row gap-2.5">
 
-            {/* Vertical thumbnail strip Ã¢â‚¬â€ shown when there are multiple images */}
+            {/* Vertical thumbnail strip ’ shown when there are multiple images */}
             {uniqueImages.length > 1 && (
               <div className="flex flex-col gap-2 overflow-y-auto no-scrollbar shrink-0" style={{ maxHeight: '520px' }}>
                 {uniqueImages.map((img, idx) => (
@@ -768,7 +768,7 @@ export default function ProductDetailView({
             </div>
           </div>
 
-          {/* RIGHT Ã¢â‚¬â€ Info & Config */}
+          {/* RIGHT ’ Info & Config */}
           <div className="w-full lg:w-1/2 flex flex-col gap-4">
 
             {/* Title + rating */}
@@ -1073,7 +1073,7 @@ export default function ProductDetailView({
               </div>
             </div>
 
-            {/* Material Ã¢â‚¬â€ only show when there are options */}
+            {/* Material ’ only show when there are options */}
             {materials.length > 0 && (
               <div className="flex flex-col gap-2">
                 <span className="text-neutral-900 text-sm font-bold font-inter">Material:</span>
@@ -1137,7 +1137,7 @@ export default function ProductDetailView({
 
           <div className="bg-white flex flex-col gap-6">
 
-            {/* Rating summary Ã¢â‚¬â€ only shown when product has ratings */}
+            {/* Rating summary ’ only shown when product has ratings */}
             {ratingCount > 0 && (
               <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
                 {/* Score card */}
@@ -1170,7 +1170,7 @@ export default function ProductDetailView({
               </button>
             </div>
 
-            {/* Review list Ã¢â‚¬â€ live from WC */}
+            {/* Review list ’ live from WC */}
             {reviewsLoading ? (
               <div className="flex flex-col gap-3">
                 {[1, 2].map(i => (
@@ -1190,7 +1190,7 @@ export default function ProductDetailView({
               </div>
             ) : reviews.length === 0 ? (
               <p className="text-gray-400 text-sm font-inter italic py-4">
-                No reviews yet Ã¢â‚¬â€ be the first to review this product!
+                No reviews yet &mdash; be the first to review this product!
               </p>
             ) : (
               <div className="flex flex-col gap-4">

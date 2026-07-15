@@ -162,8 +162,16 @@ export default function CheckoutPage() {
     if (currentStep < 3) { nextStep(); return; }
     if (cart.length === 0) return;
 
-    // If no gateway is configured, still allow placing the order — staff will follow up
+    // Block submission if no payment method has been selected
     const selectedGateway = gateways.find(g => g.id === formData.paymentMethod);
+    if (!selectedGateway) {
+      showNotification({
+        title:   'Payment Method Required',
+        message: 'Please select a payment method to continue.',
+        type:    'error',
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -175,8 +183,8 @@ export default function CheckoutPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          payment_method:       selectedGateway?.id    ?? 'pending',
-          payment_method_title: selectedGateway?.title ?? 'Pending — to be arranged',
+          payment_method:       selectedGateway.id,
+          payment_method_title: selectedGateway.title,
           set_paid: false,
           billing:  { first_name: formData.firstName, last_name: formData.lastName,
                       address_1: formData.address, city: formData.city,
@@ -452,12 +460,6 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  <div className="p-4 bg-green-50 rounded-2xl flex items-center gap-3">
-                    <Info className="w-5 h-5 text-green-700 shrink-0" />
-                    <p className="text-zinc-900 text-sm font-normal font-['Inter'] leading-5">
-                      Your order will be marked as pending until payment is confirmed.
-                    </p>
-                  </div>
                 </div>
               )}
 
@@ -506,7 +508,7 @@ export default function CheckoutPage() {
                 )}
                 <div className="w-full flex justify-between items-center">
                   <span className="text-slate-600 text-sm font-medium font-['Inter']">Tax</span>
-                  <span className="text-slate-600 text-sm font-normal font-['Inter']">Calculated by WooCommerce</span>
+                  <span className="text-slate-600 text-sm font-normal font-['Inter']">Calculated at checkout</span>
                 </div>
               </div>
               <div className="h-px bg-gray-200" />
