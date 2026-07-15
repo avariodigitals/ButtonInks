@@ -4,10 +4,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Loader2, ShoppingBag, Truck, Info, AlertCircle, Building2, HandCoins, FileCheck } from "lucide-react";
+import { ChevronRight, Loader2, ShoppingBag, Truck, Info, AlertCircle, Building2, HandCoins, FileCheck, CreditCard, Smartphone, Gift } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
 import AddressAutocomplete, { type ParsedAddress } from "@/components/AddressAutocomplete";
+import SquarePaymentForm from "@/components/SquarePaymentForm";
 
 // ── Payment gateway type (matches /api/payment-gateways response) ─────────────
 interface WCGateway {
@@ -20,11 +21,17 @@ interface WCGateway {
 
 // ── Icon per gateway id ───────────────────────────────────────────────────────
 function GatewayIcon({ id }: { id: string }) {
-  if (id === 'bacs')   return <Building2  className="w-5 h-5 shrink-0" />;
-  if (id === 'cod')    return <HandCoins  className="w-5 h-5 shrink-0" />;
-  if (id === 'cheque') return <FileCheck  className="w-5 h-5 shrink-0" />;
+  if (id === 'square_credit_card' || id === 'square') return <CreditCard   className="w-5 h-5 shrink-0" />;
+  if (id === 'square_cash_app_pay')                   return <Smartphone   className="w-5 h-5 shrink-0" />;
+  if (id === 'gift_cards_pay')                        return <Gift         className="w-5 h-5 shrink-0" />;
+  if (id === 'bacs')                                  return <Building2    className="w-5 h-5 shrink-0" />;
+  if (id === 'cod')                                   return <HandCoins    className="w-5 h-5 shrink-0" />;
+  if (id === 'cheque')                                return <FileCheck    className="w-5 h-5 shrink-0" />;
   return <Info className="w-5 h-5 shrink-0" />;
 }
+
+// ── Is this gateway handled by SquarePaymentForm? ─────────────────────────────
+const SQUARE_GATEWAY_IDS = new Set(['square_credit_card', 'square', 'square_cash_app_pay', 'gift_cards_pay']);
 
 // ── Details panel shown when a gateway is selected ────────────────────────────
 function GatewayDetails({ gateway }: { gateway: WCGateway }) {
@@ -173,6 +180,10 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Square is handled via SquarePaymentForm's onToken callback — don't submit here
+    const isSquare = SQUARE_GATEWAY_IDS.has(selectedGateway.id);
+    if (isSquare) return;
+
     setIsLoading(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
@@ -217,9 +228,62 @@ export default function CheckoutPage() {
       } else {
         throw new Error(result.error || 'Failed to place order');
       }
-    } catch (error: any) {
-      showNotification({ title: 'Checkout Failed',
-        message: error.message || 'Something went wrong. Please try again.', type: 'error' });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      showNotification({ title: 'Checkout Failed', message: msg, type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Square token callback (called by SquarePaymentForm after tokenization) ──
+  const handleSquareToken = async (squareToken: string) => {
+    if (cart.length === 0) return;
+    setIsLoading(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('bi_token') : null;
+      const shippingMethod = formData.shippingMethod as ShippingMethod;
+      const response = await fetch('/api/square/charge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          square_token: squareToken,
+          gateway_id:   formData.paymentMethod,  // validated server-side against WC enabled list
+          billing: {
+            first_name: formData.firstName, last_name: formData.lastName,
+            address_1: formData.address, city: formData.city,
+            state: formData.state, postcode: formData.zipCode,
+            country: 'US', email: formData.email, phone: formData.phone,
+          },
+          line_items: cart.map(item => ({ product_id: item.id, quantity: item.quantity })),
+          customer_note: formData.note,
+          create_account: !isLoggedIn && formData.createAccount,
+          shipping_lines: [{
+            method_id:    formData.shippingMethod,
+            method_title: SHIPPING_RATES[shippingMethod]?.label ?? formData.shippingMethod,
+            total:        currentShipping.toFixed(2),
+          }],
+        }),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        clearCart();
+        const guestMsg = result.guest
+          ? result.account_created
+            ? `Order #${result.id} confirmed. Check your email to set up your account.`
+            : `Order #${result.id} confirmed. Thank you!`
+          : `Order #${result.id} confirmed. Thank you!`;
+        showNotification({ title: 'Payment Successful!', message: guestMsg, type: 'success' });
+        router.push('/');
+      } else {
+        throw new Error(result.error || 'Payment failed');
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Payment failed. Please try again.';
+      showNotification({ title: 'Payment Failed', message: msg, type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -440,23 +504,42 @@ export default function CheckoutPage() {
                   {/* Gateway selector */}
                   {!gatewaysLoading && gateways.length > 0 && (
                     <div className="flex flex-col gap-3">
-                      {gateways.map(gw => (
-                        <div key={gw.id}>
-                          <div onClick={() => setFormData(prev => ({ ...prev, paymentMethod: gw.id }))}
-                            className={`p-5 border-2 rounded-xl flex items-center gap-4 cursor-pointer transition-all
-                              ${formData.paymentMethod === gw.id ? 'border-green-700 bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}>
-                            <div className={`w-5 h-5 rounded-full border-4 bg-white shrink-0 ${formData.paymentMethod === gw.id ? 'border-green-700' : 'border-gray-300'}`} />
-                            <div className={`${formData.paymentMethod === gw.id ? 'text-green-700' : 'text-gray-500'}`}>
-                              <GatewayIcon id={gw.id} />
+                      {gateways.map(gw => {
+                        const isSquare = SQUARE_GATEWAY_IDS.has(gw.id);
+                        const isSelected = formData.paymentMethod === gw.id;
+                        return (
+                          <div key={gw.id}>
+                            <div onClick={() => setFormData(prev => ({ ...prev, paymentMethod: gw.id }))}
+                              className={`p-5 border-2 rounded-xl flex items-center gap-4 cursor-pointer transition-all
+                                ${isSelected ? 'border-green-700 bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}>
+                              <div className={`w-5 h-5 rounded-full border-4 bg-white shrink-0 ${isSelected ? 'border-green-700' : 'border-gray-300'}`} />
+                              <div className={`${isSelected ? 'text-green-700' : 'text-gray-500'}`}>
+                                <GatewayIcon id={gw.id} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-gray-900 font-['Inter'] text-base">{gw.title}</span>
+                                {gw.description && <span className="text-xs text-gray-500 font-['Inter']">{gw.description}</span>}
+                              </div>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-gray-900 font-['Inter'] text-base">{gw.title}</span>
-                              {gw.description && <span className="text-xs text-gray-500 font-['Inter']">{gw.description}</span>}
-                            </div>
+
+                            {/* Square payment form (card / Cash App Pay / gift card) */}
+                            {isSelected && isSquare && (
+                              <div className="mt-3 p-5 bg-gray-50 border border-gray-200 rounded-xl">
+                                <SquarePaymentForm
+                                  gatewayId={gw.id}
+                                  amountCents={Math.round(total * 100)}
+                                  onToken={handleSquareToken}
+                                  isLoading={isLoading}
+                                  buttonLabel="Pay & Place Order"
+                                />
+                              </div>
+                            )}
+
+                            {/* Non-Square gateway details */}
+                            {isSelected && !isSquare && <GatewayDetails gateway={gw} />}
                           </div>
-                          {formData.paymentMethod === gw.id && <GatewayDetails gateway={gw} />}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
@@ -471,21 +554,65 @@ export default function CheckoutPage() {
             <h2 className="text-zinc-500 text-2xl font-medium font-['Inter']">Summary</h2>
 
             <div className="w-full flex flex-col gap-4 max-h-[300px] overflow-y-auto">
-              {cart.map(item => (
-                <div key={item.id} className="w-full flex justify-between items-center gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 relative bg-stone-50 rounded-2xl overflow-hidden shrink-0">
-                      <Image src={item.image || "https://placehold.co/64x64"} alt={item.name} fill className="object-cover" />
+              {cart.map(item => {
+                // Split "Product Name (Color: Red · Size: L · ...)" into name + extras
+                const parenIdx = item.name.lastIndexOf(' (');
+                const displayName   = parenIdx > -1 ? item.name.slice(0, parenIdx) : item.name;
+                const extrasRaw     = parenIdx > -1 ? item.name.slice(parenIdx + 2, -1) : '';
+                const extraTags     = extrasRaw ? extrasRaw.split(' · ').filter(Boolean) : [];
+
+                return (
+                  <div key={item.id} className="w-full flex justify-between items-start gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-14 h-14 relative bg-stone-50 rounded-xl overflow-hidden shrink-0 mt-0.5">
+                        <Image src={item.image || "https://placehold.co/56x56"} alt={displayName} fill className="object-cover" />
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <h3 className="text-gray-900 text-sm font-bold font-['Outfit'] line-clamp-1">{displayName}</h3>
+                        {/* Selection tags */}
+                        {extraTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {extraTags.map(tag => (
+                              <span key={tag} className="text-[10px] text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 font-['Inter'] leading-tight">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <Link href="/cart" className="text-green-700 text-[10px] font-medium font-['Inter'] border-b border-green-700 w-fit">Edit selection</Link>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <h3 className="text-gray-900 text-sm font-bold font-['Outfit'] line-clamp-1">{item.name}</h3>
-                      <Link href="/cart" className="text-green-700 text-[10px] font-medium font-['Inter'] border-b border-green-700">Edit selection</Link>
-                    </div>
+                    <div className="text-green-700 text-xs font-medium shrink-0 mt-0.5">{formatPrice(item.price * item.quantity)}</div>
                   </div>
-                  <div className="text-green-700 text-xs font-medium shrink-0">{formatPrice(item.price * item.quantity)}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+
+            {/* Subtle selection pills — shipping & payment */}
+            {currentStep >= 2 && (
+              <div className="flex flex-col gap-2">
+                {/* Shipping selection */}
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-3.5 h-3.5 text-green-700 shrink-0" />
+                    <span className="text-xs text-gray-600 font-['Inter']">
+                      {SHIPPING_RATES[formData.shippingMethod as ShippingMethod]?.label ?? formData.shippingMethod}
+                    </span>
+                  </div>
+                  <span className="text-xs text-green-700 font-medium font-['Inter']">
+                    {formatPrice(currentShipping)}
+                  </span>
+                </div>
+
+                {/* Payment selection — only on step 3 once a gateway is chosen */}
+                {currentStep === 3 && selectedGateway && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
+                    <GatewayIcon id={selectedGateway.id} />
+                    <span className="text-xs text-gray-600 font-['Inter'] truncate">{selectedGateway.title}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="w-full flex flex-col gap-6">
               <div className="h-px bg-gray-200" />
@@ -524,10 +651,13 @@ export default function CheckoutPage() {
             </div>
 
             <div className="w-full flex flex-col gap-3">
-              <button type="submit" form="checkout-form"
-                className="w-full p-4 bg-green-700 rounded-3xl text-white text-base font-medium font-['Inter'] hover:bg-green-600 transition-colors flex items-center justify-center gap-2">
-                {currentStep === 3 ? 'Place Order' : `Proceed to ${currentStep === 1 ? 'Shipping' : 'Payment'}`}
-              </button>
+              {/* Hide the sidebar button on step 3 when Square is selected — Square's own form has the Pay button */}
+              {!(currentStep === 3 && SQUARE_GATEWAY_IDS.has(selectedGateway?.id ?? '')) && (
+                <button type="submit" form="checkout-form"
+                  className="w-full p-4 bg-green-700 rounded-3xl text-white text-base font-medium font-['Inter'] hover:bg-green-600 transition-colors flex items-center justify-center gap-2">
+                  {currentStep === 3 ? 'Place Order' : `Proceed to ${currentStep === 1 ? 'Shipping' : 'Payment'}`}
+                </button>
+              )}
               {currentStep > 1 && (
                 <button type="button" onClick={prevStep}
                   className="w-full p-3 text-gray-500 text-sm font-medium hover:text-green-700 font-['Inter'] transition-colors">

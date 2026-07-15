@@ -1142,24 +1142,39 @@ class ButtonInks_Core {
     // Returns only the Application ID and Location ID — safe to expose publicly.
     // The Access Token / secret keys are NEVER returned.
     public function get_square_config(): WP_REST_Response {
-        // WooCommerce Square stores its settings under these option keys
-        $settings     = get_option( 'wc_square_settings', [] );
-        $is_sandbox   = isset( $settings['enable_sandbox'] ) && $settings['enable_sandbox'] === 'yes';
+        $wc_settings = get_option( 'wc_square_settings', [] );
+        $is_sandbox  = isset( $wc_settings['enable_sandbox'] ) && $wc_settings['enable_sandbox'] === 'yes';
 
+        // ── Application ID ────────────────────────────────────────────────────
+        // Priority 1: WPEP Square plugin (wpep_live_square_app_id / wpep_test_square_app_id)
         $application_id = $is_sandbox
-            ? ( $settings['sandbox_application_id'] ?? '' )
-            : ( $settings['application_id'] ?? '' );
+            ? get_option( 'wpep_test_square_app_id', '' )
+            : get_option( 'wpep_live_square_app_id', '' );
 
-        $location_id = $is_sandbox
-            ? ( $settings['sandbox_location_id'] ?? '' )
-            : ( $settings['location_id'] ?? '' );
-
-        // Fallback: try the per-gateway settings
+        // Priority 2: WC Square settings key
         if ( empty( $application_id ) ) {
-            $cc_settings    = get_option( 'woocommerce_square_credit_card_settings', [] );
-            $application_id = $cc_settings['application_id'] ?? '';
-            $location_id    = $cc_settings['location_id']    ?? $location_id;
-            $is_sandbox     = isset( $cc_settings['sandbox_mode'] ) && $cc_settings['sandbox_mode'] === 'yes';
+            $application_id = $is_sandbox
+                ? ( $wc_settings['sandbox_application_id'] ?? '' )
+                : ( $wc_settings['application_id'] ?? '' );
+        }
+
+        // Priority 3: per-gateway credit card settings
+        if ( empty( $application_id ) ) {
+            $cc = get_option( 'woocommerce_square_credit_card_settings', [] );
+            $application_id = $cc['application_id'] ?? '';
+        }
+
+        // ── Location ID ───────────────────────────────────────────────────────
+        // Priority 1: WPEP Square plugin
+        $location_id = $is_sandbox
+            ? get_option( 'wpep_square_test_location_id_global', '' )
+            : get_option( 'wpep_square_location_id', '' );
+
+        // Priority 2: WC Square settings — v4 uses 'production_location_id'
+        if ( empty( $location_id ) ) {
+            $location_id = $is_sandbox
+                ? ( $wc_settings['sandbox_location_id'] ?? '' )
+                : ( $wc_settings['production_location_id'] ?? $wc_settings['location_id'] ?? '' );
         }
 
         return rest_ensure_response([
