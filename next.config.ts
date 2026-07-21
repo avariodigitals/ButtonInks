@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "buttoninks.com" },
       { protocol: "https", hostname: "www.buttoninks.com" },
     ],
+    minimumCacheTTL: 86400, // 24 hours — WordPress images rarely change
+    formats: ['image/webp'], // Enable WebP for smaller file sizes
   },
 
   // ── Slug aliases: WP category slugs → our page routes ──────────────────
@@ -58,6 +60,72 @@ const nextConfig: NextConfig = {
       { source: "/products/event-tradeshow",       destination: "/products/event-supplies",    permanent: false },
       { source: "/products/event-tradeshow/:slug*",destination: "/products/event-supplies/:slug*", permanent: false },
       { source: "/products/event-tradeshow-supplies", destination: "/products/event-supplies", permanent: false },
+    ];
+  },
+
+  // ── Cache headers for API routes at CDN level ──────────────────────────
+  async headers() {
+    return [
+      {
+        source: '/api/products-list',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=120' },
+        ],
+      },
+      {
+        source: '/api/blog',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
+        ],
+      },
+      {
+        source: '/api/blog/:slug',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/announcement',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/promo-banners',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/design-templates',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/payment-gateways',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/products/:id',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/products/:id/reviews',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=600' },
+        ],
+      },
+      {
+        source: '/api/search',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=120' },
+        ],
+      },
     ];
   },
 };

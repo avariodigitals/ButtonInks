@@ -369,8 +369,10 @@ export default function ProductDetailView({
   const { addToCart } = useCart();
   const { showNotification } = useNotification();
 
+  // Deduplicate by src URL (not id — WC sometimes assigns same id to different gallery slots).
+  // Preserve the original upload order so positional color→image mapping stays correct.
   const uniqueImages = product.images.filter(
-    (img, idx, arr) => arr.findIndex(x => x.id === img.id) === idx
+    (img, idx, arr) => arr.findIndex(x => x.src === img.src) === idx
   );
 
   const [mainImage,          setMainImage]          = useState(uniqueImages[0]?.src || '');
@@ -898,8 +900,16 @@ export default function ProductDetailView({
                           }
 
                           // Step 5: positional fallback
+                          // Use only "front-facing" images for positional mapping —
+                          // skip back/rear/detail shots so color index aligns correctly.
                           if (!matchedImg) {
-                            matchedImg = uniqueImages[colorIdx];
+                            const isBackView = (img: { name?: string; src?: string }) => {
+                              const hay = (img.name + ' ' + img.src).toLowerCase();
+                              return /_b_|_back_|-back-|_rear_|-rear-|_back\.|back-view/.test(hay);
+                            };
+                            const frontImages = uniqueImages.filter(img => !isBackView(img));
+                            // Use front images for positional lookup; fall back to full array if not enough
+                            matchedImg = frontImages[colorIdx] ?? uniqueImages[colorIdx];
                           }
 
                           if (matchedImg && matchedImg.src !== mainImage) {

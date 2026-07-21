@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Star, Heart, Loader2 } from 'lucide-react';
-import { WPProduct, decodeHTMLEntities } from '@/lib/wordpress';
+import { WPProduct, decodeHTMLEntities, getProductThumbnail } from '@/lib/wordpress';
 import { SwatchRow } from '@/components/ColorSwatch';
 
 
@@ -99,7 +99,7 @@ export default function CategoriesProductCard({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           className="max-h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
-          src={product.images[0]?.src || 'https://placehold.co/400x300?text=ButtonInks'}
+          src={getProductThumbnail(product.images)}
           alt={decodeHTMLEntities(product.name)}
         />
       </div>

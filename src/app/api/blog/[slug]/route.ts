@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { WP_BASE_URL } from '@/lib/wordpress';
 
+export const revalidate = 300; // 5-minute ISR at the route level
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ slug: string }> }
@@ -13,7 +15,9 @@ export async function GET(
     url.searchParams.set('status',  'publish');
     url.searchParams.set('_embed',  '1');
 
-    const res = await fetch(url.toString(), { cache: 'no-store' });
+    const res = await fetch(url.toString(), { 
+      next: { revalidate: 300, tags: ['blog-posts', `blog-post-${slug}`] } // 5min cache
+    });
 
     if (!res.ok) {
       return NextResponse.json({ error: 'Failed to fetch post' }, { status: res.status });

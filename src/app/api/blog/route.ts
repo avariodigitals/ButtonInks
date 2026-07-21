@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { WP_BASE_URL } from '@/lib/wordpress';
 
+export const revalidate = 60; // 1-minute ISR at the route level
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -14,7 +16,7 @@ export async function GET(req: Request) {
     url.searchParams.set('_embed',        '1'); // includes featured image + categories
 
     const res = await fetch(url.toString(), {
-      cache: 'no-store', // always fresh — new posts show immediately
+      next: { revalidate: 60, tags: ['blog-posts'] }, // 1min cache, on-demand revalidation enabled
     });
 
     if (!res.ok) {

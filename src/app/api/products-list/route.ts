@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
     const wpRes = await fetch(url.toString(), {
       headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
-      next: { revalidate: 60 },
+      next: { revalidate: 60, tags: ['products'] },
     });
 
     if (!wpRes.ok) {

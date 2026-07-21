@@ -137,10 +137,18 @@ export function decodeHTMLEntities(text: string): string {
   return decoded;
 }
 
-let cachedToken: string | null = null;
+interface TokenCache {
+  token: string;
+  expiresAt: number;
+}
+
+let cachedToken: TokenCache | null = null;
 
 async function getAuthToken(): Promise<string | null> {
-  if (cachedToken) return cachedToken;
+  // Return cached token if valid and not expired (5min buffer before actual expiry)
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 300000) {
+    return cachedToken.token;
+  }
 
   const username = process.env.WORDPRESS_AUTH_USERNAME;
   const password = process.env.WORDPRESS_AUTH_PASSWORD;
@@ -161,8 +169,14 @@ async function getAuthToken(): Promise<string | null> {
     const data = await res.json();
 
     if (res.ok && data.token) {
-      cachedToken = data.token;
-      return cachedToken;
+      // Cache token with TTL — JWT plugin typically issues 7-day tokens
+      // Refresh 1 hour before expiry (7 days - 1 hour = 518400000ms)
+      const expiryMs = 518400000; // 6 days (allow 1-day buffer before actual expiry)
+      cachedToken = {
+        token: data.token,
+        expiresAt: Date.now() + expiryMs,
+      };
+      return cachedToken.token;
     } else {
       // Log the specific reason from WordPress (e.g. [jwt_auth] Invalid username)
       console.error("WordPress Login Failed:", data.message || "Unknown error");
@@ -174,7 +188,12 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
-async function wpFetch<T>(path: string, params?: Record<string, string>, useWooCommerceAuth = false): Promise<T> {
+async function wpFetch<T>(
+  path: string, 
+  params?: Record<string, string>, 
+  useWooCommerceAuth = false,
+  cacheOptions?: { revalidate?: number; tags?: string[] }
+): Promise<T> {
   const url = new URL(`${WP_BASE_URL}${path}`);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -199,7 +218,10 @@ async function wpFetch<T>(path: string, params?: Record<string, string>, useWooC
   }
 
   const res = await fetch(url.toString(), {
-    next: { revalidate: 3600 },
+    next: { 
+      revalidate: cacheOptions?.revalidate ?? 3600,
+      tags: cacheOptions?.tags ?? [],
+    },
     headers,
   });
 
@@ -226,18 +248,62 @@ async function wpFetch<T>(path: string, params?: Record<string, string>, useWooC
   return JSON.parse(cleanText) as T;
 }
 
+// ── Image helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns true if an image looks like a back/rear view based on its filename
+ * or URL — the same heuristic used in ProductDetailView for positional fallback.
+ */
+function isBackViewImage(img: WPProductImage): boolean {
+  const hay = (img.name + ' ' + img.src).toLowerCase();
+  return /_b_|_back_|-back-|_rear_|-rear-|_back\.|back-view/.test(hay);
+}
+
+/**
+ * Pick the best thumbnail URL for a product card.
+ *
+ * - Deduplicates by src URL (WooCommerce sometimes lists the same file twice
+ *   with different IDs — once as the featured image, once in the gallery).
+ * - Prefers the first image that is NOT a back/rear view, so card thumbnails
+ *   show the front of the garment rather than an inside/back shot.
+ * - Falls back to the first deduplicated image if only back-views exist,
+ *   and finally to a placeholder if there are no images at all.
+ */
+export function getProductThumbnail(images: WPProductImage[]): string {
+  // 1. Deduplicate by URL, preserving WooCommerce upload order
+  const unique = images.filter(
+    (img, idx, arr) => arr.findIndex(x => x.src === img.src) === idx
+  );
+
+  if (unique.length === 0) return 'https://placehold.co/310x220';
+
+  // 2. Prefer a front-facing image
+  const front = unique.find(img => !isBackViewImage(img));
+  return (front ?? unique[0]).src;
+}
+
 // ── Posts (Blog) ──────────────────────────────────────────────────────────────
 
 export async function getPosts(page = 1, perPage = 10): Promise<WPPost[]> {
-  return wpFetch<WPPost[]>("/wp/v2/posts", {
-    page: String(page),
-    per_page: String(perPage),
-    _embed: "1",
-  });
+  return wpFetch<WPPost[]>(
+    "/wp/v2/posts", 
+    {
+      page: String(page),
+      per_page: String(perPage),
+      _embed: "1",
+    },
+    false,
+    { revalidate: 60, tags: ['blog-posts'] } // 1min cache for blog posts
+  );
 }
 
 export async function getPostBySlug(slug: string): Promise<WPPost | null> {
-  const posts = await wpFetch<WPPost[]>("/wp/v2/posts", { slug, _embed: "1" });
+  const posts = await wpFetch<WPPost[]>(
+    "/wp/v2/posts", 
+    { slug, _embed: "1" },
+    false,
+    { revalidate: 300, tags: ['blog-posts', `blog-post-${slug}`] }
+  );
   return posts[0] ?? null;
 }
 
@@ -254,16 +320,31 @@ export async function getProducts(
     ...params,
   };
 
-  return wpFetch<WPProduct[]>("/wc/v3/products", queryParams, true);
+  return wpFetch<WPProduct[]>(
+    "/wc/v3/products", 
+    queryParams, 
+    true,
+    { revalidate: 300, tags: ['products'] } // 5min cache for product lists
+  );
 }
 
 export async function getProductBySlug(slug: string): Promise<WPProduct | null> {
-  const products = await wpFetch<WPProduct[]>("/wc/v3/products", { slug }, true);
+  const products = await wpFetch<WPProduct[]>(
+    "/wc/v3/products", 
+    { slug }, 
+    true,
+    { revalidate: 300, tags: ['products', `product-${slug}`] }
+  );
   return products[0] ?? null;
 }
 
 export async function getProductById(id: number): Promise<WPProduct | null> {
-  return wpFetch<WPProduct>(`/wc/v3/products/${id}`, undefined, true);
+  return wpFetch<WPProduct>(
+    `/wc/v3/products/${id}`, 
+    undefined, 
+    true,
+    { revalidate: 300, tags: ['products', `product-${id}`] }
+  );
 }
 
 export interface WCAttribute {
@@ -292,7 +373,12 @@ export interface WPOrderResponse {
 }
 
 export async function getProductCategories(): Promise<WPCategory[]> {
-  return wpFetch<WPCategory[]>("/wc/v3/products/categories", { per_page: "100" }, true);
+  return wpFetch<WPCategory[]>(
+    "/wc/v3/products/categories", 
+    { per_page: "100" }, 
+    true,
+    { revalidate: 1800, tags: ['categories'] } // 30min cache — categories change rarely
+  );
 }
 
 export async function getProductAttributes(): Promise<WCAttribute[]> {

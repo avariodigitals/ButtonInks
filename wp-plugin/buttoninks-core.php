@@ -1649,6 +1649,48 @@ class ButtonInks_Core {
                     </button>
                     <span style="color:#888;font-size:12px;">Changes go live immediately after saving.</span>
                 </p>
+
+                <!-- SECTION: Next.js Revalidation -->
+                <div style="background:#fff; border:1px solid #ccd0d4; padding:20px; margin-top:30px; border-radius:4px;">
+                    <h2 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">⚡ Next.js On-Demand Cache Revalidation</h2>
+                    <p style="color:#666; margin-bottom:15px;">
+                        When configured, ButtonInks will automatically ping your Next.js frontend to instantly
+                        clear its cache whenever a product, post, or category is saved — no waiting for TTL expiry.
+                    </p>
+                    <table class="form-table" style="margin:0;">
+                        <tr>
+                            <th style="width:200px;"><label>Next.js Frontend URL</label></th>
+                            <td>
+                                <input type="url" name="buttoninks_nextjs_url"
+                                       value="<?php echo esc_attr(get_option('buttoninks_nextjs_url', '')); ?>"
+                                       placeholder="https://www.buttoninks.com"
+                                       style="width:400px;" />
+                                <p class="description">Your deployed Next.js site URL (no trailing slash).</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><label>Revalidation Secret</label></th>
+                            <td>
+                                <input type="text" name="buttoninks_revalidate_secret"
+                                       value="<?php echo esc_attr(get_option('buttoninks_revalidate_secret', '')); ?>"
+                                       placeholder="Paste REVALIDATE_SECRET from .env.local"
+                                       style="width:400px;" />
+                                <p class="description">Must match <code>REVALIDATE_SECRET</code> in your Next.js <code>.env.local</code>.</p>
+                            </td>
+                        </tr>
+                    </table>
+                    <?php
+                    // Save revalidation settings
+                    if ( isset($_POST['bi_save_banners']) && check_admin_referer('bi_save_banners_nonce') ) {
+                        if ( isset($_POST['buttoninks_nextjs_url']) ) {
+                            update_option('buttoninks_nextjs_url', esc_url_raw($_POST['buttoninks_nextjs_url']));
+                        }
+                        if ( isset($_POST['buttoninks_revalidate_secret']) ) {
+                            update_option('buttoninks_revalidate_secret', sanitize_text_field($_POST['buttoninks_revalidate_secret']));
+                        }
+                    }
+                    ?>
+                </div>
             </form>
         </div>
 
@@ -1716,5 +1758,61 @@ class ButtonInks_Core {
         <?php
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEXT.JS ON-DEMAND REVALIDATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Trigger Next.js revalidation webhook when WordPress content is published/updated.
+ * This immediately invalidates the Next.js cache so changes appear instantly.
+ */
+function buttoninks_trigger_nextjs_revalidation( $type, $slug = '', $id = 0 ) {
+    $nextjs_url = get_option('buttoninks_nextjs_url', '');
+    $secret     = get_option('buttoninks_revalidate_secret', '');
+
+    if ( empty($nextjs_url) || empty($secret) ) {
+        return; // Not configured — skip webhook
+    }
+
+    $webhook_url = rtrim($nextjs_url, '/') . '/api/revalidate';
+
+    wp_remote_post( $webhook_url, [
+        'timeout' => 5,
+        'headers' => [
+            'Content-Type'        => 'application/json',
+            'x-revalidate-secret' => $secret,
+        ],
+        'body' => wp_json_encode([
+            'type' => $type,
+            'slug' => $slug,
+            'id'   => $id,
+        ]),
+        'blocking' => false, // Fire and forget — don't wait for response
+    ]);
+}
+
+// ── Hook: Product saved/updated ────────────────────────────────────────────
+add_action( 'woocommerce_update_product', function( $product_id ) {
+    $product = wc_get_product( $product_id );
+    if ( $product && $product->get_status() === 'publish' ) {
+        buttoninks_trigger_nextjs_revalidation( 'product', $product->get_slug(), $product_id );
+    }
+}, 10, 1 );
+
+// ── Hook: Blog post published/updated ──────────────────────────────────────
+add_action( 'transition_post_status', function( $new_status, $old_status, $post ) {
+    if ( $post->post_type === 'post' && $new_status === 'publish' ) {
+        buttoninks_trigger_nextjs_revalidation( 'post', $post->post_name, $post->ID );
+    }
+}, 10, 3 );
+
+// ── Hook: Product category updated ─────────────────────────────────────────
+add_action( 'edited_product_cat', function( $term_id ) {
+    $term = get_term( $term_id, 'product_cat' );
+    if ( $term && !is_wp_error($term) ) {
+        buttoninks_trigger_nextjs_revalidation( 'category', $term->slug, $term_id );
+    }
+}, 10, 1 );
 
 new ButtonInks_Core();

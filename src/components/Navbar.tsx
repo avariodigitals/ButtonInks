@@ -127,6 +127,23 @@ function MobileCatRow({ cat, onClose }: { cat: MobileCategory; onClose: () => vo
   );
 }
 
+// ── Cart badge — renders nothing on the server, shows after client mount ─────
+// This prevents a hydration mismatch: sessionStorage is unavailable on the
+// server, so itemCount is always 0 there. We match that by suppressing the
+// badge on the first render and only showing it once the client has mounted.
+function CartBadge({ count }: { count: number }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || count <= 0) return null;
+  return (
+    <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-700 rounded-full flex items-center justify-center">
+      <span className="text-white text-[10px] font-bold leading-4 font-['Inter']">
+        {count > 9 ? '9+' : count}
+      </span>
+    </div>
+  );
+}
+
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen]     = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -205,13 +222,7 @@ export default function Navbar() {
             <ShoppingCart className="w-5 h-5 text-gray-700 group-hover:text-green-700 transition-colors" />
             {/* Label hidden on mobile, shown on desktop */}
             <span className="hidden md:block text-[10px] font-medium text-gray-500 group-hover:text-green-700 transition-colors font-inter leading-none">Cart</span>
-            {itemCount > 0 && (
-              <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-green-700 rounded-full flex items-center justify-center">
-                <span className="text-white text-[10px] font-bold leading-4 font-['Inter']">
-                  {itemCount > 9 ? '9+' : itemCount}
-                </span>
-              </div>
-            )}
+            <CartBadge count={itemCount} />
           </Link>
 
           {/* Wishlist (Desktop) */}

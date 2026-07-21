@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
-import { WPProduct } from "@/lib/wordpress";
+import { WPProduct, getProductThumbnail } from "@/lib/wordpress";
 
 interface NewArrivalsProps {
   products: WPProduct[];
@@ -47,7 +47,7 @@ export default function NewArrivals({ products }: NewArrivalsProps) {
               filledStars={Math.round(Number(p.average_rating))}
               price={p.price_html || `$${p.price}`}
               minQty="min 1"
-              image={p.images[0]?.src || "https://placehold.co/310x220"}
+              image={getProductThumbnail(p.images)}
               href={`/products/${p.categories[0]?.slug || 'all'}/${p.slug}`}
               productId={p.id}
               rawPrice={parseFloat(p.price || '0')}
