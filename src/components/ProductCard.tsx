@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Star, Heart, Loader2, ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { SwatchRow } from "@/components/ColorSwatch";
+import type { WPProductImage } from "@/lib/wordpress";
 
 // ── Price helpers ─────────────────────────────────────────────────────────────
 /**
@@ -74,7 +75,8 @@ export interface ProductCardProps {
   productId?: number;   // WP product ID — used for cart & wishlist
   rawPrice?: number;    // numeric price for cart
   slug?: string;        // WP product slug — used for "Edit selection" link in cart
-  colors?: string[];    // optional color options from WC attributes
+  colors?: string[];    // optional color options from WC attributes (fallback)
+  images?: WPProductImage[]; // product gallery images — used as image swatches (preferred)
 }
 
 function getToken(): string | null {
@@ -95,6 +97,7 @@ export default function ProductCard({
   rawPrice = 0,
   slug,
   colors = [],
+  images = [],
 }: ProductCardProps) {
   const router = useRouter();
   const { addToCart, cart, cartSyncing } = useCart();
@@ -241,8 +244,10 @@ export default function ProductCard({
           )}
         </div>
 
-        {/* Color swatches */}
-        {colors.length > 0 && <SwatchRow colors={colors} maxVisible={6} size={16} />}
+        {/* Color swatches — image-based when gallery has multiple images, name-based fallback */}
+        {(images.length > 1 || colors.length > 0) && (
+          <SwatchRow images={images} colors={colors} maxVisible={6} size={20} />
+        )}
 
         {/* Add to Cart button */}
         <button

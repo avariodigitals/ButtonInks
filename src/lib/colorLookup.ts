@@ -1,12 +1,19 @@
 /**
  * Color name → hex lookup using the `color-name-list` package (35,000+ names).
  *
+ * Resolution order (fastest → most accurate):
+ *  1. WordPress admin color map  (authoritative — set in ButtonInks → Color Swatches)
+ *  2. BRAND_COLOR_OVERRIDES      (built-in garment/printware industry names)
+ *  3. color-name-list 35k DB     (generic fallback)
+ *  4. Slash-split auto-pairing   (for "Black/White" style combos)
+ *  5. Word-scan                  (last resort — picks the colour word from a label)
+ *
+ * Pass `wpMap` (from getWordPressColorMap()) to enable step 1.
+ * Without it the function still works — just skips the WP lookup.
+ *
  * Usage:
  *   import { colorNameToHex, BRAND_COLOR_OVERRIDES } from '@/lib/colorLookup';
  *   const hex = colorNameToHex('Atomic Blue'); // '#3a59a8' (or null if unknown)
- *
- * BRAND_COLOR_OVERRIDES is the canonical map used across every component that
- * renders color swatches. Add new garment/brand colors here — nowhere else.
  */
 
 // color-name-list exports a named export `colornames` — array of { name: string; hex: string }
@@ -202,7 +209,21 @@ export const BRAND_COLOR_OVERRIDES: Record<string, string | [string, string]> = 
   'military camo':      '#6B6B47',
   'royalsteel grey':    '#4A6080',
 
-  // ── Metallics / Special ───────────────────────────────────────────────────────
+  // ── Mugs / Two-tone drinkware (WooCommerce variation names) ─────────────────
+  // These match the exact color names used in WC product variations for mugs.
+  // Parenthetical qualifiers like "(only for Classic Mug)" are stripped before
+  // lookup, so "White (only for Classic Mug)" resolves to "white" → #F5F5F5.
+  // Two-tone mug colors (handle/inside different from body) listed here explicitly:
+  'two-tone black':         '#1C1C1C',  // Two-Tone Mug — black handle/inside
+  'two-tone green':         '#1E8A3C',  // Two-Tone Mug — green handle/inside
+  'two-tone maroon':        '#6B0F1A',  // Two-Tone Mug — maroon handle/inside
+  'two-tone red':           '#CC1F1F',
+  'two-tone blue':          '#1F4FA0',
+  'two-tone navy':          '#1B2F4E',
+  'two-tone purple':        '#7C3AED',
+  'two-tone pink':          '#F472B6',
+  'two-tone yellow':        '#F5C518',
+  'two-tone orange':        '#E85D0A',
   'silver':             '#C0C0C0',
   'metallic silver':    '#A8A9AD',
   'gold metallic':      '#D4AF37',
@@ -277,39 +298,51 @@ const colorMap = new Map<string, string>(
  *  3. Slash-split fallback   — auto-builds a pair from left/right parts
  *  4. null                   — unknown
  */
-export function colorNameToHex(name: string): string | [string, string] | null {
+export function colorNameToHex(name: string, wpMap?: Record<string, string>): string | [string, string] | null {
   if (!name) return null;
 
   // 0. If the value is already a hex code, return it directly
   if (/^#[0-9a-fA-F]{3,6}$/.test(name.trim())) return name.trim();
 
-  const key = name.toLowerCase().trim();
+  // ── Pre-processing: strip WooCommerce variation qualifiers ──────────────────
+  // WC sometimes uses names like "White (only for Classic Mug)" or
+  // "Red (Limited)" — strip anything in parentheses so we resolve the core color.
+  const cleaned = name
+    .replace(/\s*\([^)]*\)/g, '')   // remove (...) and preceding space
+    .replace(/\s+/g, ' ')           // collapse extra spaces
+    .trim();
 
-  // 1. Brand overrides first — may return a string or [string, string]
+  const key = cleaned.toLowerCase();
+
+  // 1. WordPress admin map — highest authority, set in ButtonInks → Color Swatches
+  if (wpMap && wpMap[key] !== undefined) return wpMap[key];
+
+  // 2. Brand overrides — garment/printware industry names
   if (BRAND_COLOR_OVERRIDES[key] !== undefined) return BRAND_COLOR_OVERRIDES[key];
 
-  // 2. Strip trailing "color" / "colour"
+  // 3. Strip trailing "color" / "colour"
   const stripped = key.replace(/\s+(color|colour)$/, '').trim();
   if (stripped !== key && BRAND_COLOR_OVERRIDES[stripped] !== undefined) return BRAND_COLOR_OVERRIDES[stripped];
+  if (wpMap && stripped !== key && wpMap[stripped] !== undefined) return wpMap[stripped];
 
-  // 3. Exact match in 35k library (always single hex)
+  // 4. Exact match in 35k library
   if (colorMap.has(key)) return colorMap.get(key)!;
-
-  // 4. Library with stripped suffix
   if (stripped !== key && colorMap.has(stripped)) return colorMap.get(stripped)!;
 
   // 5. Collapse multiple spaces and retry
   const collapsed = key.replace(/\s+/g, ' ');
+  if (wpMap && wpMap[collapsed] !== undefined) return wpMap[collapsed];
   if (BRAND_COLOR_OVERRIDES[collapsed] !== undefined) return BRAND_COLOR_OVERRIDES[collapsed];
   if (colorMap.has(collapsed)) return colorMap.get(collapsed)!;
 
   // 6. Slash-split fallback — auto-build a two-tone pair for unlisted combos
   if (key.includes('/')) {
-    const parts   = key.split('/');
-    const leftKey = parts[0].trim();
+    const parts    = key.split('/');
+    const leftKey  = parts[0].trim();
     const rightKey = parts[1]?.trim() ?? '';
 
     function resolveHalf(k: string): string {
+      if (wpMap && wpMap[k] !== undefined) return wpMap[k];
       if (BRAND_COLOR_OVERRIDES[k] !== undefined) {
         const v = BRAND_COLOR_OVERRIDES[k];
         return Array.isArray(v) ? v[0] : v;
@@ -318,6 +351,7 @@ export function colorNameToHex(name: string): string | [string, string] | null {
       // De-prefix "heather"
       const dep = k.replace(/^heather\s+/, '').trim();
       if (dep !== k) {
+        if (wpMap && wpMap[dep] !== undefined) return wpMap[dep];
         if (BRAND_COLOR_OVERRIDES[dep] !== undefined) {
           const v2 = BRAND_COLOR_OVERRIDES[dep];
           return Array.isArray(v2) ? v2[0] : v2;
@@ -330,6 +364,20 @@ export function colorNameToHex(name: string): string | [string, string] | null {
     const leftHex  = resolveHalf(leftKey);
     const rightHex = rightKey ? resolveHalf(rightKey) : '#E5E7EB';
     return [leftHex, rightHex];
+  }
+
+  // 7. Last resort: scan words — pick last recognisable color word
+  // Handles labels like "Classic White", "Premium Black", "Sport Red"
+  const words = key.split(' ');
+  for (let i = words.length - 1; i >= 0; i--) {
+    const word = words[i];
+    if (word.length < 3) continue;
+    if (wpMap && wpMap[word] !== undefined) return wpMap[word];
+    if (BRAND_COLOR_OVERRIDES[word] !== undefined) {
+      const v = BRAND_COLOR_OVERRIDES[word];
+      return Array.isArray(v) ? v[0] : v;
+    }
+    if (colorMap.has(word)) return colorMap.get(word)!;
   }
 
   return null;

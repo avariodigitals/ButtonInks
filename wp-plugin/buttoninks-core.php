@@ -1134,6 +1134,20 @@ class ButtonInks_Core {
             'callback'            => [$this, 'get_square_config'],
             'permission_callback' => '__return_true',
         ]);
+
+        // ── Color Swatches — public read, admin write ─────────────────────────
+        register_rest_route('buttoninks/v1', '/color-swatches', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'get_color_swatches'],
+                'permission_callback' => '__return_true',
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'save_color_swatches'],
+                'permission_callback' => function() { return current_user_can('manage_options'); },
+            ],
+        ]);
     }
 
     // ── Announcement Bar ─────────────────────────────────────────────────────
@@ -1182,6 +1196,187 @@ class ButtonInks_Core {
             'location_id'    => $location_id,
             'is_sandbox'     => $is_sandbox,
         ]);
+    }
+
+    // ── Color Swatches ────────────────────────────────────────────────────────
+
+    /**
+     * GET /buttoninks/v1/color-swatches
+     * Returns the saved color map: { "Black": "#1C1C1C", "Navy": "#1B2F4E", ... }
+     */
+    public function get_color_swatches(): WP_REST_Response {
+        $raw = get_option('bi_color_swatches', '{}');
+        $map = json_decode($raw, true);
+        if (!is_array($map)) $map = [];
+        return rest_ensure_response($map);
+    }
+
+    /**
+     * POST /buttoninks/v1/color-swatches
+     * Body: { "Black": "#1C1C1C", "Navy": "#1B2F4E" }
+     */
+    public function save_color_swatches(WP_REST_Request $request): WP_REST_Response {
+        $body = $request->get_json_params();
+        if (!is_array($body)) {
+            return new WP_Error('invalid', 'Expected JSON object', ['status' => 400]);
+        }
+        $clean = [];
+        foreach ($body as $name => $hex) {
+            $name = sanitize_text_field($name);
+            $hex  = sanitize_text_field($hex);
+            if ($name && preg_match('/^#[0-9a-fA-F]{3,6}$/', $hex)) {
+                $clean[$name] = $hex;
+            }
+        }
+        update_option('bi_color_swatches', wp_json_encode($clean));
+        return rest_ensure_response(['saved' => count($clean)]);
+    }
+
+    /**
+     * Admin page: ButtonInks → Color Swatches
+     * Shows all WooCommerce Color attribute terms with a color picker for each.
+     */
+    public function render_color_swatches_page(): void {
+        if (!current_user_can('manage_options')) return;
+
+        $raw   = get_option('bi_color_swatches', '{}');
+        $saved = json_decode($raw, true);
+        if (!is_array($saved)) $saved = [];
+
+        $msg = '';
+        if (isset($_POST['bi_save_swatches']) && check_admin_referer('bi_save_swatches_nonce')) {
+            $names = array_map('sanitize_text_field', $_POST['swatch_name'] ?? []);
+            $hexes = array_map('sanitize_text_field', $_POST['swatch_hex']  ?? []);
+            $new   = [];
+            foreach ($names as $i => $name) {
+                $hex = $hexes[$i] ?? '';
+                if ($name && preg_match('/^#[0-9a-fA-F]{3,6}$/', $hex)) {
+                    $new[$name] = $hex;
+                }
+            }
+            update_option('bi_color_swatches', wp_json_encode($new));
+            $saved = $new;
+            $msg   = '<div class="notice notice-success is-dismissible"><p>Saved <strong>' . count($new) . ' colors</strong> successfully.</p></div>';
+        }
+
+        // Pull all WooCommerce Color attribute terms automatically
+        $wc_colors = [];
+        if (function_exists('wc_get_attribute_taxonomies')) {
+            foreach (wc_get_attribute_taxonomies() as $tax) {
+                $label = strtolower($tax->attribute_label);
+                $aname = strtolower($tax->attribute_name);
+                if (in_array($label, ['color','colour']) || in_array($aname, ['color','colour'])) {
+                    $terms = get_terms(['taxonomy' => 'pa_' . $tax->attribute_name, 'hide_empty' => false]);
+                    if (!is_wp_error($terms)) {
+                        foreach ($terms as $term) $wc_colors[] = $term->name;
+                    }
+                }
+            }
+        }
+
+        // Merge WC terms + manually added colors
+        $all_names = array_unique(array_merge($wc_colors, array_keys($saved)));
+        sort($all_names);
+        ?>
+        <div class="wrap">
+            <h1>🎨 ButtonInks — Color Swatches</h1>
+            <p style="color:#666;max-width:700px;margin-bottom:4px;">
+                Map every WooCommerce color attribute value to an exact hex code.
+                The frontend reads this map first — so swatches are always 100% accurate.
+                Colors not listed here fall back to the built-in name library.
+            </p>
+            <?php echo $msg; ?>
+            <form method="post" style="max-width:860px;margin-top:16px;">
+                <?php wp_nonce_field('bi_save_swatches_nonce'); ?>
+                <table class="widefat striped">
+                    <thead>
+                        <tr>
+                            <th>Color Name <small style="font-weight:400;">(as typed in WooCommerce)</small></th>
+                            <th style="width:220px;">Hex Code</th>
+                            <th style="width:50px;">Swatch</th>
+                            <th style="width:90px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bi_swatch_rows">
+                    <?php foreach ($all_names as $idx => $name):
+                        $hex  = $saved[$name] ?? '';
+                        $mid  = 'sw_' . $idx;
+                    ?>
+                        <tr>
+                            <td style="vertical-align:middle;">
+                                <input type="text" name="swatch_name[]"
+                                       value="<?php echo esc_attr($name); ?>"
+                                       style="width:100%;font-size:13px;" />
+                            </td>
+                            <td style="vertical-align:middle;display:flex;gap:6px;align-items:center;">
+                                <input type="color" name="swatch_hex[]"
+                                       id="pick_<?php echo $mid; ?>"
+                                       value="<?php echo esc_attr($hex ?: '#ffffff'); ?>"
+                                       style="width:44px;height:32px;padding:1px;border:1px solid #ccd0d4;cursor:pointer;border-radius:4px;"
+                                       oninput="biSyncColor('<?php echo $mid; ?>',this.value)" />
+                                <input type="text"
+                                       id="txt_<?php echo $mid; ?>"
+                                       value="<?php echo esc_attr($hex); ?>"
+                                       placeholder="#rrggbb"
+                                       style="width:80px;font-size:12px;font-family:monospace;"
+                                       oninput="biSyncText('<?php echo $mid; ?>',this.value)" />
+                            </td>
+                            <td style="vertical-align:middle;text-align:center;">
+                                <span id="prev_<?php echo $mid; ?>"
+                                      style="display:inline-block;width:26px;height:26px;border-radius:50%;border:1px solid #ddd;background:<?php echo esc_attr($hex ?: '#fff'); ?>;"></span>
+                            </td>
+                            <td style="vertical-align:middle;font-size:11px;">
+                                <?php if ($hex): ?>
+                                    <span style="color:#2ea44f;">✓ Mapped</span>
+                                <?php else: ?>
+                                    <span style="color:#d63638;">⚠ Missing</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <button type="button" onclick="biAddSwatchRow()" class="button">+ Add Color</button>
+                    <input type="submit" name="bi_save_swatches" value="💾 Save All Swatches" class="button button-primary button-large" />
+                </p>
+            </form>
+        </div>
+        <script>
+        var biSwatchIdx = <?php echo count($all_names); ?>;
+
+        function biSyncColor(id, val) {
+            var txt  = document.getElementById('txt_'  + id);
+            var prev = document.getElementById('prev_' + id);
+            if (txt)  txt.value = val;
+            if (prev) prev.style.background = val;
+        }
+        function biSyncText(id, val) {
+            val = val.trim();
+            if (!val.startsWith('#')) val = '#' + val;
+            var pick = document.getElementById('pick_' + id);
+            var prev = document.getElementById('prev_' + id);
+            if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                if (pick)  pick.value = val;
+                if (prev)  prev.style.background = val;
+            }
+        }
+        function biAddSwatchRow() {
+            var id    = 'sw_new_' + (biSwatchIdx++);
+            var tbody = document.getElementById('bi_swatch_rows');
+            var tr    = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="text" name="swatch_name[]" value="" placeholder="e.g. Cobalt Blue" style="width:100%;font-size:13px;" /></td>' +
+                '<td style="display:flex;gap:6px;align-items:center;">' +
+                '  <input type="color" name="swatch_hex[]" id="pick_' + id + '" value="#ffffff" style="width:44px;height:32px;padding:1px;border:1px solid #ccd0d4;cursor:pointer;border-radius:4px;" oninput="biSyncColor(\'' + id + '\',this.value)" />' +
+                '  <input type="text" id="txt_' + id + '" value="" placeholder="#rrggbb" style="width:80px;font-size:12px;font-family:monospace;" oninput="biSyncText(\'' + id + '\',this.value)" />' +
+                '</td>' +
+                '<td style="text-align:center;"><span id="prev_' + id + '" style="display:inline-block;width:26px;height:26px;border-radius:50%;border:1px solid #ddd;background:#fff;"></span></td>' +
+                '<td><span style="font-size:11px;color:#888;">New</span></td>';
+            tbody.appendChild(tr);
+        }
+        </script>
+        <?php
     }
 
     public function get_announcement(): WP_REST_Response {
@@ -1520,6 +1715,14 @@ class ButtonInks_Core {
             'manage_options',
             'buttoninks-settings',
             [$this, 'render_promo_banners_page']
+        );
+        add_submenu_page(
+            'buttoninks-settings',
+            'Color Swatches',
+            '🎨 Color Swatches',
+            'manage_options',
+            'buttoninks-color-swatches',
+            [$this, 'render_color_swatches_page']
         );
         // Note: Design Templates submenu is added automatically via show_in_menu on the CPT
     }

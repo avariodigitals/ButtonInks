@@ -124,14 +124,14 @@ export default function CategoriesProductCard({
           <span className="text-zinc-500 text-xs font-bold font-['Inter']">{product.average_rating || '4.5'}</span>
         </div>
 
-        {/* Color swatches */}
+        {/* Color swatches — image thumbnails from gallery (accurate) or color names (fallback) */}
         {(() => {
           const colorAttr = product.attributes.find(a =>
             a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colour'
           );
           const swatchColors = colorAttr?.options ?? [];
-          if (!swatchColors.length) return null;
-          return <SwatchRow colors={swatchColors} maxVisible={6} size={16} />;
+          if (!swatchColors.length && product.images.length <= 1) return null;
+          return <SwatchRow images={product.images} colors={swatchColors} maxVisible={6} size={20} />;
         })()}
 
         <div className="flex justify-between items-end mt-1">
