@@ -1532,12 +1532,18 @@ class ButtonInks_Core {
         if ( ! is_array($banners) ) $banners = $this->get_default_banners();
 
         $msg = '';
-        if ( isset($_POST['bi_save_banners']) && check_admin_referer('bi_save_banners_nonce') ) {
-            // Save announcement first
+        if ( isset($_POST['bi_save_settings']) && check_admin_referer('bi_save_settings_nonce') ) {
+            // 1. Save announcement
             if ( isset($_POST['bi_announcement_text']) ) {
                 update_option('bi_announcement_text', sanitize_text_field($_POST['bi_announcement_text']));
             }
 
+            // 2. Save Next.js settings
+            if ( isset($_POST['buttoninks_nextjs_url']) ) {
+                update_option('buttoninks_nextjs_url', esc_url_raw($_POST['buttoninks_nextjs_url']));
+            }
+
+            // 3. Save Banners
             $new_banners = [];
             $urls  = array_map('esc_url_raw',          $_POST['banner_url']   ?? []);
             $links = array_map('sanitize_text_field',  $_POST['banner_link']  ?? []);
@@ -1554,8 +1560,8 @@ class ButtonInks_Core {
             if ( ! empty($new_banners) ) {
                 update_option('bi_promo_banners', wp_json_encode($new_banners));
                 $banners = $new_banners;
-                $msg = '<div class="notice notice-success is-dismissible"><p>Banners saved successfully.</p></div>';
             }
+            $msg = '<div class="notice notice-success is-dismissible"><p>Settings saved successfully.</p></div>';
         }
         ?>
         <div class="wrap">
@@ -1566,7 +1572,7 @@ class ButtonInks_Core {
             <?php echo $msg; ?>
 
             <form method="post" style="max-width:860px;">
-                <?php wp_nonce_field('bi_save_banners_nonce'); ?>
+                <?php wp_nonce_field('bi_save_settings_nonce'); ?>
 
                 <!-- SECTION: Announcement Bar -->
                 <div style="background:#fff; border:1px solid #ccd0d4; padding:20px; margin-bottom:30px; border-radius:4px;">
@@ -1643,7 +1649,7 @@ class ButtonInks_Core {
                     </tbody>
                 </table>
                 <p style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                    <input type="submit" name="bi_save_banners" value="💾 Save Banners" class="button button-primary button-large" />
+                    <input type="submit" name="bi_save_settings" value="💾 Save Settings" class="button button-primary button-large" />
                     <button type="button" onclick="biAddRow()" class="button button-large" style="background:#2271b1;color:#fff;border-color:#2271b1;">
                         ＋ Add Banner
                     </button>
@@ -1671,26 +1677,16 @@ class ButtonInks_Core {
                         <tr>
                             <th><label>Revalidation Secret</label></th>
                             <td>
-                                <input type="text" name="buttoninks_revalidate_secret"
-                                       value="<?php echo esc_attr(get_option('buttoninks_revalidate_secret', '')); ?>"
-                                       placeholder="Paste REVALIDATE_SECRET from .env.local"
-                                       style="width:400px;" />
-                                <p class="description">Must match <code>REVALIDATE_SECRET</code> in your Next.js <code>.env.local</code>.</p>
+                                <code style="background:#f6f7f7; padding:4px 8px; border-radius:3px; border:1px solid #dcdcde;">Hardcoded in Plugin Core</code>
+                                <p class="description">The secret is currently hardcoded in the plugin to ensure security and consistency with Vercel environment variables.</p>
                             </td>
                         </tr>
                     </table>
-                    <?php
-                    // Save revalidation settings
-                    if ( isset($_POST['bi_save_banners']) && check_admin_referer('bi_save_banners_nonce') ) {
-                        if ( isset($_POST['buttoninks_nextjs_url']) ) {
-                            update_option('buttoninks_nextjs_url', esc_url_raw($_POST['buttoninks_nextjs_url']));
-                        }
-                        if ( isset($_POST['buttoninks_revalidate_secret']) ) {
-                            update_option('buttoninks_revalidate_secret', sanitize_text_field($_POST['buttoninks_revalidate_secret']));
-                        }
-                    }
-                    ?>
                 </div>
+
+                <p style="margin-top:30px; border-top:1px solid #ccd0d4; padding-top:20px;">
+                    <input type="submit" name="bi_save_settings" value="💾 Save Settings" class="button button-primary button-large" />
+                </p>
             </form>
         </div>
 
@@ -1769,10 +1765,10 @@ class ButtonInks_Core {
  */
 function buttoninks_trigger_nextjs_revalidation( $type, $slug = '', $id = 0 ) {
     $nextjs_url = get_option('buttoninks_nextjs_url', '');
-    $secret     = get_option('buttoninks_revalidate_secret', '');
+    $secret     = 'R8/vQ4QzQmJ6MLT/fht2yCaLi8Y5dz+JrzUAy/4sg08='; // hardcoded — matches REVALIDATE_SECRET in Vercel env vars
 
-    if ( empty($nextjs_url) || empty($secret) ) {
-        return; // Not configured — skip webhook
+    if ( empty($nextjs_url) ) {
+        return; // Frontend URL not configured yet — skip webhook
     }
 
     $webhook_url = rtrim($nextjs_url, '/') . '/api/revalidate';
