@@ -4,7 +4,7 @@ const config: CategoryPageConfig = {
   title: 'Custom Mugs',
   subtitle: 'High-quality custom printed mugs for home, office, and gifting. Full-color wrap, dishwasher safe.',
   breadcrumb: 'Custom Mugs',
-  wpCategorySlug: 'drinkware-mugs',
+  wpCategorySlug: 'best-custom-drinkware',
   searchFallback: 'mug',
   subCategories: [
     { name: 'Ceramic Mugs',   slug: 'ceramic-mugs',   fallback: 'https://placehold.co/283x350' },
