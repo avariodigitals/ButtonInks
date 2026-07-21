@@ -1077,14 +1077,25 @@ export default function ProductDetailView({
                 heat_transfer:   'Heat Transfer',
                 dtg:             'Direct-to-Garment (DTG)',
                 screen_printing: 'Screen Printing',
+                pad_printing:    'Pad Printing',
+                digital_inkjet:  'Digital Inkjet',
                 sublimation:     'Sublimation',
                 vinyl_cut:       'Vinyl Cut',
                 laser_engraving: 'Laser Engraving',
+                digital_print:   'Digital Print',
+                offset_print:    'Offset Printing',
                 uv_print:        'UV Printing',
               };
-              const printLabel = product.acf?.print_style
-                ? (PRINT_STYLE_LABELS[product.acf.print_style] ?? product.acf.print_style)
-                : null;
+
+              // Back-compat: print_style can be a string (old) or array (new)
+              const rawPrintStyle = product.acf?.print_style;
+              const printStyles: string[] = Array.isArray(rawPrintStyle)
+                ? rawPrintStyle
+                : rawPrintStyle
+                ? [rawPrintStyle]
+                : [];
+              const printLabels = printStyles.map(s => PRINT_STYLE_LABELS[s] ?? s).filter(Boolean);
+
               const specs = product.acf?.clothing_specs;
               const pills = [
                 specs?.fabric  && { label: 'Fabric',       value: specs.fabric },
@@ -1092,17 +1103,19 @@ export default function ProductDetailView({
                 specs?.gender  && { label: 'Gender',       value: specs.gender },
               ].filter(Boolean) as { label: string; value: string }[];
 
-              if (!printLabel && pills.length === 0) return null;
+              if (printLabels.length === 0 && pills.length === 0) return null;
 
               return (
                 <div className="flex flex-col gap-2">
-                  {printLabel && (
+                  {printLabels.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-slate-700 font-['Inter']">Decoration:</span>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-bold text-green-800 font-['Inter']">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0" />
-                        {printLabel}
-                      </span>
+                      {printLabels.map(label => (
+                        <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-bold text-green-800 font-['Inter']">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0" />
+                          {label}
+                        </span>
+                      ))}
                     </div>
                   )}
                   {pills.length > 0 && (

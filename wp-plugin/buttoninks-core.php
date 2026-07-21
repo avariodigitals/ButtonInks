@@ -123,8 +123,12 @@ class ButtonInks_Core {
             $bulk_tiers[] = ['min_qty' => '', 'pct' => ''];
         }
 
-        // Print style & product type specifics
-        $print_style          = get_post_meta($post->ID, '_bi_print_style',       true) ?: '';
+        // Print style & product type specifics — stored as JSON array
+        $print_style_raw      = get_post_meta($post->ID, '_bi_print_style',       true) ?: '[]';
+        // Back-compat: if saved value is a plain string (old single-select), wrap it
+        $print_style_arr      = (is_array(json_decode($print_style_raw, true)) && json_last_error() === JSON_ERROR_NONE)
+                                    ? json_decode($print_style_raw, true)
+                                    : (($print_style_raw && $print_style_raw !== '[]') ? [$print_style_raw] : []);
         $product_type         = get_post_meta($post->ID, '_bi_product_type',      true) ?: '';
 
         $clothing_specs_raw   = get_post_meta($post->ID, '_bi_clothing_specs',    true) ?: '{}';
@@ -232,26 +236,30 @@ class ButtonInks_Core {
             <!-- SECTION: Print Style / Decoration Method -->
             <div class="bi-section">
                 <span class="bi-label">Print Style / Decoration Method</span>
-                <p class="bi-note" style="margin-bottom:10px;">Select how this product is decorated or printed.</p>
-                <select name="_bi_print_style" style="min-width:260px;font-size:13px;">
-                    <option value="">-- Select print style --</option>
-                    <?php
-                    $print_styles = [
-                        'embroidery'      => 'Embroidery',
-                        'heat_transfer'   => 'Heat Transfer',
-                        'dtg'             => 'Direct-to-Garment (DTG)',
-                        'screen_printing' => 'Screen Printing',
-                        'pad_printing'    => 'Pad Printing',
-                        'digital_inkjet'  => 'Digital Inkjet',
-                        'laser_engraving' => 'Laser Engraving',
-                        'digital_print'   => 'Digital Print',
-                        'offset_print'    => 'Offset Printing',
-                        'uv_print'        => 'UV Printing',
-                    ];
-                    foreach ($print_styles as $val => $lbl): ?>
-                        <option value="<?php echo esc_attr($val); ?>" <?php selected($print_style, $val); ?>><?php echo esc_html($lbl); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <p class="bi-note" style="margin-bottom:10px;">Select all decoration methods that apply to this product.</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px 20px;">
+                <?php
+                $print_styles = [
+                    'embroidery'      => 'Embroidery',
+                    'heat_transfer'   => 'Heat Transfer',
+                    'dtg'             => 'Direct-to-Garment (DTG)',
+                    'screen_printing' => 'Screen Printing',
+                    'pad_printing'    => 'Pad Printing',
+                    'digital_inkjet'  => 'Digital Inkjet',
+                    'laser_engraving' => 'Laser Engraving',
+                    'digital_print'   => 'Digital Print',
+                    'offset_print'    => 'Offset Printing',
+                    'uv_print'        => 'UV Printing',
+                ];
+                foreach ($print_styles as $val => $lbl):
+                    $checked = in_array($val, $print_style_arr, true) ? 'checked' : '';
+                ?>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                        <input type="checkbox" name="_bi_print_styles[]" value="<?php echo esc_attr($val); ?>" <?php echo $checked; ?> />
+                        <?php echo esc_html($lbl); ?>
+                    </label>
+                <?php endforeach; ?>
+                </div>
             </div>
 
             <!-- SECTION: Product Type Specifics -->
@@ -648,10 +656,19 @@ class ButtonInks_Core {
         }
         update_post_meta($post_id, '_bi_bulk_tiers', wp_json_encode($tiers));
 
-        // Print style
-        if (isset($_POST['_bi_print_style'])) {
-            update_post_meta($post_id, '_bi_print_style', sanitize_text_field(wp_unslash($_POST['_bi_print_style'])));
+        // Print style — multi-select, saved as JSON array
+        $allowed_print_styles = ['embroidery','heat_transfer','dtg','screen_printing','pad_printing',
+                                  'digital_inkjet','laser_engraving','digital_print','offset_print','uv_print'];
+        $selected_styles = [];
+        if (isset($_POST['_bi_print_styles']) && is_array($_POST['_bi_print_styles'])) {
+            foreach ((array) $_POST['_bi_print_styles'] as $s) {
+                $s = sanitize_text_field(wp_unslash($s));
+                if (in_array($s, $allowed_print_styles, true)) {
+                    $selected_styles[] = $s;
+                }
+            }
         }
+        update_post_meta($post_id, '_bi_print_style', wp_json_encode($selected_styles));
 
         // Product type
         if (isset($_POST['_bi_product_type'])) {
@@ -759,8 +776,17 @@ class ButtonInks_Core {
             }
         }
 
-        // Print style & clothing/paper/stationery specs
-        $print_style        = get_post_meta($id, '_bi_print_style',   true) ?: '';
+        // Print style — stored as JSON array; back-compat with old plain string
+        $print_style_raw  = get_post_meta($id, '_bi_print_style', true) ?: '[]';
+        $print_style_decoded = json_decode($print_style_raw, true);
+        if (is_array($print_style_decoded) && json_last_error() === JSON_ERROR_NONE) {
+            $print_style = $print_style_decoded;
+        } elseif (!empty($print_style_raw) && $print_style_raw !== '[]') {
+            // Old single-value string — wrap in array for backward compat
+            $print_style = [$print_style_raw];
+        } else {
+            $print_style = [];
+        }
         $product_type       = get_post_meta($id, '_bi_product_type',  true) ?: '';
 
         $clothing_specs_raw = get_post_meta($id, '_bi_clothing_specs', true) ?: '{}';
