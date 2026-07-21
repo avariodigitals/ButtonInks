@@ -98,6 +98,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         headers: authHeaders(),
         credentials: 'include',
       });
+
+      // JWT expired — clear it so the user falls back to guest session
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.code === 'jwt_auth_invalid_token') {
+          try { localStorage.removeItem('bi_token'); } catch { /* noop */ }
+          // Retry as guest (no auth header)
+          const guestRes = await fetch('/api/cart', { credentials: 'include' });
+          if (guestRes.ok) {
+            const guestData = await guestRes.json();
+            const wcItems = parseWCCart(guestData);
+            if (wcItems.length > 0) setCart(wcItems);
+          }
+        }
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
         const wcItems = parseWCCart(data);

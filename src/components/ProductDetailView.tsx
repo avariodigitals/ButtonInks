@@ -8,10 +8,9 @@ import {
   ChevronRight, Star, Minus, Plus, Upload, Maximize2,
   FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, Send, Loader2,
 } from 'lucide-react';
-import { WPProduct, WPProductReview, WPProductVariation, decodeHTMLEntities, getProductVariations } from '@/lib/wordpress';
+import { WPProduct, WPProductReview, WPProductVariation, decodeHTMLEntities } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
-import ColorSwatch from '@/components/ColorSwatch';
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Utility Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
@@ -445,10 +444,11 @@ export default function ProductDetailView({
   const [reviewFormOpen,  setReviewFormOpen]  = useState(false);
 
   useEffect(() => {
-    // Fetch variations for accurate color-image mapping
+    // Fetch variations via API route (server-side auth — credentials never exposed to browser)
     if (product.type === 'variable') {
-      getProductVariations(product.id)
-        .then(setVariations)
+      fetch(`/api/products/${product.id}/variations`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: WPProductVariation[]) => setVariations(Array.isArray(data) ? data : []))
         .catch(err => console.error("Failed to fetch variations:", err));
     }
 
@@ -947,14 +947,63 @@ export default function ProductDetailView({
                         };
 
                         if (isColor) {
+                          // Find the matching image for this color option using the same
+                          // resolution logic as handleColorClick — variations first, then fallbacks
+                          const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                          const optNorm = normalize(opt);
+
+                          let swatchImg: { src: string; alt?: string; name?: string } | undefined;
+
+                          // 1. Variations data (100% accurate)
+                          if (variations.length > 0) {
+                            const matchingVariation = variations.find(v =>
+                              v.attributes.some(a =>
+                                (a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colour') &&
+                                normalize(a.option) === optNorm
+                              )
+                            );
+                            if (matchingVariation?.image) swatchImg = matchingVariation.image;
+                          }
+
+                          // 2. Gallery image matching
+                          if (!swatchImg) {
+                            swatchImg = uniqueImages.find(img => normalize(img.alt ?? '') === optNorm)
+                              ?? uniqueImages.find(img => normalize(img.name ?? '') === optNorm)
+                              ?? uniqueImages.find(img => {
+                                const altN = normalize(img.alt ?? '');
+                                const nameN = normalize(img.name ?? '');
+                                return altN.includes(optNorm) || nameN.includes(optNorm);
+                              })
+                              ?? uniqueImages[colorIdx];
+                          }
+
+                          const swatchSrc = swatchImg?.src ?? opt;
+                          const isSelected = isSel;
+
                           return (
-                            <ColorSwatch
+                            <button
                               key={opt}
-                              colorName={opt}
-                              size={24}
-                              selected={isSel}
+                              type="button"
+                              title={opt}
+                              aria-label={opt}
+                              aria-pressed={isSelected}
                               onClick={handleColorClick}
-                            />
+                              className={`rounded-full shrink-0 overflow-hidden transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 border-2 ${
+                                isSelected
+                                  ? 'border-green-500 scale-110 ring-2 ring-green-500 ring-offset-1'
+                                  : 'border-gray-200 hover:scale-110 hover:border-green-400'
+                              }`}
+                              style={{ width: 32, height: 32, padding: 0 }}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={swatchSrc}
+                                alt={opt}
+                                width={32}
+                                height={32}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }}
+                              />
+                            </button>
                           );
                         }
                         return (
