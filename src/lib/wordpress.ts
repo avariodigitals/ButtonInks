@@ -64,7 +64,7 @@ export interface WPProduct {
     enable_upload?:      boolean;      // Upload Design — customer uploads artwork
     buy_as_is?:          boolean;      // Retail / no customisation
     available_colors?:   string[];     // Deprecated — use WC Color attribute
-    print_style?:        string;       // Decoration method e.g. 'embroidery' | 'dtg' | 'screen_printing'
+    print_style?:        string | string[]; // Decoration method(s) — array after multi-select update, string for back-compat
     product_type?:       string;       // 'clothing' | 'paper' | 'stationery' | ''
     clothing_specs?: {
       fabric?: string;
@@ -99,6 +99,7 @@ export interface WPProduct {
       label: string;                   // Format: 'PDF' | 'AI' | 'PSD' | 'EPS' | 'PNG' | 'SVG'
     }[];
     design_fee?: number;               // Flat personalisation fee per unit (£/$ added on top of base price)
+    wrap_diameter_mm?: number;         // Drinkware only — outer diameter in mm; used to calculate Full Wrap canvas width
   };
 }
 

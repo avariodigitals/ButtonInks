@@ -480,7 +480,11 @@ export default function ProductDetailView({
     if (!selectedMaterial && materials.length > 0) setSelectedMaterial(materials[0]);
   }, [materials, selectedMaterial]);
 
-  const printAreas = ['Front', 'Back', 'Front and Back'];
+  // For drinkware products (where wrap_diameter_mm > 0), use Full Wrap instead of Front and Back
+  const isDrinkware = (product.acf?.wrap_diameter_mm ?? 0) > 0;
+  const printAreas = isDrinkware
+    ? ['Front', 'Back', 'Full Wrap']
+    : ['Front', 'Back', 'Front and Back'];
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Price Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const getBasePrice = () => {
@@ -1145,6 +1149,15 @@ export default function ProductDetailView({
                   </button>
                 ))}
               </div>
+              {/* Full Wrap canvas size info — only for drinkware with a diameter set */}
+              {isDrinkware && selectedPrintArea === 'Full Wrap' && (product.acf?.wrap_diameter_mm ?? 0) > 0 && (
+                <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 font-inter leading-5">
+                  <strong>Full Wrap</strong> canvas width:{' '}
+                  <strong>{Math.round((product.acf!.wrap_diameter_mm as number) * Math.PI)} mm</strong>
+                  {' '}({product.acf!.wrap_diameter_mm as number} mm diameter × π).
+                  Your design will wrap the entire circumference of this product.
+                </p>
+              )}
             </div>
 
             {/* Production Options */}

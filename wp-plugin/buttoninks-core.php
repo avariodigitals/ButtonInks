@@ -71,6 +71,9 @@ class ButtonInks_Core {
 
             // Design / personalisation fee (flat, per unit)
             '_bi_design_fee'         => 'string',
+
+            // Drinkware — wrap diameter in mm (used to size the Full Wrap canvas)
+            '_bi_wrap_diameter_mm'   => 'string',
         ];
 
         foreach ($fields as $key => $type) {
@@ -130,6 +133,7 @@ class ButtonInks_Core {
                                     ? json_decode($print_style_raw, true)
                                     : (($print_style_raw && $print_style_raw !== '[]') ? [$print_style_raw] : []);
         $product_type         = get_post_meta($post->ID, '_bi_product_type',      true) ?: '';
+        $wrap_diameter_mm     = get_post_meta($post->ID, '_bi_wrap_diameter_mm',  true) ?: '';
 
         $clothing_specs_raw   = get_post_meta($post->ID, '_bi_clothing_specs',    true) ?: '{}';
         $clothing_specs       = json_decode($clothing_specs_raw, true) ?: [];
@@ -260,6 +264,32 @@ class ButtonInks_Core {
                     </label>
                 <?php endforeach; ?>
                 </div>
+            </div>
+
+            <!-- SECTION: Drinkware — Full Wrap Diameter -->
+            <div class="bi-section">
+                <span class="bi-label">Drinkware — Full Wrap Diameter</span>
+                <p class="bi-note" style="margin-bottom:10px;">
+                    Only needed for drinkware products (mugs, tumblers, bottles).
+                    Enter the <strong>outer diameter</strong> of the vessel in millimetres.
+                    The designer will use this to calculate the exact canvas width for a Full Wrap print
+                    (circumference = diameter × π). Leave blank for non-drinkware products.
+                </p>
+                <div class="bi-row">
+                    <label style="min-width:140px;">Diameter (mm)</label>
+                    <input type="number" name="_bi_wrap_diameter_mm"
+                           value="<?php echo esc_attr($wrap_diameter_mm); ?>"
+                           placeholder="e.g. 82" min="0" step="0.1" style="width:100px;" />
+                    <span class="bi-note" style="margin:0;">
+                        Common values: 11oz mug ≈ 82 mm · 15oz mug ≈ 88 mm · 20oz tumbler ≈ 76 mm
+                    </span>
+                </div>
+                <?php if ($wrap_diameter_mm): ?>
+                <p class="bi-note" style="color:#1a7c34;">
+                    ✓ Full Wrap canvas width will be <strong><?php echo esc_html(round(floatval($wrap_diameter_mm) * M_PI)); ?> mm</strong>
+                    (<?php echo esc_html($wrap_diameter_mm); ?> mm × π)
+                </p>
+                <?php endif; ?>
             </div>
 
             <!-- SECTION: Product Type Specifics -->
@@ -670,6 +700,13 @@ class ButtonInks_Core {
         }
         update_post_meta($post_id, '_bi_print_style', wp_json_encode($selected_styles));
 
+        // Drinkware wrap diameter
+        if (isset($_POST['_bi_wrap_diameter_mm'])) {
+            $diam = sanitize_text_field(wp_unslash($_POST['_bi_wrap_diameter_mm']));
+            // Store as empty string if blank, otherwise keep the numeric value
+            update_post_meta($post_id, '_bi_wrap_diameter_mm', is_numeric($diam) ? $diam : '');
+        }
+
         // Product type
         if (isset($_POST['_bi_product_type'])) {
             update_post_meta($post_id, '_bi_product_type', sanitize_text_field(wp_unslash($_POST['_bi_product_type'])));
@@ -817,6 +854,8 @@ class ButtonInks_Core {
             'print_notes'          => get_post_meta($id, '_bi_print_notes', true) ?: '',
             'download_templates'   => $dl_templates,
             'design_fee'           => (float) (get_post_meta($id, '_bi_design_fee', true) ?: '0'),
+            // Drinkware — diameter in mm; circumference (Full Wrap canvas width) = diameter × π
+            'wrap_diameter_mm'     => (float) (get_post_meta($id, '_bi_wrap_diameter_mm', true) ?: '0'),
         ];
 
         return $response;
