@@ -32,7 +32,7 @@ export default async function HomePage() {
       <BrandsSection />
 
       {/* ③ Product categories - Now Dynamic */}
-      <ProductCategories categories={rootCategories} />
+      <ProductCategories categories={rootCategories} limit={4} />
 
       {/* ④ New arrivals - Now Dynamic */}
       <NewArrivals products={products.slice(0, 4)} />

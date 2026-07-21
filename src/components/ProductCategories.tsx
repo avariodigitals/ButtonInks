@@ -44,7 +44,13 @@ function CategoryCard({
 }
 
 // ── Section ───────────────────────────────────────────────────────────────────
-export default function ProductCategories({ categories = [] }: { categories?: WPCategory[] }) {
+export default function ProductCategories({
+  categories = [],
+  limit,
+}: {
+  categories?: WPCategory[];
+  limit?: number;
+}) {
   // Build ordered list: for each design slot, find the matching WP category
   const orderedCards = CATEGORY_CONFIG.reduce<{
     category: WPCategory;
@@ -58,6 +64,9 @@ export default function ProductCategories({ categories = [] }: { categories?: WP
     }
     return acc;
   }, []);
+
+  // Apply limit if specified (used on homepage to show only featured 4)
+  const visibleCards = limit ? orderedCards.slice(0, limit) : orderedCards;
 
   return (
     <section className="w-full px-4 md:px-20 py-10 flex flex-col justify-start items-start gap-10 overflow-hidden">
@@ -82,7 +91,7 @@ export default function ProductCategories({ categories = [] }: { categories?: WP
       </div>
 
       <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {orderedCards.map(({ category, displayName, bg, fallback }) => (
+        {visibleCards.map(({ category, displayName, bg, fallback }) => (
           <CategoryCard
             key={category.id}
             category={category}

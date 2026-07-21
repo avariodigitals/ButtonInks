@@ -15,7 +15,32 @@ export interface CategoryConfig {
 }
 
 export const CATEGORY_CONFIG: CategoryConfig[] = [
-  // Row 1
+  // ── Featured 4 (shown on homepage) ────────────────────────────────────────
+  {
+    slugs: ['embroidery', 'embroidery-uniforms'],
+    displayName: 'Embroidery',
+    bg: 'bg-zinc-100',
+    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/7deef321d225c1ffe174ad69a1abab84d93eb99a.png',
+  },
+  {
+    slugs: ['apparel'],
+    displayName: 'Apparel',
+    bg: 'bg-cyan-50',
+    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/eef09eee3c42e2fede3e44aae578853a9f831650.png',
+  },
+  {
+    slugs: ['best-custom-drinkware', 'custom-mugs', 'personalized-cups'],
+    displayName: 'Drinkware',
+    bg: 'bg-emerald-50',
+    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/30763b2cf68c84422213d4791db08c534e04d973-1.png',
+  },
+  {
+    slugs: ['prints', 'marketing-prints', 'marketing-print'],
+    displayName: 'Print',
+    bg: 'bg-pink-100',
+    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/f98beadb61ec3ec2d51e5a0615bc26bf9e067141.png',
+  },
+  // ── Remaining (shown on /categories page) ─────────────────────────────────
   {
     slugs: ['t-shirts', 'tshirts'],
     displayName: 'T-shirts',
@@ -29,18 +54,11 @@ export const CATEGORY_CONFIG: CategoryConfig[] = [
     fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/0e770e70e91b1ae429ca2f5e7d0f54c765794b85.png',
   },
   {
-    slugs: ['custom-mugs', 'personalized-cups'],
-    displayName: 'Custom Mugs',
-    bg: 'bg-emerald-50',
-    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/30763b2cf68c84422213d4791db08c534e04d973-1.png',
-  },
-  {
     slugs: ['corporate-gifts'],
     displayName: 'Corporate Gifts',
     bg: 'bg-slate-100',
     fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/5832c7755acb2ef3d54261b0e7c8d447868937cc-1.png',
   },
-  // Row 2
   {
     slugs: ['banners'],
     displayName: 'Banners',
@@ -48,24 +66,11 @@ export const CATEGORY_CONFIG: CategoryConfig[] = [
     fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/c308dbfcbddeb088e0a263b9bf4d997abc9c36dc-1-scaled.png',
   },
   {
-    slugs: ['apparel', 'embroidery-uniforms'],
-    displayName: 'Apparel',
-    bg: 'bg-cyan-50',
-    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/eef09eee3c42e2fede3e44aae578853a9f831650.png',
-  },
-  {
-    slugs: ['event-tradeshow-supplies', 'event-supplies'],
-    displayName: 'Event supplies',
+    slugs: ['event-tradeshow-supplies', 'event-merchandize', 'event-supplies'],
+    displayName: 'Event Merchandize',
     bg: 'bg-sky-100',
     fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/b94750be637a17fced8bb75acc416711fa889a3a.png',
   },
-  {
-    slugs: ['marketing-prints', 'marketing-print'],
-    displayName: 'Marketing Print',
-    bg: 'bg-pink-100',
-    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/f98beadb61ec3ec2d51e5a0615bc26bf9e067141.png',
-  },
-  // Row 3
   {
     slugs: ['vehicle-branding', 'vehicles-branding'],
     displayName: 'Vehicles Branding',
@@ -74,7 +79,7 @@ export const CATEGORY_CONFIG: CategoryConfig[] = [
   },
   {
     slugs: ['photo-prints', 'photoprint'],
-    displayName: 'Photoprint',
+    displayName: 'Photo Prints',
     bg: 'bg-yellow-50',
     fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/935886bb5b62c3c9c1d6ce8e5e35ed4f6a74f25d-2.png',
   },
@@ -85,10 +90,22 @@ export const CATEGORY_CONFIG: CategoryConfig[] = [
     fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/2b24ecf2ef7763ef450908ae7f5280269bae6902-scaled.png',
   },
   {
-    slugs: ['embroidery', 'embroidery-uniforms'],
-    displayName: 'Embroidery',
-    bg: 'bg-zinc-100',
-    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/7deef321d225c1ffe174ad69a1abab84d93eb99a.png',
+    slugs: ['gifts-decor'],
+    displayName: 'Gifts & Decor',
+    bg: 'bg-amber-50',
+    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/5832c7755acb2ef3d54261b0e7c8d447868937cc-1.png',
+  },
+  {
+    slugs: ['dtf-direct-to-filmprints'],
+    displayName: 'DTF Prints',
+    bg: 'bg-indigo-50',
+    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/f98beadb61ec3ec2d51e5a0615bc26bf9e067141.png',
+  },
+  {
+    slugs: ['retail'],
+    displayName: 'Retail',
+    bg: 'bg-orange-50',
+    fallback: 'https://central.buttoninks.com/wp-content/uploads/2026/06/5832c7755acb2ef3d54261b0e7c8d447868937cc-1.png',
   },
 ];
 

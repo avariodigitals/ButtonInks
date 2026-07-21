@@ -22,7 +22,10 @@ export async function GET(
       next: { revalidate: 300 },
     });
 
-    if (!res.ok) return NextResponse.json([], { status: res.status });
+    // Always return 200 with an empty array on non-OK — WooCommerce may 404
+    // for products with no reviews, and echoing that status causes noisy
+    // browser console errors even though the UI handles it gracefully.
+    if (!res.ok) return NextResponse.json([]);
     const data: unknown = await res.json();
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (err: unknown) {
