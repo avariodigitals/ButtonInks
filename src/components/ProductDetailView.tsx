@@ -8,7 +8,7 @@ import {
   ChevronRight, Star, Minus, Plus, Upload, Maximize2,
   FileDown, ShoppingCart, SlidersHorizontal, X, ChevronDown, Package, Send, Loader2,
 } from 'lucide-react';
-import { WPProduct, WPProductReview, decodeHTMLEntities } from '@/lib/wordpress';
+import { WPProduct, WPProductReview, WPProductVariation, decodeHTMLEntities, getProductVariations } from '@/lib/wordpress';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
 import ColorSwatch from '@/components/ColorSwatch';
@@ -438,12 +438,20 @@ export default function ProductDetailView({
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Live data from WP Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [reviews,        setReviews]        = useState<WPProductReview[]>([]);
+  const [variations,     setVariations]     = useState<WPProductVariation[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<WPProduct[]>([]);
   const [reviewsLoading,  setReviewsLoading]  = useState(true);
   const [relatedLoading,  setRelatedLoading]  = useState(true);
   const [reviewFormOpen,  setReviewFormOpen]  = useState(false);
 
   useEffect(() => {
+    // Fetch variations for accurate color-image mapping
+    if (product.type === 'variable') {
+      getProductVariations(product.id)
+        .then(setVariations)
+        .catch(err => console.error("Failed to fetch variations:", err));
+    }
+
     // Fetch reviews
     fetch(`/api/products/${product.id}/reviews`)
       .then(r => r.ok ? r.json() : [])
@@ -793,7 +801,8 @@ export default function ProductDetailView({
             {product.attributes
               .filter(a => !a.name.toLowerCase().includes('material') && !a.name.toLowerCase().includes('fabric'))
               .map((attr, idx) => {
-                const isColor  = attr.name.toLowerCase() === 'color';
+                const nameL = attr.name.toLowerCase();
+                const isColor  = nameL === 'color' || nameL === 'colour';
                 const selected = selectedAttributes[attr.name] ?? [];
                 const error    = validationErrors[attr.name];
                 return (
@@ -817,6 +826,7 @@ export default function ProductDetailView({
                         // while the color option is "True Navy/White".
                         //
                         // Strategy — normalized slug matching beats word matching:
+                        //   0. Variations data (100% accurate match from WooCommerce)
                         //   1. Exact alt match (rare but best)
                         //   2. Exact filename match
                         //   3. Normalized slug: strip all non-alpha chars from both
@@ -858,10 +868,28 @@ export default function ProductDetailView({
                             return { altN, nameN, combined: altN + ' ' + nameN };
                           };
 
+                          // Step 0: Variations data — 100% accurate correlation from WooCommerce
+                          let matchedImg: { src: string; alt?: string; name?: string } | undefined;
+
+                          if (variations.length > 0) {
+                            // Find the variation that has this specific attribute option
+                            const matchingVariation = variations.find(v =>
+                              v.attributes.some(a =>
+                                (a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colour') &&
+                                normalize(a.option) === optNorm
+                              )
+                            );
+                            if (matchingVariation?.image) {
+                              matchedImg = matchingVariation.image;
+                            }
+                          }
+
                           // Step 1: exact alt
-                          let matchedImg = uniqueImages.find(img =>
-                            normalize(img.alt ?? '') === optNorm
-                          );
+                          if (!matchedImg) {
+                            matchedImg = uniqueImages.find(img =>
+                              normalize(img.alt ?? '') === optNorm
+                            );
+                          }
 
                           // Step 2: exact filename
                           if (!matchedImg) {

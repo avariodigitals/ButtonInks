@@ -1674,13 +1674,6 @@ class ButtonInks_Core {
                                 <p class="description">Your deployed Next.js site URL (no trailing slash).</p>
                             </td>
                         </tr>
-                        <tr>
-                            <th><label>Revalidation Secret</label></th>
-                            <td>
-                                <code style="background:#f6f7f7; padding:4px 8px; border-radius:3px; border:1px solid #dcdcde;">Hardcoded in Plugin Core</code>
-                                <p class="description">The secret is currently hardcoded in the plugin to ensure security and consistency with Vercel environment variables.</p>
-                            </td>
-                        </tr>
                     </table>
                 </div>
 

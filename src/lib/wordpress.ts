@@ -102,6 +102,30 @@ export interface WPProduct {
   };
 }
 
+export interface WPProductVariation {
+  id: number;
+  date_created: string;
+  date_modified: string;
+  description: string;
+  permalink: string;
+  sku: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  on_sale: boolean;
+  status: string;
+  purchasable: boolean;
+  virtual: boolean;
+  downloadable: boolean;
+  image: WPProductImage | null;
+  attributes: {
+    id: number;
+    name: string;
+    option: string;
+  }[];
+  menu_order: number;
+}
+
 export interface WPCategory {
   id: number;
   name: string;
@@ -344,6 +368,18 @@ export async function getProductById(id: number): Promise<WPProduct | null> {
     undefined, 
     true,
     { revalidate: 300, tags: ['products', `product-${id}`] }
+  );
+}
+
+/**
+ * Fetch all variations for a specific variable product.
+ */
+export async function getProductVariations(productId: number): Promise<WPProductVariation[]> {
+  return wpFetch<WPProductVariation[]>(
+    `/wc/v3/products/${productId}/variations`,
+    { per_page: "100" },
+    true,
+    { revalidate: 300, tags: ['products', `product-${productId}-variations`] }
   );
 }
 
